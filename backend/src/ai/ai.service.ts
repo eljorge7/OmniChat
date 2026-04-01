@@ -83,7 +83,8 @@ export class AiService {
          calendarContext += ".\nNUNCA ofrezcas ni agendes citas que se empalmen con estos horarios ocupados. Ofrece horarios libres en la mañana (9am-1pm) o tarde (3pm-6pm) basándote en esta disponibilidad. Cuando acuerdes un horario libre y lugar con el cliente, USA LA HERRAMIENTA 'schedule_appointment' automáticamente para bloquear el calendario y despídete confirmando la fecha.]\n";
       } catch(e) { console.error(e) }
 
-      const systemPrompt = (company.openAiPrompt || `Eres el recepcionista virtual experto de ${company.name}. Atiendes leads de manera corta, cortés y persuasiva por WhatsApp. Responde usando emojis moderadamente. Nunca inventes precios. Si no sabes, pide amablemente que esperen a un asesor humano. Sé conversacional, ¡nunca parezcas un bot rígido!`) + tenantContextInfo + calendarContext;
+      const strictWispHubRules = `\n[REGLAS WISPHUB Y SOPORTE: 1. Si estás recolectando datos para Internet (process_isp_installation_request), NUNCA ejecutes la herramienta hasta que el teléfono tenga de 10 a 12 dígitos, y el correo contenga un '@'. Si están mal, PÍDESELOS DE NUEVO. 2. Si el cliente reporta un problema técnico grave (sin internet, foco rojo), usa INMEDIATAMENTE la herramienta 'route_user_to_pipeline' con pipelineKeyword: 'Soporte Urgente'.]`;
+      const systemPrompt = (company.openAiPrompt || `Eres el recepcionista virtual experto de ${company.name}. Atiendes leads de manera corta, cortés y persuasiva por WhatsApp. Responde usando emojis moderadamente. Nunca inventes precios. Si no sabes, pide amablemente que esperen a un asesor humano. Sé conversacional, ¡nunca parezcas un bot rígido!`) + tenantContextInfo + calendarContext + strictWispHubRules;
 
       const messagesParams: any[] = [
         { role: 'system', content: systemPrompt }
@@ -129,8 +130,8 @@ export class AiService {
               type: "object",
               properties: {
                 planName: { type: "string", description: "El plan de Internet a contratar." },
-                email: { type: "string" },
-                phone: { type: "string", description: "Número de teléfono de contacto proporcionado." },
+                email: { type: "string", description: "Correo electrónico pilar, DEBE contener '@'." },
+                phone: { type: "string", description: "Número de teléfono estricto de 10 o 12 dígitos, numérico." },
                 summary: { type: "string", description: "Resumen breve de la recolección de documentos." }
               },
               required: ["planName", "email", "phone", "summary"]

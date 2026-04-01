@@ -4,6 +4,8 @@ import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsappService } from './whatsapp.service';
+import { ImportContactsDto } from './dto/import-contacts.dto';
+import { CaptureWebLeadDto } from './dto/capture-web-lead.dto';
 
 @Controller('api/inbox')
 export class WhatsappController {
@@ -228,9 +230,7 @@ export class WhatsappController {
   // --- WEBHOOKS & INBOUND LEAD CAPTURE ---
   
   @Post('webhooks/lead')
-  async captureWebLead(@Body() body: { name: string, phone: string, interest: string, companyId?: string }) {
-    if (!body.phone) throw new BadRequestException("Teléfono requerido");
-
+  async captureWebLead(@Body() body: CaptureWebLeadDto) {
     // Limpiar el teléfono para homogeneizar (quitar + y espacios) a 10 digitos MX
     const cleanPhone = body.phone.replace(/[^0-9]/g, '').slice(-10);
     const fullWaId = `521${cleanPhone}@c.us`; 
@@ -444,11 +444,7 @@ export class WhatsappController {
   }
 
   @Post('contacts/import')
-  async importContacts(@Body() body: { contacts: { name: string, phone: string }[], companyId: string }) {
-    if (!body.companyId || !body.contacts || body.contacts.length === 0) {
-      throw new BadRequestException("Payload inválido");
-    }
-
+  async importContacts(@Body() body: ImportContactsDto) {
     let imported = 0;
     for (const c of body.contacts) {
       const cleanPhone = c.phone.replace(/\D/g, ''); // Remover espacios y guiones

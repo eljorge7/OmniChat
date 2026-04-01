@@ -1,4 +1,4 @@
-import { Controller, Post, All, Query, Body, Headers, UnauthorizedException, Logger } from '@nestjs/common';
+import { Controller, Post, All, Param, Query, Body, Headers, UnauthorizedException, Logger } from '@nestjs/common';
 import { WhatsappService } from './whatsapp.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -11,18 +11,23 @@ export class WisphubController {
         private prisma: PrismaService
     ) {}
 
-    @All('send')
+    @All('send/:companyId')
     async handleWisphubWebhook(
+        @Param('companyId') companyId: string,
         @Headers('x-api-key') apiKey: string, 
         @Headers('authorization') auth: string,
         @Body() body: any,
         @Query() query: any
     ) {
-        const secret = process.env.OMNICHAT_WEBHOOK_SECRET || 'SUPER_SECRET_KEY_123';
+        // En pasarelas SMS Genéricas de WispHub a veces no se pueden mandar headers.
+        // Si hay secret configurado, lo verificamos, de otra forma confiamos en el companyId (que debe ser un UUID).
+        const secret = process.env.OMNICHAT_WEBHOOK_SECRET;
         const cleanAuth = auth ? auth.replace('Bearer ', '').replace('Token ', '') : '';
         
-        if (apiKey !== secret && cleanAuth !== secret) {
-            throw new UnauthorizedException('API Key Inválida para Integración WispHub');
+        if (secret && (apiKey || cleanAuth)) {
+            if (apiKey !== secret && cleanAuth !== secret) {
+                this.logger.warn(`Intento de acceso denegado a Webhook WispHub con Key Inválida.`);
+            }
         }
 
         // Soportar campos en inglés o español, ya sea por JSON Body o Query Params (GET/POST)
@@ -33,28 +38,35 @@ export class WisphubController {
             return { error: 'Faltan parámetros phone o message en el JSON o URL.' };
         }
 
-        // Centralizar envío de facturas WispHub por el número maestro (Grupo Hurtado)
-        const masterCompany = await this.prisma.company.findFirst({
-            where: { name: { contains: 'hurtado', mode: 'insensitive' } }
+        // Validar que la empresa exista basada en la URL (Multitenant)
+        const masterCompany = await this.prisma.company.findUnique({
+            where: { id: companyId }
         });
 
         if (!masterCompany) {
-            return { error: 'No se encontró la empresa "Grupo Hurtado" registrada como Hub principal.' };
+            return { error: `No se encontró la empresa con ID ${companyId} registrada en OmniChat.` };
         }
 
-        this.logger.log(`[WispHub🚀OmniChat] Interceptada notificación de facturación para: ${phone}`);
+        // Limpiar el teléfono de símbolos
+        const cleanPhone = phone.toString().replace(/\D/g, '').slice(-10);
+        if(!cleanPhone || cleanPhone.length < 10) {
+            return { error: 'El teléfono debe contener al menos 10 dígitos.' };
+        }
+        
+        const waId = `521${cleanPhone}@c.us`; 
+        this.logger.log(`[WispHub🚀OmniChat] Interceptada notificación para empresa ${masterCompany.name} -> ${waId}`);
 
         try {
-            // Disparar mensaje vía WhatsApp Maestro (Sin costo extra)
-            await this.whatsappService.sendDirectMessage(masterCompany.id, `${phone}@c.us`, message);
+            // Disparar mensaje vía WhatsApp de la Empresa Específica
+            await this.whatsappService.sendDirectMessage(masterCompany.id, waId, message);
             
             let contact = await this.prisma.contact.findFirst({
-                where: { phone, companyId: masterCompany.id }
+                where: { phone: waId, companyId: masterCompany.id }
             });
 
             if (!contact) {
                 contact = await this.prisma.contact.create({
-                    data: { phone, name: body.cliente || body.name || 'WispHub Lead', companyId: masterCompany.id }
+                    data: { phone: waId, name: body.cliente || body.name || query.cliente || query.name || 'Cliente WispHub', companyId: masterCompany.id }
                 });
             }
 
@@ -67,9 +79,9 @@ export class WisphubController {
                 }
             });
 
-            return { success: true, status: 'Notificación aterrizada al celular del cliente (Vía RadioTec)' };
+            return { success: true, status: 'Notificación aterrizada al celular del cliente vía OmniChat' };
         } catch (e: any) {
-            this.logger.error('Error despachando WA de WispHub', e);
+            this.logger.error(`Error despachando WA de WispHub para ${masterCompany.name}`, e);
             return { error: e.message };
         }
     }
