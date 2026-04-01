@@ -2,13 +2,22 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { format, addDays, startOfWeek, subWeeks, addWeeks, isSameDay } from "date-fns";
+import { format, parse, startOfWeek, getDay } from "date-fns";
 import { es } from "date-fns/locale";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, MapPin, User, Clock, Trash2 } from "lucide-react";
+import { CalendarDays, Plus } from "lucide-react";
+import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
+
+const localizer = dateFnsLocalizer({
+  format,
+  parse,
+  startOfWeek: () => startOfWeek(new Date(), { weekStartsOn: 1 }),
+  getDay,
+  locales: { es }
+});
 
 export default function CalendarPage() {
   const [activeCompanyId, setActiveCompanyId] = useState("");
-  const [currentWeek, setCurrentWeek] = useState(new Date());
   const [events, setEvents] = useState<any[]>([]);
   
   // Modal de Crear Cita
@@ -21,36 +30,20 @@ export default function CalendarPage() {
     setActiveCompanyId(cid);
     
     if (cid) {
-      fetchEvents(cid, currentWeek);
+      fetchEvents(cid);
       // Fetch Pipelines para color-coding
       axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox?companyId=${cid}`)
         .then(res => setPipelines(res.data.pipelines || []))
         .catch(console.error);
     }
-  }, [currentWeek]);
+  }, []);
 
-  const fetchEvents = (cid: string, weekDate: Date) => {
-    const start = format(startOfWeek(weekDate, { weekStartsOn: 1 }), "yyyy-MM-dd");
-    const end = format(addDays(startOfWeek(weekDate, { weekStartsOn: 1 }), 6), "yyyy-MM-dd");
-    
-    axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/calendar/${cid}?start=${start}&end=${end}`)
+  const fetchEvents = (cid: string) => {
+    // Obtenemos todos los eventos (el Backend omitirá el filtro start/end si no se mandan)
+    axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/calendar/${cid}`)
       .then(res => setEvents(res.data))
       .catch(console.error);
   };
-
-  const handlePrevWeek = () => setCurrentWeek(subWeeks(currentWeek, 1));
-  const handleNextWeek = () => setCurrentWeek(addWeeks(currentWeek, 1));
-
-  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
-  const days = Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i));
-
-  const getColorClass = (bgKey: string) => {
-    const c = bgKey.toLowerCase();
-    if (c.includes('radiotec')) return 'border-blue-400 bg-blue-50 text-blue-900 border-l-4';
-    if (c.includes('rent')) return 'border-emerald-400 bg-emerald-50 text-emerald-900 border-l-4';
-    if (c.includes('lavado')) return 'border-orange-400 bg-orange-50 text-orange-900 border-l-4';
-    return 'border-indigo-400 bg-indigo-50 text-indigo-900 border-l-4'; // Default
-  }
 
   const handleCreate = async () => {
     if (!newEvent.title) return alert("Ponle título al servicio");
@@ -66,14 +59,12 @@ export default function CalendarPage() {
     });
     
     setIsModalOpen(false);
-    fetchEvents(activeCompanyId, currentWeek);
+    fetchEvents(activeCompanyId);
   };
 
   const handleDelete = async (id: string) => {
-    if(confirm('¿Eliminar esta cita?')) {
        await axios.delete(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/calendar/${activeCompanyId}/${id}`);
-       fetchEvents(activeCompanyId, currentWeek);
-    }
+       fetchEvents(activeCompanyId);
   };
 
   return (
@@ -86,84 +77,51 @@ export default function CalendarPage() {
             <CalendarDays className="h-8 w-8 text-indigo-600" />
             Agenda Global Operativa
           </h1>
-          <p className="text-slate-500 mt-2 font-medium">Control unificado de cuadrillas técnicas y mantenimientos.</p>
+          <p className="text-slate-500 mt-2 font-medium">Control unificado dinámico interactivo de operaciones (Mes, Semana, Día).</p>
         </div>
         
         <div className="flex items-center gap-4">
-          <div className="flex items-center bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <button onClick={handlePrevWeek} className="p-3 hover:bg-slate-50 text-slate-600 transition-colors border-r border-slate-100"><ChevronLeft className="h-5 w-5" /></button>
-            <div className="px-6 font-bold text-slate-700 capitalize">
-               {format(weekStart, 'MMMM yyyy', { locale: es })}
-            </div>
-            <button onClick={handleNextWeek} className="p-3 hover:bg-slate-50 text-slate-600 transition-colors border-l border-slate-100"><ChevronRight className="h-5 w-5" /></button>
-          </div>
-          
-          <button onClick={() => setIsModalOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-indigo-200 transition-all hover:-translate-y-0.5">
+          <button onClick={() => {
+             setNewEvent({ title: "", description: "", date: format(new Date(), "yyyy-MM-dd"), time: "10:00", pipelineId: "" });
+             setIsModalOpen(true);
+          }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-indigo-200 transition-all hover:-translate-y-0.5">
             <Plus className="h-5 w-5" /> Nueva Cita
           </button>
         </div>
       </div>
 
-      {/* WEEK GRID */}
-      <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-        {/* Days Header */}
-        <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/80">
-          {days.map((day, idx) => (
-            <div key={idx} className="p-4 text-center border-r last:border-0 border-slate-200">
-              <span className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{format(day, 'EEEE', { locale: es })}</span>
-              <span className={`text-2xl font-black ${isSameDay(day, new Date()) ? 'text-indigo-600 bg-indigo-50 rounded-lg inline-block px-3 py-1' : 'text-slate-700'}`}>
-                {format(day, 'd')}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Days Content */}
-        <div className="grid grid-cols-7 flex-1 min-h-[600px]">
-          {days.map((day, idx) => {
-             const dayEvents = events.filter(e => isSameDay(new Date(e.startTime), day));
-             
-             return (
-               <div 
-                 key={idx} 
-                 className="border-r last:border-0 border-slate-200 p-3 bg-white hover:bg-slate-50/50 transition-colors space-y-3 cursor-pointer"
-                 onContextMenu={(e) => {
-                   e.preventDefault();
-                   setNewEvent({ ...newEvent, date: format(day, "yyyy-MM-dd") });
-                   setIsModalOpen(true);
-                 }}
-               >
-                 {dayEvents.map(ev => {
-                    const pipName = ev.pipeline?.name || "";
-                    const badgeClass = getColorClass(pipName);
-
-                    return (
-                      <div key={ev.id} className={`relative group rounded-xl p-3 border shadow-sm transition-all hover:shadow-md ${badgeClass}`}>
-                        <div className="font-bold text-sm mb-1 leading-tight">{ev.title}</div>
-                        <div className="flex items-center gap-1 text-xs opacity-80 mt-2 font-medium">
-                          <Clock className="w-3 h-3" /> {format(new Date(ev.startTime), 'h:mm a')}
-                        </div>
-                        {ev.contact && (
-                          <div className="flex items-center gap-1 text-xs font-semibold mt-1">
-                            <User className="w-3 h-3" /> {ev.contact.name || ev.contact.phone}
-                          </div>
-                        )}
-                        {ev.location && (
-                          <div className="flex items-start gap-1 text-[10px] font-bold mt-2 pt-2 border-t border-black/10 opacity-80">
-                            <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" /> 
-                            <span className="leading-tight">{ev.location}</span>
-                          </div>
-                        )}
-                        <button onClick={() => handleDelete(ev.id)} className="absolute top-2 right-2 text-slate-400/0 group-hover:text-red-500/80 hover:!text-red-600 transition-all rounded p-1 hover:bg-white/50">
-                           <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )
-                 })}
-               </div>
-             )
-          })}
-        </div>
+      {/* BIG CALENDAR */}
+      <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col p-6 min-h-[600px] [&_.rbc-toolbar_button]:font-medium [&_.rbc-toolbar_button]:rounded-lg [&_.rbc-toolbar_button.rbc-active]:bg-indigo-600 [&_.rbc-toolbar_button.rbc-active]:text-white [&_.rbc-toolbar_button.rbc-active]:shadow-md [&_.rbc-toolbar_button.rbc-active]:border-indigo-600 [&_.rbc-event]:shadow-sm">
+        <Calendar
+          localizer={localizer}
+          events={events}
+          startAccessor={(event) => new Date(event.startTime)}
+          endAccessor={(event) => new Date(event.endTime)}
+          culture="es"
+          messages={{
+             next: "Siguiente", previous: "Anterior", today: "Hoy", month: "Mes", week: "Semana", day: "Día", agenda: "Agenda"
+          }}
+          selectable
+          onSelectSlot={({ start }) => {
+            setNewEvent({ ...newEvent, date: format(start, "yyyy-MM-dd"), time: format(start, "HH:mm") });
+            setIsModalOpen(true);
+          }}
+          onSelectEvent={(event) => {
+            if(confirm(`¿Eliminar la cita "${event.title}"?`)) {
+               handleDelete(event.id);
+            }
+          }}
+          eventPropGetter={(event) => {
+             const pipName = event.pipeline?.name || "";
+             const c = pipName.toLowerCase();
+             let backgroundColor = '#6366f1'; // indigo-500 default
+             if (c.includes('radiotec')) backgroundColor = '#3b82f6'; // blue-500
+             if (c.includes('rent')) backgroundColor = '#10b981'; // emerald-500
+             if (c.includes('lavado')) backgroundColor = '#f97316'; // orange-500
+             return { style: { backgroundColor, borderRadius: '6px', border: 'none', padding: '4px', fontWeight: 'bold' } };
+          }}
+          style={{ height: '100%' }}
+        />
       </div>
 
       {/* CREATE MODAL */}

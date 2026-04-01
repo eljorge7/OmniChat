@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageCircle, Phone, Clock, Search, Filter, MoreVertical, Paperclip, SendHorizontal, Bot, Tag, StickyNote, X, User, ChevronLeft, PanelRight, PencilLine, CalendarDays } from "lucide-react";
+import { MessageCircle, Phone, Clock, Search, Filter, MoreVertical, Paperclip, SendHorizontal, Bot, Tag, StickyNote, X, User, ChevronLeft, PanelRight, PencilLine, CalendarDays, Trash2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
@@ -125,6 +125,26 @@ export default function InboxPage() {
        setChats(res.data.chats);
      } catch(e) {
        console.error("Error renaming", e);
+     }
+  };
+
+  const handleDeleteContact = async () => {
+     if (!currentChat) return;
+     if (!confirm(`¿Estás completamente seguro de borrar TODO el historial con ${currentChat.name || currentChat.phone}? Esta acción no se puede deshacer.`)) return;
+
+     const activeCid = localStorage.getItem('activeCompanyId');
+     if (!activeCid) return;
+
+     try {
+       await axios.delete(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/contacts/${activeCid}/${currentChat.id}`);
+       // Trigger refresh
+       const qParams = `?companyId=${activeCid}`;
+       const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox${qParams}`);
+       setChats(res.data.chats);
+       setSelectedChatId(null);
+     } catch(e) {
+       console.error("Error deleting contact", e);
+       alert("No se pudo eliminar la conversación.");
      }
   };
 
@@ -426,6 +446,13 @@ export default function InboxPage() {
                   </button>
                   <button onClick={() => setShowCrmPanelMobile(!showCrmPanelMobile)} className="lg:hidden h-9 w-9 bg-slate-100 hover:bg-indigo-100 rounded-lg flex items-center justify-center text-slate-600 hover:text-indigo-600 transition-colors">
                     <PanelRight className="h-5 w-5" />
+                  </button>
+                  <button 
+                    onClick={handleDeleteContact} 
+                    title="Eliminar Conversación Permanentemente"
+                    className="flex h-9 w-9 bg-red-50 hover:bg-red-100 rounded-lg items-center justify-center text-red-500 hover:text-red-700 transition-colors shadow-sm ml-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               </div>

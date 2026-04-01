@@ -6,6 +6,7 @@ import { LayoutDashboard, MessageSquareText, Settings, Bot, Users, PieChart, Inf
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -210,9 +211,12 @@ export function Sidebar() {
              )}
           </Link>
           {!isCollapsed && (
-            <button onClick={() => signOut()} className="text-slate-400 hover:text-red-500 transition-colors p-2" title="Cerrar Sesión">
-               <LogOut className="h-4 w-4" />
-            </button>
+            <div className="flex flex-col gap-1 items-center justify-center">
+              <ThemeToggle />
+              <button onClick={() => signOut()} className="text-slate-400 hover:text-red-500 transition-colors p-2" title="Cerrar Sesión">
+                 <LogOut className="h-4 w-4" />
+              </button>
+            </div>
           )}
         </div>
       </div>

@@ -433,6 +433,23 @@ export class WhatsappController {
     });
   }
 
+  @Delete('contacts/:companyId/:id')
+  async deleteContact(@Param('companyId') companyId: string, @Param('id') id: string) {
+    if(!companyId || !id) throw new BadRequestException("ID Invalido");
+    
+    const contact = await this.prisma.contact.findFirst({ where: { id, companyId } });
+    if(!contact) throw new BadRequestException("Contacto no encontrado");
+
+    await this.prisma.$transaction([
+      this.prisma.message.deleteMany({ where: { contactId: id } }),
+      this.prisma.contactNote.deleteMany({ where: { contactId: id } }),
+      this.prisma.calendarEvent.deleteMany({ where: { contactId: id } }),
+      this.prisma.contact.delete({ where: { id } })
+    ]);
+
+    return { success: true, message: "Conversación eliminada atómicamente" };
+  }
+
   @Get('contacts/all')
   async getAllContacts() {
     return this.prisma.contact.findMany({

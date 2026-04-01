@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 };
 
 import { Providers } from '@/components/Providers';
+import { ThemeProvider } from '@/components/ThemeProvider';
 import AuthGuard from '@/components/AuthGuard';
 
 export default function RootLayout({
@@ -19,18 +20,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es">
-       <body className={`${inter.className} bg-slate-50 text-slate-900 dark:text-slate-100`}>
-         <Providers>
-           <AuthGuard>
+    <html lang="es" suppressHydrationWarning>
+       <body className={`${inter.className} bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300`}>
+         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
+           <Providers>
+             <AuthGuard>
              <div className="flex h-screen overflow-hidden">
                <Sidebar />
                <main className="flex-1 flex flex-col h-full relative z-0 overflow-y-auto">
                  {children}
                </main>
              </div>
-           </AuthGuard>
-         </Providers>
+            </AuthGuard>
+           </Providers>
+         </ThemeProvider>
        </body>
     </html>
   );
