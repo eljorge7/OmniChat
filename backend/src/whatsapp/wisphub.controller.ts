@@ -12,9 +12,15 @@ export class WisphubController {
     ) {}
 
     @Post('send')
-    async handleWisphubWebhook(@Headers('x-api-key') apiKey: string, @Body() body: any) {
-        // En WispHub, configuras el header "x-api-key" con el valor de la contraseña
-        if (apiKey !== (process.env.OMNICHAT_WEBHOOK_SECRET || 'SUPER_SECRET_KEY_123')) {
+    async handleWisphubWebhook(
+        @Headers('x-api-key') apiKey: string, 
+        @Headers('authorization') auth: string,
+        @Body() body: any
+    ) {
+        const secret = process.env.OMNICHAT_WEBHOOK_SECRET || 'SUPER_SECRET_KEY_123';
+        const cleanAuth = auth ? auth.replace('Bearer ', '').replace('Token ', '') : '';
+        
+        if (apiKey !== secret && cleanAuth !== secret) {
             throw new UnauthorizedException('API Key Inválida para Integración WispHub');
         }
 
