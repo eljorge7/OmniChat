@@ -164,7 +164,7 @@ export default function DashboardPage() {
                   </div>
                 </h3>
                 <p className="text-xs text-slate-500 font-mono mb-4 flex items-center gap-1">
-                  <Key className="h-3 w-3" /> {company.apiKey.substring(0, 15)}...
+                  <Key className="h-3 w-3" /> {company.apiKey ? `${company.apiKey.substring(0, 15)}...` : 'Sin Key (Auto-generar)'}
                 </p>
                 <div className="flex bg-slate-50 rounded-lg p-3">
                    <div className="flex-1 text-center border-r border-slate-200">
