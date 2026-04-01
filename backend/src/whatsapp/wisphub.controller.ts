@@ -62,13 +62,43 @@ export class WisphubController {
             // Disparar mensaje vía WhatsApp de la Empresa Específica
             await this.whatsappService.sendDirectMessage(masterCompany.id, waId, message);
             
+            // Asignación Dinámica de Embudo (Pipeline)
+            const embudoName = body?.embudo || query?.embudo || body?.pipeline || query?.pipeline || 'Alertas WispHub';
+            let pipeline = await this.prisma.pipeline.findFirst({
+                where: { name: embudoName, companyId: masterCompany.id },
+            });
+
+            if (!pipeline) {
+                pipeline = await this.prisma.pipeline.create({
+                    data: { name: embudoName, companyId: masterCompany.id },
+                });
+            }
+
             let contact = await this.prisma.contact.findFirst({
                 where: { phone: waId, companyId: masterCompany.id }
             });
 
+            const contactName = body?.cliente || body?.name || query?.cliente || query?.name || 'Cliente WispHub';
+
             if (!contact) {
                 contact = await this.prisma.contact.create({
-                    data: { phone: waId, name: body.cliente || body.name || query.cliente || query.name || 'Cliente WispHub', companyId: masterCompany.id }
+                    data: { 
+                        phone: waId, 
+                        name: contactName, 
+                        companyId: masterCompany.id,
+                        pipelineId: pipeline.id,
+                        tags: ['WispHub'] 
+                    }
+                });
+            } else {
+                // Actualizar el contacto existente forzándolo al embudo
+                const updatedTags = contact.tags.includes('WispHub') ? contact.tags : [...contact.tags, 'WispHub'];
+                contact = await this.prisma.contact.update({
+                    where: { id: contact.id },
+                    data: { 
+                        pipelineId: pipeline.id,
+                        tags: updatedTags
+                    }
                 });
             }
 
