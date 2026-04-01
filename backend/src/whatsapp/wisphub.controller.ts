@@ -19,6 +19,8 @@ export class WisphubController {
         @Body() body: any,
         @Query() query: any
     ) {
+        this.logger.log(`[WispHub] Hook recibido en ${companyId}. Query: ${JSON.stringify(query)}, Body: ${JSON.stringify(body)}`);
+
         // En pasarelas SMS Genéricas de WispHub a veces no se pueden mandar headers.
         // Si hay secret configurado, lo verificamos, de otra forma confiamos en el companyId (que debe ser un UUID).
         const secret = process.env.OMNICHAT_WEBHOOK_SECRET;
@@ -30,8 +32,8 @@ export class WisphubController {
             }
         }
 
-        // Soportar campos en inglés o español, ya sea por JSON Body o Query Params (GET/POST)
-        const phone = body?.phone || body?.telefono || query?.phone || query?.telefono;
+        // Soportar campos definidos por WispHub (to, phone, telefono, message)
+        const phone = body?.phone || body?.telefono || body?.to || query?.phone || query?.telefono || query?.to;
         const message = body?.message || body?.mensaje || query?.message || query?.mensaje;
 
         if (!phone || !message) {
