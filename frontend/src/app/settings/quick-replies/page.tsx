@@ -26,7 +26,7 @@ export default function QuickRepliesSettings() {
   const fetchData = async () => {
     try {
       // Assuming monolithic local demo approach to bypass Auth contexts for now
-      const sys = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/v1/admin/companies`, { headers: { Authorization: "Bearer zohomasterkey_99_omnichat_x" }});
+      const sys = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/admin/companies`, { headers: { Authorization: "Bearer zohomasterkey_99_omnichat_x" }});
       const compId = sys.data[0]?.id;
       if (!compId) return;
 
@@ -45,10 +45,10 @@ export default function QuickRepliesSettings() {
 
     setIsSaving(true);
     try {
-      const sys = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/v1/admin/companies`, { headers: { Authorization: "Bearer zohomasterkey_99_omnichat_x" }});
+      const sys = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/admin/companies`, { headers: { Authorization: "Bearer zohomasterkey_99_omnichat_x" }});
       const compId = sys.data[0]?.id;
 
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox/quick-replies`, {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/quick-replies`, {
         companyId: compId,
         shortcut,
         content

@@ -29,7 +29,7 @@ export default function AiProfilePage() {
     setIsSaving(true);
     try {
       const activeCid = localStorage.getItem('activeCompanyId');
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox/bot/config`, {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/bot/config`, {
         companyId: activeCid,
         openAiKey,
         openAiPrompt

@@ -18,7 +18,7 @@ export default function BroadcastStudioPage() {
 
   const fetchData = async () => {
     try {
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox/contacts/all`);
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/contacts/all`);
       const contacts = res.data;
       
       const allTags = Array.from(new Set(contacts.flatMap((c: any) => c.tags || []))) as string[];
@@ -42,11 +42,11 @@ export default function BroadcastStudioPage() {
     setSending(true);
     try {
       // Get logical company bypass (assuming local demo scenario)
-      const sys = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/v1/admin/companies`, { headers: { Authorization: "Bearer zohomasterkey_99_omnichat_x" }});
+      const sys = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/admin/companies`, { headers: { Authorization: "Bearer zohomasterkey_99_omnichat_x" }});
       const companyId = sys.data[0]?.id;
       if(!companyId) return alert("Error de Sincronización SaaS.");
 
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox/broadcast`, {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/broadcast`, {
         companyId,
         message,
         audience,

@@ -11,7 +11,7 @@ export default function WhatsappSettingsPage() {
 
   const checkStatus = async () => {
     try {
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox/qr`);
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/qr`);
       setStatus(res.data.status);
       setQrCode(res.data.qr);
     } catch (e) {

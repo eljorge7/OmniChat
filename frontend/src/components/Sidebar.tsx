@@ -21,7 +21,7 @@ export function Sidebar() {
 
   useEffect(() => {
     if (isAdmin) {
-       axios.get(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/v1/admin/companies`, {
+       axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/admin/companies`, {
          headers: { Authorization: "Bearer zohomasterkey_99_omnichat_x" }
        }).then(res => {
           setCompanies(res.data);

@@ -36,7 +36,7 @@ export default function BotSettingsPage() {
   const saveSettings = async () => {
     setSaving(true);
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox/bot/pipelines`, { pipelines });
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/bot/pipelines`, { pipelines });
       alert("✅ ¡Configuración guardada exitosamente!");
     } catch (e) {
       alert("❌ Error al guardar.");
@@ -49,7 +49,7 @@ export default function BotSettingsPage() {
     e.preventDefault();
     if(!newPipelineName || !companyId) return alert("Falta nombre o companyId");
     try {
-       const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox/bot/pipelines/create`, {
+       const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/bot/pipelines/create`, {
           name: newPipelineName,
           companyId
        });

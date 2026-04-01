@@ -11,7 +11,7 @@ export const authOptions = {
       },
       async authorize(credentials) {
         try {
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox/login`, {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/login`, {
             method: 'POST',
             body: JSON.stringify(credentials),
             headers: { "Content-Type": "application/json" }

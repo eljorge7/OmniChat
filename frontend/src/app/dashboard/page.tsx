@@ -22,7 +22,7 @@ export default function DashboardPage() {
 
   const loadCompanies = async () => {
     try {
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/v1/admin/companies`, {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/admin/companies`, {
         headers: { Authorization: `Bearer ${MASTER_KEY}` }
       });
       setCompanies(res.data);
@@ -42,7 +42,7 @@ export default function DashboardPage() {
     if (!newCompanyName || !newCompanyEmail) return;
 
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/v1/admin/companies`, {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/admin/companies`, {
         name: newCompanyName,
         email: newCompanyEmail,
         phone: newCompanyPhone || undefined,

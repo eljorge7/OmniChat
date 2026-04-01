@@ -50,10 +50,10 @@ export default function InboxPage() {
     formData.append("contactId", currentChat.id);
 
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox/upload`, formData, {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox`);
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox`);
       setChats(res.data.chats);
     } catch (err) {
       console.error("Error uploading file", err);
@@ -63,13 +63,13 @@ export default function InboxPage() {
   const handleAddNote = async () => {
     if (!newNote.trim() || !currentChat) return;
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox/contacts/notes`, { 
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/contacts/notes`, { 
         contactId: currentChat.id, 
         text: newNote, 
         authorId: "Agente de Ventas"
       });
       setNewNote("");
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox`);
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox`);
       setChats(res.data.chats);
     } catch (e) {
       console.error("Error saving note:", e);
@@ -79,11 +79,11 @@ export default function InboxPage() {
   const handleUpdateTags = async (updatedTags: string[]) => {
     if (!currentChat) return;
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox/contacts/tags`, {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/contacts/tags`, {
         contactId: currentChat.id,
         tags: updatedTags
       });
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox`);
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox`);
       setChats(res.data.chats);
     } catch (e) {
       console.error("Error updating tags:", e);
@@ -96,7 +96,7 @@ export default function InboxPage() {
     const text = replyText;
     setReplyText("");
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox/send`, { contactId, text });
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/send`, { contactId, text });
       const activeCid = localStorage.getItem('activeCompanyId');
       const qParams = activeCid ? `?companyId=${activeCid}` : '';
       const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox${qParams}`);
@@ -115,7 +115,7 @@ export default function InboxPage() {
      if (editedName.trim() === "" || editedName === currentChat.name) return;
      
      try {
-       await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox/contacts/rename`, {
+       await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/contacts/rename`, {
           contactId: currentChat.id,
           newName: editedName
        });
@@ -173,7 +173,7 @@ export default function InboxPage() {
        axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/agents/${activeCid}`).then(ag => setAgents(ag.data));
     } else {
        // Fallback for first load if missing localStorage
-       axios.get(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/v1/admin/companies`, { headers: { Authorization: "Bearer zohomasterkey_99_omnichat_x" }})
+       axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/admin/companies`, { headers: { Authorization: "Bearer zohomasterkey_99_omnichat_x" }})
          .then(sys => {
            const compId = sys.data[0]?.id;
            if(compId) {
@@ -185,7 +185,7 @@ export default function InboxPage() {
     }
 
     // 2. Open Sockets
-    const socket = io(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}`);
+    const socket = io(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}`);
 
     socket.on("connect", () => {
       setSocketConnected(true);
@@ -210,7 +210,7 @@ export default function InboxPage() {
 
   const assignChat = async (contactId: string, pipelineId: string) => {
     try {
-       await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox/assign`, { contactId, pipelineId });
+       await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/assign`, { contactId, pipelineId });
        // No necesitamos modificar estado, el Socket disparará 'contactRouted' recargando la UI.
     } catch (e) {
        console.error("Error asignando:", e);
@@ -219,8 +219,8 @@ export default function InboxPage() {
 
   const assignAgent = async (contactId: string, userId: string) => {
     try {
-       await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox/contacts/assign-agent`, { contactId, userId });
-       axios.get(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox`).then(res => setChats(res.data.chats));
+       await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/contacts/assign-agent`, { contactId, userId });
+       axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox`).then(res => setChats(res.data.chats));
     } catch (e) {
        console.error("Error asignando agente:", e);
     }
@@ -229,8 +229,8 @@ export default function InboxPage() {
   const toggleBot = async (contactId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox/bot/toggle`, { contactId, status: newStatus });
-      axios.get(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox`).then(res => setChats(res.data.chats));
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/bot/toggle`, { contactId, status: newStatus });
+      axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox`).then(res => setChats(res.data.chats));
     } catch (e) {
       console.error("Bot toggle error:", e);
     }

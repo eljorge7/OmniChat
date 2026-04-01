@@ -31,7 +31,7 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    axios.get(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox/stats`)
+    axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/stats`)
       .then(res => setStats(res.data))
       .catch(err => console.error("Error fetching stats:", err));
   }, []);

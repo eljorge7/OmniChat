@@ -17,7 +17,7 @@ export default function ContactsLedgerPage() {
 
   const fetchContacts = async () => {
     try {
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox/contacts/all`);
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/contacts/all`);
       setContacts(res.data);
     } catch (e) {
       console.error(e);
@@ -53,7 +53,7 @@ export default function ContactsLedgerPage() {
           try {
             // TODO: In a real multi-tenant scenario, the Auth context would provide the companyId.
             // For now, we fetch the active company from the user's dashboard logic.
-            const statsRes = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox/qr`); 
+            const statsRes = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/qr`); 
             // The QR endpoint naturally returns the raw DB ID natively or via server memory. 
             // Alternately, we can just hardcode a specific logic or lookup.
             // Let's use a simpler backend logic: The server defaults to the user's company in OmniChat context.
@@ -61,12 +61,12 @@ export default function ContactsLedgerPage() {
             
             // To be secure, let's assume the company ID is fetched natively on the backend via headers, 
             // BUT since this is MVP phase, we'll hit an endpoint to get the default company ID:
-            const sys = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/v1/admin/companies`, { headers: { Authorization: "Bearer zohomasterkey_99_omnichat_x" }});
+            const sys = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/admin/companies`, { headers: { Authorization: "Bearer zohomasterkey_99_omnichat_x" }});
             const companyId = sys.data[0]?.id; // Gets first company for simplicity locally.
 
             if(!companyId) return alert("Error: No hay servidor SaaS activo.");
 
-            const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}"}/api/inbox/contacts/import`, {
+            const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/contacts/import`, {
                contacts: parsedContacts,
                companyId: companyId
             });
