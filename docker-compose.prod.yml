@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  omnichat-db:
+    image: postgres:15
+    container_name: omnichat-db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: omnichatpassword
+      POSTGRES_DB: omnichat
+    ports:
+      - "5433:5432" # 5433 para no chocar con el puerto de RentControl
+    volumes:
+      - omnichat-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - omnichat_network
+
+  omnichat-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: omnichat-backend
+    ports:
+      - "3002:3002"
+    environment:
+      - DATABASE_URL=postgresql://admin:omnichatpassword@omnichat-db:5432/omnichat?schema=public
+      - JWT_SECRET=super_secret_omnichat_k3y
+    depends_on:
+      - omnichat-db
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - omnichat-wwebjs-auth:/app/.wwebjs_auth
+    restart: unless-stopped
+    networks:
+      - omnichat_network
+
+  omnichat-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: omnichat-frontend
+    ports:
+      - "3003:3003"
+    environment:
+      - NEXT_PUBLIC_API_URL=https://api.omnichat.radiotecpro.com
+    depends_on:
+      - omnichat-backend
+    restart: unless-stopped
+    networks:
+      - omnichat_network
+
+volumes:
+  omnichat-db-data:
+  omnichat-wwebjs-auth:
+
+networks:
+  omnichat_network:
+    driver: bridge

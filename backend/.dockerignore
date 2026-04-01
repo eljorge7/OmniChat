@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.git/
+.vscode/
+.wwebjs_auth/
+.wwebjs_cache/
+tests/
+Coverage/
+Dockerfile
+docker-compose.yml

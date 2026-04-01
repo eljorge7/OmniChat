@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  apiKey    String?  @unique // Llave maestra para Integración B2B (RentControl)
+  users     User[]
+  contacts  Contact[]
+  pipelines Pipeline[]
+  replies   QuickReply[]
+  calendarEvents CalendarEvent[]
+  
+  // Asistente AI RAG Multi-Tenant
+  openAiKey    String?
+  openAiPrompt String?    @db.Text
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model QuickReply {
+  id        String   @id @default(uuid())
+  shortcut  String   // Ej. "/cuenta"
+  content   String   @db.Text
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String   // Hash secreto de seguridad
+  name      String?
+  role      String   @default("AGENT") // ADMIN, AGENT
+  avatarUrl String?
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  assignedContacts Contact[] @relation("AgentToContact")
+  calendarEvents   CalendarEvent[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Contact {
+  id          String   @id @default(uuid())
+  phone       String   // Número de WhatsApp del cliente externo
+  name        String?
+  tags        String[] @default([]) // Ej: ["Venta_Caliente", "Moroso"]
+  botStatus   String   @default("ACTIVE") // ACTIVE | PAUSED | RESOLVED
+
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  messages    Message[]
+  notes       ContactNote[] // Historial de post-its internos del equipo
+  pipelineId  String?
+  pipeline    Pipeline? @relation(fields: [pipelineId], references: [id])
+  assignedToId String?
+  assignedTo  User?    @relation("AgentToContact", fields: [assignedToId], references: [id])
+  calendarEvents CalendarEvent[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([phone, companyId]) // Un mismo cliente (número) es único por cada compañía
+}
+
+model ContactNote {
+  id        String   @id @default(uuid())
+  text      String   @db.Text
+  contactId String
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  authorId  String   // ID del Agente que dejó la nota
+  createdAt DateTime @default(now())
+}
+
+model Pipeline {
+  id         String   @id @default(uuid())
+  name       String   // Ej. "Ventas Internet", "Mantenimiento RJL"
+  keywords   String?  // Ej. "fuga,agua,plomero,tubo" (separado por comas)
+  autoReply  String?  // Mensaje inteligente automático al detectar la palabra clave
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id])
+  contacts   Contact[]
+  calendarEvents CalendarEvent[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  body      String
+  fromMe    Boolean  @default(false)
+  timestamp DateTime @default(now())
+  contactId String
+  contact   Contact  @relation(fields: [contactId], references: [id])
+  senderId  String?  // El User ID del Agente que lo envió (si aplica)
+  mediaUrl  String?  // URL remota o path local del archivo
+  mediaType String?  // MIME (image/jpeg, audio/ogg)
+}
+
+model CalendarEvent {
+  id           String   @id @default(uuid())
+  title        String   // Ej. "Instalación Internet", "Lavado Sala"
+  description  String?  @db.Text
+  startTime    DateTime
+  endTime      DateTime
+  status       String   @default("SCHEDULED") // SCHEDULED, IN_PROGRESS, COMPLETED, CANCELED
+
+  location     String?  // Ej. "Av. Universidad 400"
+  locationUrl  String?  // Ej. shortlink de Google Maps
+
+  // Relaciones
+  contactId    String?
+  contact      Contact? @relation(fields: [contactId], references: [id])
+  
+  assignedToId String?
+  assignedTo   User?    @relation(fields: [assignedToId], references: [id])
+  
+  pipelineId   String?  // Para aplicar el código de color según rama de negocio
+  pipeline     Pipeline? @relation(fields: [pipelineId], references: [id])
+  
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+

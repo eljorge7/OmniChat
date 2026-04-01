@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  omnichat-db:
+    image: postgres:15
+    container_name: omnichat-db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: omnichatpassword
+      POSTGRES_DB: omnichat
+    ports:
+      - "5433:5432" # Usamos 5433 para no chocar con el puerto local de RentControl
+    volumes:
+      - omnichat-db-data:/var/lib/postgresql/data
+
+volumes:
+  omnichat-db-data:
