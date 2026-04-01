@@ -8,8 +8,6 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     procps \
     libxss1 \
-    libappindicator1 \
-    libindicator7 \
     libnss3 \
     libatk1.0-0 \
     libatk-bridge2.0-0 \
