@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Headers, UnauthorizedException, Logger } from '@nestjs/common';
+import { Controller, Post, All, Query, Body, Headers, UnauthorizedException, Logger } from '@nestjs/common';
 import { WhatsappService } from './whatsapp.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -11,11 +11,12 @@ export class WisphubController {
         private prisma: PrismaService
     ) {}
 
-    @Post('send')
+    @All('send')
     async handleWisphubWebhook(
         @Headers('x-api-key') apiKey: string, 
         @Headers('authorization') auth: string,
-        @Body() body: any
+        @Body() body: any,
+        @Query() query: any
     ) {
         const secret = process.env.OMNICHAT_WEBHOOK_SECRET || 'SUPER_SECRET_KEY_123';
         const cleanAuth = auth ? auth.replace('Bearer ', '').replace('Token ', '') : '';
@@ -24,12 +25,12 @@ export class WisphubController {
             throw new UnauthorizedException('API Key Inválida para Integración WispHub');
         }
 
-        // Soportar campos en inglés o español según Jorge lo configure en el portal
-        const phone = body.phone || body.telefono;
-        const message = body.message || body.mensaje;
+        // Soportar campos en inglés o español, ya sea por JSON Body o Query Params (GET/POST)
+        const phone = body?.phone || body?.telefono || query?.phone || query?.telefono;
+        const message = body?.message || body?.mensaje || query?.message || query?.mensaje;
 
         if (!phone || !message) {
-            return { error: 'Faltan parámetros phone o message en el JSON.' };
+            return { error: 'Faltan parámetros phone o message en el JSON o URL.' };
         }
 
         // Centralizar envío de facturas WispHub por el número maestro (Grupo Hurtado)
