@@ -90,8 +90,10 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* BIG CALENDAR */}
-      <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col p-6 min-h-[600px] [&_.rbc-toolbar_button]:font-medium [&_.rbc-toolbar_button]:rounded-lg [&_.rbc-toolbar_button.rbc-active]:bg-indigo-600 [&_.rbc-toolbar_button.rbc-active]:text-white [&_.rbc-toolbar_button.rbc-active]:shadow-md [&_.rbc-toolbar_button.rbc-active]:border-indigo-600 [&_.rbc-event]:shadow-sm">
+      {/* BIG CALENDAR WRAPPER */}
+      <div className="flex-1 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] border border-white/50 dark:border-slate-800/50 overflow-hidden flex flex-col min-h-[650px]
+       [&_.rbc-toolbar_button]:font-medium [&_.rbc-toolbar_button]:rounded-xl [&_.rbc-toolbar_button.rbc-active]:bg-gradient-to-br [&_.rbc-toolbar_button.rbc-active]:from-indigo-500 [&_.rbc-toolbar_button.rbc-active]:to-indigo-600 [&_.rbc-toolbar_button.rbc-active]:text-white [&_.rbc-toolbar_button.rbc-active]:shadow-lg [&_.rbc-toolbar_button.rbc-active]:shadow-indigo-500/30 [&_.rbc-toolbar_button.rbc-active]:border-transparent [&_.rbc-event]:shadow-sm p-8
+      ">
         <Calendar
           localizer={localizer}
           events={events}
@@ -126,12 +128,13 @@ export default function CalendarPage() {
 
       {/* CREATE MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="bg-indigo-600 p-6 text-white text-center rounded-t-3xl">
-              <h2 className="text-2xl font-black tracking-tight">Programar Cita Taller/Instalador</h2>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-300 border border-slate-100 dark:border-slate-800">
+            <div className="bg-gradient-to-br from-indigo-500 to-indigo-700 p-8 text-white text-center">
+              <h2 className="text-2xl font-black tracking-tight">Programar Cita</h2>
+              <p className="text-indigo-100 mt-2 text-sm font-medium">Asigna un técnico o cuadrilla al servicio.</p>
             </div>
-            <div className="p-6 space-y-5">
+            <div className="p-8 space-y-6">
                <div>
                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Título del Servicio</label>
                  <input autoFocus type="text" className="w-full border-slate-200 rounded-xl bg-slate-50 focus:bg-white p-3 font-medium outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ej. Lavado Sala Completa" value={newEvent.title} onChange={e => setNewEvent({...newEvent, title: e.target.value})} />
@@ -156,9 +159,9 @@ export default function CalendarPage() {
                  </select>
                </div>
                
-               <div className="pt-4 flex gap-3">
-                 <button onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-3 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition-colors">Cancelar</button>
-                 <button onClick={handleCreate} className="flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all">Guardar Cita</button>
+               <div className="pt-6 flex gap-4">
+                 <button onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-3.5 text-slate-500 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl transition-colors">Cancelar</button>
+                 <button onClick={handleCreate} className="flex-1 px-4 py-3.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-500/30 transition-all hover:-translate-y-0.5">Guardar Cita</button>
                </div>
             </div>
           </div>
