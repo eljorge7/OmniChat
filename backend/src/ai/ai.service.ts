@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import OpenAI from 'openai';
 import axios from 'axios';
+const computeCosineSimilarity = require('compute-cosine-similarity');
 
 @Injectable()
 export class AiService {
@@ -84,7 +85,40 @@ export class AiService {
       } catch(e) { console.error(e) }
 
       const strictWispHubRules = `\n[REGLAS WISPHUB Y SOPORTE: 1. Si estás recolectando datos para Internet (process_isp_installation_request), NUNCA ejecutes la herramienta hasta que el teléfono tenga de 10 a 12 dígitos, y el correo contenga un '@'. Si están mal, PÍDESELOS DE NUEVO. 2. Si el cliente reporta un problema técnico grave (sin internet, foco rojo), usa INMEDIATAMENTE la herramienta 'route_user_to_pipeline' con pipelineKeyword: 'Soporte Urgente'.]`;
-      const systemPrompt = (company.openAiPrompt || `Eres el recepcionista virtual experto de ${company.name}. Atiendes leads de manera corta, cortés y persuasiva por WhatsApp. Responde usando emojis moderadamente. Nunca inventes precios. Si no sabes, pide amablemente que esperen a un asesor humano. Sé conversacional, ¡nunca parezcas un bot rígido!`) + tenantContextInfo + calendarContext + strictWispHubRules;
+      
+      // --- RAG KNOWLEDGE BASE (MEMORY FETCH) ---
+      let ragContext = "";
+      try {
+        const chunks = await this.prisma.documentChunk.findMany({
+           where: { document: { companyId } },
+           select: { text: true, embedding: true, document: { select: { fileName: true } } }
+        });
+
+        if (chunks.length > 0) {
+           const embResponse = await openai.embeddings.create({
+             model: "text-embedding-ada-002",
+             input: incomingMessage,
+           });
+           const questionVector = embResponse.data[0].embedding;
+
+           const scoredChunks = chunks.map(chunk => {
+             const score = computeCosineSimilarity(questionVector, chunk.embedding);
+             return { score, text: chunk.text, source: chunk.document.fileName };
+           });
+
+           // Get top 3 chunks with score > 0.76
+           const bestMatches = scoredChunks.filter(c => c.score > 0.76).sort((a,b) => b.score - a.score).slice(0, 3);
+           
+           if (bestMatches.length > 0) {
+             ragContext = `\n\n[BASE DE CONOCIMIENTO (MANUALES INTERNOS):\nEl cliente podría estar preguntando algo sobre lo que tienes documentación. Aquí tienes extractos oficiales de los manuales de la empresa que son un MATCH semántico con la pregunta del cliente. Basa tu respuesta ESTRICTAMENTE en esta información si aplica a la duda:\n` + bestMatches.map(m => `--- Fuente: ${m.source} ---\n${m.text}`).join('\n\n') + `\nFIN BASE DE CONOCIMIENTO]\n`;
+             this.logger.log(`[AI-AGENT] RAG Match encontrado! Se inyectaron ${bestMatches.length} fragmentos al prompt.`);
+           }
+        }
+      } catch(e: any) {
+        this.logger.error(`[AI-RAG] Error recuperando embeddings: ${e.message}`);
+      }
+
+      const systemPrompt = (company.openAiPrompt || `Eres el recepcionista virtual experto de ${company.name}. Atiendes leads de manera corta, cortés y persuasiva por WhatsApp. Responde usando emojis moderadamente. Nunca inventes precios. Si no sabes, pide amablemente que esperen a un asesor humano. Sé conversacional, ¡nunca parezcas un bot rígido!`) + tenantContextInfo + calendarContext + strictWispHubRules + ragContext;
 
       const messagesParams: any[] = [
         { role: 'system', content: systemPrompt }
