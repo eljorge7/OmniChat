@@ -2,7 +2,7 @@ import { Controller, Post, All, Param, Query, Body, Headers, UnauthorizedExcepti
 import { WhatsappService } from './whatsapp.service';
 import { PrismaService } from '../prisma/prisma.service';
 
-@Controller('api/v1/integrations/wisphub')
+@Controller()
 export class WisphubController {
     private readonly logger = new Logger(WisphubController.name);
 
@@ -11,7 +11,7 @@ export class WisphubController {
         private prisma: PrismaService
     ) {}
 
-    @All('send/:companyId')
+    @All(['api/v1/integrations/wisphub/send/:companyId', 'w/:companyId'])
     async handleWisphubWebhook(
         @Param('companyId') companyId: string,
         @Headers('x-api-key') apiKey: string, 

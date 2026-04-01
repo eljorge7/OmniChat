@@ -26,7 +26,7 @@ export default function WisphubSettingsPage() {
     }
   }, []);
 
-  const webhookUrl = `${process.env.NEXT_PUBLIC_API_URL || "https://api.radiotecpro.com"}/api/v1/integrations/wisphub/send/${activeCompanyId}?phone={{phone}}&message={{message}}`;
+  const webhookUrl = `${process.env.NEXT_PUBLIC_API_URL || "https://api.radiotecpro.com"}/w/${activeCompanyId}`;
 
   const copyToClipboard = () => {
     if (!activeCompanyId) return;
