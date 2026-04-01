@@ -44,6 +44,8 @@ services:
       - "3003:3003"
     environment:
       - NEXT_PUBLIC_API_URL=https://api.omnichat.radiotecpro.com
+      - NEXTAUTH_URL=https://omnichat.radiotecpro.com
+      - NEXTAUTH_SECRET=omnichat-super-secret-key-12345
     depends_on:
       - omnichat-backend
     restart: unless-stopped
