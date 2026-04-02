@@ -274,7 +274,7 @@ export default function InboxPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-800">Bandeja Compartida</h1>
-            <p className="text-sm text-slate-500 font-medium">Gestiona todos los canales de WhatsApp de RJL en un solo lugar.</p>
+            <p className="text-sm text-slate-500 font-medium">Gestiona todos los canales de WhatsApp de Grupo Hurtado en un solo lugar.</p>
           </div>
         </div>
         <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">

@@ -56,14 +56,25 @@ export class WisphubController {
         }
         
         const waId = `521${cleanPhone}@c.us`; 
-        this.logger.log(`[WispHub🚀OmniChat] Interceptada notificación para empresa ${masterCompany.name} -> ${waId}`);
+        this.logger.log(`[WispHub🚀OmniChat] Interceptada notificación para empresa ${masterCompany.name} -> ${waId}. Carga delegada a Queue.`);
 
-        try {
-            // Disparar mensaje vía WhatsApp de la Empresa Específica
-            await this.whatsappService.sendDirectMessage(masterCompany.id, waId, message);
-            
-            // Asignación Dinámica de Embudo (Pipeline)
-            const embudoName = body?.embudo || query?.embudo || body?.pipeline || query?.pipeline || 'Alertas WispHub';
+        // Variable global (o estática local en Node) para el espaciado de WispHub
+        const queuePosition = (global as any).__WISPHUB_QUEUE || 0;
+        (global as any).__WISPHUB_QUEUE = queuePosition + 1;
+        setTimeout(() => { if ((global as any).__WISPHUB_QUEUE > 0) (global as any).__WISPHUB_QUEUE--; }, 5000);
+
+        const delayMs = queuePosition * 5000; // Espaciamos 5 segundos por cada notificación de la ráfaga
+
+        const embudoName = body?.embudo || query?.embudo || body?.pipeline || query?.pipeline || 'Alertas WispHub';
+        const contactName = body?.cliente || body?.name || query?.cliente || query?.name || 'Cliente WispHub';
+
+        // Procesamiento en Bloque Asíncrono Fire-and-Forget
+        setTimeout(async () => {
+            try {
+                // Disparar mensaje vía WhatsApp de la Empresa Específica
+                await this.whatsappService.sendDirectMessage(masterCompany.id, waId, message);
+                
+                // Asignación Dinámica de Embudo (Pipeline)
             let pipeline = await this.prisma.pipeline.findFirst({
                 where: { name: embudoName, companyId: masterCompany.id },
             });
@@ -102,19 +113,22 @@ export class WisphubController {
                 });
             }
 
-            // Registrar legalmente el mensaje enviado en el hilo
-            await this.prisma.message.create({
-                data: {
-                    body: message,
-                    fromMe: true, // Fue el bot/consola
-                    contactId: contact.id
-                }
-            });
+                // Registrar legalmente el mensaje enviado en el hilo
+                await this.prisma.message.create({
+                    data: {
+                        body: message,
+                        fromMe: true, // Fue el bot/consola
+                        contactId: contact.id
+                    }
+                });
 
-            return { success: true, status: 'Notificación aterrizada al celular del cliente vía OmniChat' };
-        } catch (e: any) {
-            this.logger.error(`Error despachando WA de WispHub para ${masterCompany.name}`, e);
-            return { error: e.message };
-        }
+                this.logger.log(`[WispHub🚀OmniChat] Notificación despachada con éxito a ${contactName} tras ${delayMs}ms de espera.`);
+            } catch (e: any) {
+                this.logger.error(`Error despachando WA asíncrono de WispHub para ${masterCompany.name}`, e);
+            }
+        }, delayMs);
+
+        // Responder INMEDIATAMENTE a WispHub (HTTP 200) para evitar colapsar su API o que re-intente
+        return { success: true, status: 'Notificación capturada y encolada (Anti-Spam activado)' };
     }
 }

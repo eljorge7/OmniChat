@@ -48,15 +48,16 @@ export class AiService {
          const contact = await this.prisma.contact.findUnique({ where: { id: contactId } });
          if (contact && contact.phone) {
              this.logger.log(`[AI-AGENT] Buscando identidad de RentControl para el cel: ${contact.phone}`);
-             const rcResponse = await axios.get(`http://localhost:3001/integrations/omnichat/identify/${contact.phone}`, {
+             const baseUrl = process.env.RENTCONTROL_API_URL || 'http://localhost:3001';
+             const rcResponse = await axios.get(`${baseUrl}/integrations/omnichat/identify/${contact.phone}`, {
                 headers: { 'x-api-key': process.env.OMNICHAT_WEBHOOK_SECRET || 'SUPER_SECRET_KEY_123' }
              });
              
              this.logger.log(`[AI-AGENT] Respuesta RentControl: ${JSON.stringify(rcResponse.data)}`);
              if (rcResponse.data?.found && rcResponse.data?.hasActiveLease) {
                 const t = rcResponse.data;
-                tenantContextInfo = `\n[CONTEXTO INTERNO INVISIBLE: El usuario con el que hablas se llama ${t.name}. Es un INQUILINO ACTIVO. Vive en la unidad '${t.unitName}' de la propiedad '${t.propertyName}'. Su TenantID es '${t.tenantId}' y su UnitID es '${t.unitId}'. IMPORTANTE: Tienes a tu disposición la herramienta (Function Call) 'create_maintenance_ticket'. SI y SOLO SI el inquilino reporta un problema de mantenimiento físico (ej. fugas, daños, plomería, electricidad), DEBES ejecutar inmediatamente la función 'create_maintenance_ticket' para levantar su reporte. En caso de reportar un desperfecto, pregúntale los detalles básicos y usa la herramienta.]\n`;
-                this.logger.log(`[AI-AGENT] Contexto inyectado en Prompt: ${t.name}`);
+                tenantContextInfo = `\n[CONTEXTO INTERNO INVISIBLE: El usuario con el que hablas se llama ${t.name}. Es un INQUILINO ACTIVO. Vive en la unidad '${t.unitName}' de la propiedad '${t.propertyName}'. Su TenantID es '${t.tenantId}' y su UnitID es '${t.unitId}'. \nDATOS FINANCIEROS ACTUALES: ${t.financialContext}\nIMPORTANTE: Si el cliente pregunta cuánto debe o si ya pasó su pago, respóndele basándote en los datos financieros anteriores de manera servicial. Tienes a tu disposición la herramienta (Function Call) 'create_maintenance_ticket'. SI y SOLO SI el inquilino reporta un problema de mantenimiento físico (ej. fugas, daños, plomería, electricidad), DEBES ejecutar inmediatamente la función 'create_maintenance_ticket' para levantar su reporte.]\n`;
+                this.logger.log(`[AI-AGENT] Contexto inyectado en Prompt: ${t.name} - Deuda: ${t.financialContext}`);
              } else {
                 this.logger.log(`[AI-AGENT] Inquilino no encontrado o sin contrato activo.`);
              }

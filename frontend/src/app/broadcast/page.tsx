@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Megaphone, SendHorizontal, Users, Tag, AlertTriangle, ShieldCheck, FileText, CheckCircle2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Megaphone, SendHorizontal, Users, Tag, AlertTriangle, ShieldCheck, FileText, CheckCircle2, Image as ImageIcon, BarChart3, Clock, X } from "lucide-react";
 import axios from "axios";
 
 export default function BroadcastStudioPage() {
@@ -11,6 +11,10 @@ export default function BroadcastStudioPage() {
   const [tags, setTags] = useState<string[]>([]);
   const [stats, setStats] = useState({ total: 0, tagged: 0 });
   const [sending, setSending] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [campaigns, setCampaigns] = useState<any[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -31,6 +35,29 @@ export default function BroadcastStudioPage() {
     } catch (e) {
       console.error(e);
     }
+    
+    try {
+      const sys = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/admin/companies`, { headers: { Authorization: "Bearer zohomasterkey_99_omnichat_x" }});
+      const companyId = sys.data[0]?.id;
+      if (companyId) {
+         const campRes = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/broadcast/campaigns/${companyId}`);
+         setCampaigns(campRes.data);
+      }
+    } catch (e) {
+      console.error("Error fetching campaigns history", e);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+       const f = e.target.files[0];
+       setFile(f);
+       if (f.type.startsWith('image/')) {
+          setFilePreview(URL.createObjectURL(f));
+       } else {
+          setFilePreview(null);
+       }
+    }
   };
 
   const handleLaunch = async () => {
@@ -46,14 +73,21 @@ export default function BroadcastStudioPage() {
       const companyId = sys.data[0]?.id;
       if(!companyId) return alert("Error de Sincronización SaaS.");
 
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/broadcast`, {
-        companyId,
-        message,
-        audience,
-        tag: selectedTag
+      const formData = new FormData();
+      formData.append('companyId', companyId);
+      formData.append('message', message);
+      formData.append('audience', audience);
+      if (selectedTag) formData.append('tag', selectedTag);
+      if (file) formData.append('file', file);
+
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/broadcast`, formData, {
+         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      alert("🚀 ¡Campaña Encolada Exitosamente!\\n\\nPuedes cerrar esta ventana. Los mensajes se enviarán automáticamente en 2do plano.");
+      alert("🚀 ¡Campaña Guardada Exitosamente!\\n\\nPuedes seguir trabajando. Los mensajes se enviarán automáticamente en 2do plano.");
+      setFile(null);
+      setFilePreview(null);
+      fetchData(); // Refresh historical list
     } catch (e) {
       console.error(e);
       alert("Error iniciando la difusión.");
@@ -93,6 +127,35 @@ export default function BroadcastStudioPage() {
                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-48 font-medium text-slate-700"
                />
                <p className="text-xs text-slate-500 mt-2 font-medium">Usa la variable <code className="bg-slate-100 text-indigo-600 px-1 rounded">&#123;name&#125;</code> para inyectar dinámicamente el nombre de la persona extraído del CSV.</p>
+             </div>
+
+             {/* Upload Media Section */}
+             <div className="mb-6 p-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 relative group">
+                {file ? (
+                  <div className="flex items-center gap-4">
+                    {filePreview ? (
+                      <img src={filePreview} alt="Preview" className="w-16 h-16 object-cover rounded-lg shadow-sm" />
+                    ) : (
+                      <div className="w-16 h-16 bg-slate-200 rounded-lg flex items-center justify-center">
+                        <FileText className="text-slate-500" />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-slate-800 truncate">{file.name}</p>
+                      <p className="text-xs text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                    <button onClick={() => { setFile(null); setFilePreview(null); }} className="p-2 text-rose-500 bg-rose-50 rounded-full hover:bg-rose-100 transition-colors">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-center py-4 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                     <ImageIcon className="w-8 h-8 text-slate-400 mx-auto mb-2 group-hover:text-indigo-500 transition-colors" />
+                     <p className="text-sm font-medium text-slate-600">Adjuntar Flyer, PDF o Imagen Promocional (Opcional)</p>
+                     <p className="text-[10px] text-slate-400 mt-1">El documento será enviado instantáneamente antes del texto principal.</p>
+                  </div>
+                )}
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*,application/pdf" />
              </div>
 
              <div className="border-t border-slate-100 pt-5 mt-5">
@@ -155,9 +218,16 @@ export default function BroadcastStudioPage() {
              </h2>
 
              {/* Burbuja de Mensaje */}
-             <div className="bg-[#DCF8C6] p-4 rounded-2xl rounded-tr-sm shadow-sm relative text-[13px] leading-relaxed text-slate-800 whitespace-pre-wrap border border-[#c1e6a6]">
-               {message.replace(/{name}/g, 'Jorge R.') || 'Tu mensaje aparecerá aquí...'}
-               <span className="block text-right text-[10px] text-emerald-600/70 font-bold mt-2">10:42 AM ✓✓</span>
+             <div className="space-y-2">
+                {filePreview && (
+                  <div className="bg-[#DCF8C6] p-1 rounded-2xl rounded-tr-sm shadow-sm relative border border-[#c1e6a6]">
+                    <img src={filePreview} alt="Preview Adjunto" className="w-full h-auto rounded-xl" />
+                  </div>
+                )}
+                <div className={`bg-[#DCF8C6] p-4 rounded-2xl ${!filePreview ? 'rounded-tr-sm' : ''} shadow-sm relative text-[13px] leading-relaxed text-slate-800 whitespace-pre-wrap border border-[#c1e6a6]`}>
+                  {message.replace(/{name}/g, 'Jorge R.') || 'Tu mensaje aparecerá aquí...'}
+                  <span className="block text-right text-[10px] text-emerald-600/70 font-bold mt-2">10:42 AM ✓✓</span>
+                </div>
              </div>
 
              <div className="mt-8">
@@ -179,6 +249,77 @@ export default function BroadcastStudioPage() {
              <p className="text-sm font-medium text-amber-800">Si un contacto te reporta como "Spam" o te bloquea, tu calificación de calidad bajará en WhatsApp. Utiliza la Difusión con precaución y aporta valor.</p>
            </div>
         </div>
+      </div>
+
+      {/* Analytics History Table */}
+      <div className="mt-12 bg-white rounded-[2rem] border-0 shadow-lg shadow-slate-200/50 p-8">
+         <div className="flex items-center justify-between mb-6">
+           <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800">
+              <BarChart3 className="text-indigo-600 w-6 h-6" /> Histórico de Automatizaciones
+           </h2>
+         </div>
+         
+         {campaigns.length === 0 ? (
+           <div className="text-center py-10 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+             <p className="text-slate-500 font-medium">Aún no has lanzado ninguna campaña publicitaria.</p>
+           </div>
+         ) : (
+           <div className="overflow-x-auto">
+             <table className="w-full text-left border-collapse">
+               <thead>
+                 <tr className="border-b border-slate-200 text-sm tracking-wider text-slate-400 uppercase">
+                   <th className="pb-3 font-bold px-4">Fecha</th>
+                   <th className="pb-3 font-bold px-4">Campaña / Snippet</th>
+                   <th className="pb-3 font-bold px-4">Audiencia</th>
+                   <th className="pb-3 font-bold px-4">Adjunto</th>
+                   <th className="pb-3 font-bold px-4 text-center">Entregados</th>
+                   <th className="pb-3 font-bold px-4 text-center">Fallidos</th>
+                   <th className="pb-3 font-bold px-4 text-right">Estatus</th>
+                 </tr>
+               </thead>
+               <tbody className="divide-y divide-slate-100">
+                 {campaigns.map((c) => (
+                   <tr key={c.id} className="hover:bg-slate-50 transition-colors">
+                     <td className="py-4 px-4 text-sm font-medium text-slate-600">
+                       <div className="flex items-center gap-2">
+                         <Clock className="w-4 h-4 text-slate-400" />
+                         {new Date(c.createdAt).toLocaleDateString()}
+                       </div>
+                     </td>
+                     <td className="py-4 px-4">
+                       <p className="text-sm text-slate-800 font-medium line-clamp-1 max-w-[250px]">{c.message}</p>
+                     </td>
+                     <td className="py-4 px-4">
+                       <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-md">
+                         {c.audience === 'all' ? 'Toda la DB' : `Etiqueta: ${c.tag}`}
+                       </span>
+                     </td>
+                     <td className="py-4 px-4">
+                       {c.mediaUrl ? <ImageIcon className="w-4 h-4 text-indigo-500" /> : <span className="text-slate-300">-</span>}
+                     </td>
+                     <td className="py-4 px-4 text-center">
+                       <span className="text-emerald-600 font-black">{c.successCount}</span>
+                     </td>
+                     <td className="py-4 px-4 text-center">
+                       <span className="text-rose-500 font-bold">{c.failedCount}</span>
+                     </td>
+                     <td className="py-4 px-4 text-right">
+                       {c.status === 'COMPLETED' ? (
+                         <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full text-xs font-bold">
+                           <CheckCircle2 className="w-3 h-3" /> Terminado
+                         </span>
+                       ) : (
+                         <span className="inline-flex items-center gap-1 text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full text-xs font-bold animate-pulse">
+                           <ShieldCheck className="w-3 h-3" /> Emitiendo...
+                         </span>
+                       )}
+                     </td>
+                   </tr>
+                 ))}
+               </tbody>
+             </table>
+           </div>
+         )}
       </div>
 
     </div>

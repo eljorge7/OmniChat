@@ -116,7 +116,8 @@ export class WhatsappService implements OnModuleInit {
                 fs.writeFileSync(filepath, media.data, { encoding: 'base64' });
                 this.logger.log(`[OmniChat-${companyId}] Archivo en: ${filepath}`);
                 
-                mediaUrl = `http://localhost:3002/uploads/${filename}`;
+                const baseUrl = process.env.OMNICHAT_API_URL || 'http://localhost:3002';
+                mediaUrl = `${baseUrl}/uploads/${filename}`;
                 mediaType = mimetype;
                 
                 if (!textBody || textBody.trim() === '') {
@@ -296,7 +297,7 @@ export class WhatsappService implements OnModuleInit {
     await data.client.sendMessage(targetPhone, media);
   }
 
-  public async launchBroadcast(companyId: string, messageText: string, audience: string, tag?: string) {
+  public async launchBroadcast(campaignId: string, companyId: string, messageText: string, audience: string, tag?: string, mediaFilePath?: string) {
     // Fire and forget to prevent HTTP timeout. Runs purely in Node background memory.
     setTimeout(async () => {
       this.logger.log(`[OmniChat] Iniciando Broadcast SaaS para ${companyId}. Audiencia: ${audience}`);
@@ -309,11 +310,17 @@ export class WhatsappService implements OnModuleInit {
       }
 
       this.logger.log(`[OmniChat] 🚀 Broadcast encoló ${contacts.length} destinos.`);
+      
+      let successCount = 0;
+      let failedCount = 0;
 
       for (const contact of contacts) {
          try {
             // Meta Anti-Spam Throttling: Random delay between 3,500ms and 8,000ms
-            const delayMs = Math.floor(Math.random() * (8000 - 3500 + 1) + 3500);
+            let delayMs = Math.floor(Math.random() * (8000 - 3500 + 1) + 3500);
+            if (mediaFilePath) {
+                delayMs += 2500; // Extra delay for media to replicate human behavior
+            }
             await new Promise(resolve => setTimeout(resolve, delayMs));
 
             // Token injection
@@ -322,6 +329,12 @@ export class WhatsappService implements OnModuleInit {
             let targetPhone = contact.phone;
             if (!targetPhone.includes('@')) targetPhone = `${targetPhone}@c.us`;
 
+            // Enviar Fotografía/Archivo si hay
+            if (mediaFilePath) {
+                await this.sendDirectMediaMessage(companyId, targetPhone, mediaFilePath);
+            }
+
+            // Enviar el Texto
             await this.sendDirectMessage(companyId, targetPhone, personalizedMsg);
 
             // Persist the automated dispatch in the database inbox
@@ -330,6 +343,7 @@ export class WhatsappService implements OnModuleInit {
                     body: personalizedMsg,
                     fromMe: true,
                     contactId: contact.id,
+                    mediaUrl: mediaFilePath ? `Campaign Media` : null
                 }
             });
 
@@ -340,12 +354,30 @@ export class WhatsappService implements OnModuleInit {
                pipeId: contact.pipelineId
             });
 
+            successCount++;
             this.logger.log(`[OmniChat] Broadcast disparado exitosamente a -> ${contact.phone} (Retraso aplicado: ${delayMs}ms)`);
+            
+            // Periódicamente actualizamos la BD
+            if (successCount % 5 === 0) {
+               await this.prisma.campaign.update({
+                 where: { id: campaignId },
+                 data: { successCount }
+               });
+            }
+
          } catch(e) {
+            failedCount++;
             this.logger.error(`[OmniChat] Error disparando Broadcast a ${contact.phone}`, e);
          }
       }
-      this.logger.log(`[OmniChat] ✅ Campaña Masiva Finalizada.`);
+      
+      // Final Update
+      await this.prisma.campaign.update({
+         where: { id: campaignId },
+         data: { status: 'COMPLETED', successCount, failedCount }
+      });
+
+      this.logger.log(`[OmniChat] ✅ Campaña Masiva Finalizada (${successCount} Éxitos, ${failedCount} Fallos).`);
     }, 100);
   }
 }

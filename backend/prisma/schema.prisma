@@ -17,6 +17,7 @@ model Company {
   replies   QuickReply[]
   calendarEvents CalendarEvent[]
   documents Document[]
+  campaigns Campaign[]
   
   // Asistente AI RAG Multi-Tenant
   openAiKey    String?
@@ -154,3 +155,21 @@ model DocumentChunk {
   createdAt  DateTime @default(now())
 }
 
+model Campaign {
+  id              String   @id @default(uuid())
+  companyId       String
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  name            String?  @default("Difusión Masiva")
+  message         String   @db.Text
+  mediaUrl        String?  // Opcional para PDFs y Flyers
+  audience        String   // "all", "tag"
+  tag             String?
+  
+  status          String   @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, FAILED
+  successCount    Int      @default(0)
+  failedCount     Int      @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}

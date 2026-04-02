@@ -490,16 +490,55 @@ export class WhatsappController {
     return { success: true, count: imported };
   }
 
+  @Get('broadcast/campaigns/:companyId')
+  async getCampaigns(@Param('companyId') companyId: string) {
+    return this.prisma.campaign.findMany({
+      where: { companyId },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
   @Post('broadcast')
-  async triggerBroadcast(@Body() body: { companyId: string, message: string, audience: string, tag?: string }) {
+  @UseInterceptors(FileInterceptor('file', {
+    storage: diskStorage({
+      destination: './uploads',
+      filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        cb(null, `campaign-${uniqueSuffix}${extname(file.originalname)}`);
+      }
+    })
+  }))
+  async triggerBroadcast(
+    @Body() body: { companyId: string, message: string, audience: string, tag?: string },
+    @UploadedFile() file?: any
+  ) {
     if (!body.companyId || !body.message || !body.audience) {
       throw new BadRequestException("Faltan campos para la campaña de difusión.");
     }
     
-    // Invocación asíncrona "Fire-and-Forget" al microservicio interno de Throttling
-    this.whatsapp.launchBroadcast(body.companyId, body.message, body.audience, body.tag);
+    let mediaUrl = null;
+    let localFilePath = null;
+    if (file) {
+      mediaUrl = `http://localhost:3002/uploads/${file.filename}`;
+      localFilePath = file.path;
+    }
+
+    // 1. Guardar la Campaña Histórica en Prisma
+    const campaign = await this.prisma.campaign.create({
+      data: {
+        companyId: body.companyId,
+        message: body.message,
+        audience: body.audience,
+        tag: body.tag || null,
+        mediaUrl: mediaUrl,
+        status: "IN_PROGRESS"
+      }
+    });
     
-    return { success: true, status: "Broadcast_Encolado" };
+    // 2. Invocación asíncrona al motor
+    this.whatsapp.launchBroadcast(campaign.id, body.companyId, body.message, body.audience, body.tag, localFilePath);
+    
+    return { success: true, status: "Broadcast_Encolado", campaign };
   }
 
   // --- QUICK REPLIES (SLASH COMMANDS) ---

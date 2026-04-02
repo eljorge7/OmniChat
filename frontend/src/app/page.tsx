@@ -45,7 +45,7 @@ export default function Dashboard() {
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-3">
             Centro de Comando <Sparkles className="h-6 w-6 text-emerald-500" />
           </h1>
-          <p className="text-slate-500 mt-2 font-medium">Control unificado de comunicaciones para RJL Multiservicios.</p>
+          <p className="text-slate-500 mt-2 font-medium">Control unificado de comunicaciones para Grupo Hurtado.</p>
         </div>
         <div className="flex gap-3">
           <button className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-colors">
