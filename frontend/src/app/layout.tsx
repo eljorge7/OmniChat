@@ -14,6 +14,7 @@ import { Providers } from '@/components/Providers';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import AuthGuard from '@/components/AuthGuard';
 import HelpCenterOverlay from "@/components/HelpCenterOverlay";
+import WelcomeTourModal from "@/components/WelcomeTourModal";
 
 export default function RootLayout({
   children,
@@ -31,6 +32,7 @@ export default function RootLayout({
                <main className="flex-1 flex flex-col h-full relative z-0 overflow-y-auto">
                  {children}
                  <HelpCenterOverlay />
+                 <WelcomeTourModal />
                </main>
              </div>
             </AuthGuard>
