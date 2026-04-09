@@ -1,11 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { HelpCircle, X, Search, Sparkles, MessageSquare, Database, PhoneCall, ChevronDown } from "lucide-react";
 
 export default function HelpCenterOverlay() {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const pathname = usePathname();
+
+  if (pathname === '/login' || pathname === '/') {
+    return null;
+  }
 
   if (!isOpen) {
     return (

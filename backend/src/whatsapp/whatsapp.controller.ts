@@ -238,8 +238,10 @@ export class WhatsappController {
     // Obtener la compañía (Si no envían companyId, tomamos la de RadioTec/RentControl por defecto)
     let targetCompanyId = body.companyId;
     if (!targetCompanyId) {
-      const company = await this.prisma.company.findFirst();
-      if(!company) throw new BadRequestException("No hay empresas registradas en OmniChat");
+      const company = await this.prisma.company.findFirst({
+        where: { name: { contains: 'hurtado', mode: 'insensitive' } }
+      });
+      if(!company) throw new BadRequestException("No hay empresas principales registradas");
       targetCompanyId = company.id;
     }
 
@@ -259,14 +261,18 @@ export class WhatsappController {
 
     // 2. Determinar el Mensaje Automatizado según el Interés
     let botMessage = "";
-    if (body.interest.includes("Internet") || body.interest.includes("WISP")) {
+    if (body.interest.includes("Soporte")) {
+      const parts = body.interest.split(":");
+      const issue = parts.length > 1 ? parts[1].trim() : "Asistencia General";
+      botMessage = `🤖 ¡Hola ${body.name}! Hemos recibido tu reporte de *Soporte MAJIA OS*.\n\n📝 *Tu reporte:* "${issue}"\n\nNuestra Inteligencia Artificial o un Agente Humano te dará seguimiento por aquí a la brevedad.`;
+    } else if (body.interest.includes("Internet") || body.interest.includes("WISP")) {
       botMessage = `🤖 ¡Hola ${body.name}! Soy el asistente virtual de *RadioTec Pro*.\n\nRecibí tu solicitud para nuestros *Planes de Internet de Ultra Velocidad*.\n\n¿Para qué colonia o sector te interesa el servicio? Te confirmaré cobertura al instante. 📡`;
     } else if (body.interest.includes("RentControl")) {
       botMessage = `🤖 ¡Hola ${body.name}! Soy la inteligencia de *RentControl SaaS*.\n\nRecibimos tu solicitud de afiliación a nuestro software inmobiliario.\n\nPara perfilar tu cuenta: ¿Cuántas propiedades/cuartos administras actualmente? 🏢`;
     } else if (body.interest.includes("Técnico")) {
       botMessage = `🤖 ¡Hola ${body.name}! Bienvenido a la Red de Proveedores de *RentControl*.\n\n¿Cuál es tu oficio principal (Plomería, Albañilería, Electricidad) y en qué ciudad te encuentras? 🛠️`;
     } else {
-      botMessage = `🤖 ¡Hola ${body.name}! Recibimos tu contacto desde la página web de *RadioTec Pro*. ¿En qué podemos ayudarte el día de hoy?`;
+      botMessage = `🤖 ¡Hola ${body.name}! Recibimos tu contacto desde la página web. ¿En qué podemos ayudarte el día de hoy?`;
     }
 
     // 3. Disparar mensaje outbound silenciosamente y guardarlo en Base de Datos

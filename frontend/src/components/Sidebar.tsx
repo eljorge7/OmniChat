@@ -86,8 +86,8 @@ export function Sidebar() {
 
       <aside className={`
         fixed md:relative z-[70] h-full flex flex-col bg-white border-r border-slate-200 shrink-0 shadow-sm transition-all duration-300
-        ${isOpenMobile ? 'translate-x-0 w-[300px]' : '-translate-x-full md:translate-x-0'}
-        ${isCollapsed ? 'md:w-[88px]' : 'md:w-[300px]'}
+        ${isOpenMobile ? 'translate-x-0 w-[260px]' : '-translate-x-full md:translate-x-0'}
+        ${isCollapsed ? 'md:w-[88px]' : 'md:w-[260px]'}
       `}>
         {/* Toggle Collapse Desktop Button */}
         <button 

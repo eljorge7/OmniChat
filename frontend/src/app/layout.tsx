@@ -6,7 +6,7 @@ import { Sidebar } from '@/components/Sidebar';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'OmniChat CRM | Grupo Hurtado',
+  title: 'OmniChat CRM | MAJIA OS',
   description: 'Sistema unificado de WhatsApp y pipelines',
 };
 
@@ -15,6 +15,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import AuthGuard from '@/components/AuthGuard';
 import HelpCenterOverlay from "@/components/HelpCenterOverlay";
 import WelcomeTourModal from "@/components/WelcomeTourModal";
+import WhatsAppWidget from "@/components/WhatsAppWidget";
 
 export default function RootLayout({
   children,
@@ -33,6 +34,7 @@ export default function RootLayout({
                  {children}
                  <HelpCenterOverlay />
                  <WelcomeTourModal />
+                 <WhatsAppWidget />
                </main>
              </div>
             </AuthGuard>

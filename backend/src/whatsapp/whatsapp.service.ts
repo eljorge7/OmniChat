@@ -43,7 +43,7 @@ export class WhatsappService implements OnModuleInit {
       authStrategy: new LocalAuth({ clientId: companyId, dataPath: './.wwebjs_auth' }),
       puppeteer: {
         headless: true,
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || (process.platform === 'linux' ? '/usr/bin/chromium' : undefined),
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
       }
     });
@@ -62,6 +62,11 @@ export class WhatsappService implements OnModuleInit {
     });
 
     client.on('message', async (message) => {
+      // Ignorar mensajes históricos que llegan por montón al iniciar la sesión (QR scan)
+      if (message.timestamp < (Math.floor(Date.now() / 1000) - 60)) {
+         this.logger.log(`[OmniChat-${companyId}] Ignorando mensaje histórico procesado al arrancar motor WA.`);
+         return;
+      }
       await this.handleIncomingMessage(companyId, message);
     });
 
@@ -76,6 +81,7 @@ export class WhatsappService implements OnModuleInit {
 
   async handleIncomingMessage(companyId: string, message: any) {
     if (message.from.includes('@g.us')) return;
+    if (message.from === 'status@broadcast' || message.isStatus) return; // Corrección crítica de Bug: Evita publicar / responder a estados
 
     const phone = message.from.replace('@c.us', '');
     let textBody = message.body.trim();

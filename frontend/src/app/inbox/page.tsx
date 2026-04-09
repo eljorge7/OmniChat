@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageCircle, Phone, Clock, Search, Filter, MoreVertical, Paperclip, SendHorizontal, Bot, Tag, StickyNote, X, User, ChevronLeft, PanelRight, PencilLine, CalendarDays, Trash2 } from "lucide-react";
+import { MessageCircle, Phone, Clock, Search, Filter, MoreVertical, Paperclip, SendHorizontal, Bot, Tag, StickyNote, X, User, ChevronLeft, PanelRight, PencilLine, CalendarDays, Trash2, Receipt, FileText } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
@@ -37,6 +37,12 @@ export default function InboxPage() {
   // Smart Scheduling
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [scheduleData, setScheduleData] = useState({ title: "", date: "", time: "10:00", location: "", pipelineId: "" });
+
+  // FacturaPro Inline Operations
+  const [isFacturaModalOpen, setIsFacturaModalOpen] = useState(false);
+  const [facturaType, setFacturaType] = useState<'QUOTE' | 'INVOICE'>('QUOTE');
+  const [facturaData, setFacturaData] = useState({ description: "", price: "", quantity: 1 });
+  const [isFacturaLoading, setIsFacturaLoading] = useState(false);
 
   const currentChat = chats.find(c => c.id === selectedChatId) || chats.filter(c => c.pipeId === activePipeline)[0];
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -172,6 +178,40 @@ export default function InboxPage() {
      }
   };
 
+  const handleAutoFacturar = async () => {
+     if(!currentChat || !facturaData.description || !facturaData.price) return alert("Por favor llena la descripción y el precio del servicio/producto.");
+     setIsFacturaLoading(true);
+
+     // MVP Mock: Simular conexión M2M hacia FacturaPro API durante 1.5 Segundos
+     setTimeout(() => {
+        setIsFacturaLoading(false);
+        setIsFacturaModalOpen(false);
+        
+        const priceNum = Number(facturaData.price);
+        const subtotal = priceNum * facturaData.quantity;
+        const iva = subtotal * 0.16;
+        const total = subtotal + iva;
+        
+        // Simular que FacturaPro nos devolvió el Link Público
+        const fakeTicketId = Date.now().toString().slice(-6);
+        const externalUrl = facturaType === 'QUOTE' 
+           ? `https://facturapro.radiotecpro.com/shared/COT-${fakeTicketId}.pdf` 
+           : `http://localhost:3004/kiosk/${fakeTicketId}?subtotal=${subtotal}&iva=${iva}&total=${total}&concept=${encodeURIComponent(facturaData.description)}&company=Grupo%20Hurtado`; // Redirigir al ambiente local de Kiosko con variables
+        
+        const messageHeader = facturaType === 'QUOTE' ? '💰 *COTIZACIÓN DE SERVICIOS*' : '🧾 *TICKET DE COMPRA / GARANTÍA*';
+        const templateIntro = facturaType === 'QUOTE' 
+           ? `Adjuntamos la cotización que nos solicitaste. Este documento tiene una vigencia de 15 días.\n\n*Concepto:* ${facturaData.description}` 
+           : `Agradecemos tu preferencia. A continuación el resumen de tu ticket.\n\n*Concepto:* ${facturaData.description}`;
+
+        // Prellenar la caja de respuesta
+        const msg = `${messageHeader}\n\nHola ${currentChat.name},\n${templateIntro}\n*Monto Total con IVA:* $${total.toLocaleString('es-MX', {minimumFractionDigits: 2})} MXN\n\n📄 *Descargar tu archivo o Facturar en el SAT aquí:*\n${externalUrl}\n\nQuedamos a tus órdenes para cualquier duda.`;
+        
+        setReplyText(msg); 
+        // Se deja en el Input para que el Agente verifique con el humano antes de dar click en ENVIAR
+     }, 1500);
+  };
+
+
 
   useEffect(() => {
     const activeCid = localStorage.getItem('activeCompanyId');
@@ -292,7 +332,7 @@ export default function InboxPage() {
 
       <div className="flex flex-1 overflow-hidden h-full relative">
         {/* Chat List (Kanban Column) */}
-        <div className={`w-full md:w-80 bg-white border-r border-slate-200 flex-col shrink-0 ${selectedChatId ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`w-full md:w-72 bg-white border-r border-slate-200 flex-col shrink-0 ${selectedChatId ? 'hidden md:flex' : 'flex'}`}>
           <div className="p-4 border-b border-slate-100 space-y-3">
              <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
                <button 
@@ -555,7 +595,7 @@ export default function InboxPage() {
 
         {/* Panel CRM (Notas y Etiquetas) */}
         {currentChat && (
-          <div className={`w-full md:w-80 bg-white border-l border-slate-200 flex-col shrink-0 overflow-y-auto ${showCrmPanelMobile ? 'flex absolute inset-0 z-50' : 'hidden lg:flex'}`}>
+          <div className={`w-full md:w-72 lg:w-80 xl:w-80 bg-white border-l border-slate-200 flex-col shrink-0 overflow-y-auto ${showCrmPanelMobile ? 'flex absolute inset-0 z-50' : 'hidden lg:flex'}`}>
              
              {/* Header Responsivo Panel Dcho */}
              <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 md:bg-white lg:hidden">
@@ -619,6 +659,31 @@ export default function InboxPage() {
                       <CalendarDays className="w-4 h-4" /> Agendar Servicio / Cita
                     </button>
                     <p className="text-[10px] text-slate-400 font-medium text-center mt-2 px-2">Crea recordatorios de instalación, mantenimiento o fechas de cobro.</p>
+                  </div>
+
+                  {/* FACTURAPRO INLINE BOTONES (MAGIC LINKS) */}
+                  <div className="mt-4 pt-4 border-t border-slate-200">
+                    <h4 className="text-[10px] font-black uppercase text-indigo-400 tracking-wider mb-2 flex items-center gap-1.5"><Receipt className="w-3.5 h-3.5" /> FacturaPro (Auto-Sales)</h4>
+                    <div className="flex gap-2">
+                      <button 
+                         onClick={() => {
+                            setFacturaType('QUOTE');
+                            setIsFacturaModalOpen(true);
+                         }}
+                         className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-md shadow-indigo-200 hover:shadow-indigo-300 py-2.5 rounded-xl font-bold text-xs flex justify-center items-center gap-1.5 transition-all hover:-translate-y-0.5"
+                      >
+                         <FileText className="w-4 h-4" /> Cotizar
+                      </button>
+                      <button 
+                         onClick={() => {
+                            setFacturaType('INVOICE');
+                            setIsFacturaModalOpen(true);
+                         }}
+                         className="flex-1 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-md shadow-green-200 hover:shadow-green-300 py-2.5 rounded-xl font-bold text-xs flex justify-center items-center gap-1.5 transition-all hover:-translate-y-0.5"
+                      >
+                         <Receipt className="w-4 h-4" /> Facturar
+                      </button>
+                    </div>
                   </div>
                 </div>
              </div>
@@ -754,6 +819,102 @@ export default function InboxPage() {
                  <button onClick={handleCreateSchedule} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-200 hover:-translate-y-0.5">
                    Confirmar Agenda en Calendario Maestro
                  </button>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de M2M Facturacion y Cotizacion Rapida */}
+      {isFacturaModalOpen && currentChat && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200">
+            <div className={`p-6 flex justify-between items-center text-white ${facturaType === 'QUOTE' ? 'bg-gradient-to-r from-blue-600 to-indigo-700' : 'bg-gradient-to-r from-emerald-600 to-green-700'}`}>
+              <div className="flex items-center gap-3">
+                 <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
+                    {facturaType === 'QUOTE' ? <FileText className="w-6 h-6 text-white" /> : <Receipt className="w-6 h-6 text-white" />}
+                 </div>
+                 <div>
+                    <h2 className="text-xl font-black">{facturaType === 'QUOTE' ? 'Crear Cotización' : 'Emitir Autofactura / Ticket'}</h2>
+                    <p className="text-xs font-medium text-white/80">{facturaType === 'QUOTE' ? 'Genera un presupuesto' : 'Timbra automáticamente (M2M) o entrega Ticket'}</p>
+                 </div>
+              </div>
+              <button disabled={isFacturaLoading} onClick={() => setIsFacturaModalOpen(false)} className="text-white/50 hover:text-white transition-colors bg-black/10 hover:bg-black/20 p-2 rounded-full">
+                 <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-5 bg-slate-50/50">
+               
+               <div className="bg-white border text-center border-slate-200 p-3 rounded-xl shadow-sm text-sm">
+                  Emitiendo comprobante a nombre de: <br/>
+                  <span className="font-black text-slate-800 text-lg">{currentChat.name}</span>
+               </div>
+
+               <div>
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none block mb-2">Producto o Concepto</label>
+                 <textarea 
+                   autoFocus 
+                   className="w-full border border-slate-200 rounded-xl bg-white focus:bg-indigo-50/50 p-3 text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 resize-none h-20 shadow-inner" 
+                   placeholder="Ej. Juego de 4 llantas Michelin rin 15..." 
+                   value={facturaData.description} 
+                   onChange={e => setFacturaData({...facturaData, description: e.target.value})} 
+                 />
+               </div>
+               
+               <div className="grid grid-cols-2 gap-4">
+                 <div>
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none block mb-2">Cantidad</label>
+                   <input 
+                     type="number" min="1" 
+                     className="w-full border border-slate-200 rounded-xl bg-white focus:bg-indigo-50/50 p-3 text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner" 
+                     value={facturaData.quantity} 
+                     onChange={e => setFacturaData({...facturaData, quantity: Math.max(1, parseInt(e.target.value)||1)})} 
+                   />
+                 </div>
+                 <div>
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none block mb-2">Precio Unitario (Antes IVA)</label>
+                   <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                      <input 
+                        type="number" step="0.01" 
+                        className="w-full border border-slate-200 rounded-xl bg-white focus:bg-indigo-50/50 p-3 pl-8 text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner" 
+                        placeholder="0.00" 
+                        value={facturaData.price} 
+                        onChange={e => setFacturaData({...facturaData, price: e.target.value})} 
+                      />
+                   </div>
+                 </div>
+               </div>
+
+               <div className="bg-slate-800 rounded-xl p-4 text-white flex justify-between items-center shadow-md">
+                 <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Total a Cobrar (+IVA)</span>
+                 <span className="text-xl font-black text-emerald-400">
+                    ${((Number(facturaData.price || 0) * facturaData.quantity) * 1.16).toLocaleString('es-MX', {minimumFractionDigits: 2})} MXN
+                 </span>
+               </div>
+
+               <div className="pt-2">
+                 <button 
+                  disabled={isFacturaLoading}
+                  onClick={handleAutoFacturar} 
+                  className={`w-full text-white font-bold py-4 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-wait disabled:translate-y-0 ${facturaType === 'QUOTE' ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'}`}
+                 >
+                   {isFacturaLoading ? (
+                      <>
+                        <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <span>Sincronizando con FacturaPro...</span>
+                      </>
+                   ) : (
+                      <>
+                         {facturaType === 'QUOTE' ? <FileText className="w-5 h-5" /> : <Receipt className="w-5 h-5" />}
+                         {facturaType === 'QUOTE' ? 'Guardar y Pre-visualizar Mensaje' : 'Timbrar XML o Generar Link'}
+                      </>
+                   )}
+                 </button>
+                 <p className="text-[10px] text-center text-slate-400 font-medium mt-3">
+                   Al {facturaType === 'QUOTE' ? 'cotizar' : 'timbrar'}, el sistema devolverá el enlace para enviarse por WhatsApp. El cliente podrá entrar al portal Kiosko.
+                 </p>
                </div>
             </div>
           </div>
