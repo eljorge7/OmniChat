@@ -332,7 +332,7 @@ export default function InboxPage() {
 
       <div className="flex flex-1 overflow-hidden h-full relative">
         {/* Chat List (Kanban Column) */}
-        <div className={`w-full md:w-64 lg:w-72 bg-white border-r border-slate-200 flex-col shrink-0 ${selectedChatId ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`w-full md:w-72 bg-white border-r border-slate-200 flex-col shrink-0 ${selectedChatId ? 'hidden md:flex' : 'flex'}`}>
           <div className="p-4 border-b border-slate-100 space-y-3">
              <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
                <button 
@@ -484,7 +484,7 @@ export default function InboxPage() {
                   <button className="hidden sm:flex h-9 w-9 bg-slate-100 hover:bg-slate-200 rounded-lg items-center justify-center text-slate-600 transition-colors">
                     <Filter className="h-4 w-4" />
                   </button>
-                  <button onClick={() => setShowCrmPanelMobile(!showCrmPanelMobile)} className="xl:hidden h-9 w-9 bg-slate-100 hover:bg-indigo-100 rounded-lg flex items-center justify-center text-slate-600 hover:text-indigo-600 transition-colors">
+                  <button onClick={() => setShowCrmPanelMobile(!showCrmPanelMobile)} className="2xl:hidden h-9 w-9 bg-slate-100 hover:bg-indigo-100 rounded-lg flex items-center justify-center text-slate-600 hover:text-indigo-600 transition-colors">
                     <PanelRight className="h-5 w-5" />
                   </button>
                   <button 
@@ -595,10 +595,10 @@ export default function InboxPage() {
 
         {/* Panel CRM (Notas y Etiquetas) */}
         {currentChat && (
-          <div className={`w-full md:w-64 lg:w-72 xl:w-80 bg-white border-l border-slate-200 flex-col shrink-0 overflow-y-auto ${showCrmPanelMobile ? 'flex absolute right-0 inset-y-0 z-50 shadow-2xl border-l-[1px] border-indigo-200' : 'hidden xl:flex'}`}>
+          <div className={`w-full md:w-72 lg:w-80 xl:w-80 bg-white border-l border-slate-200 flex-col shrink-0 overflow-y-auto ${showCrmPanelMobile ? 'flex absolute right-0 inset-y-0 z-50 shadow-2xl border-l-[1px] border-indigo-200' : 'hidden 2xl:flex'}`}>
              
              {/* Header Responsivo Panel Dcho */}
-             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 md:bg-white xl:hidden">
+             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 md:bg-white 2xl:hidden">
                  <h3 className="font-bold text-slate-800 flex items-center gap-2">
                     <PanelRight className="w-4 h-4 text-indigo-500" /> CRM Cliente
                  </h3>
@@ -693,7 +693,7 @@ export default function InboxPage() {
                  <h3 className="font-black text-slate-800 flex items-center gap-2">
                    <Tag className="h-5 w-5 text-indigo-500" /> Clasificación (Tags)
                  </h3>
-                 <button onClick={() => setShowCrmPanelMobile(false)} className="xl:hidden p-1 bg-slate-100 rounded-lg text-slate-500 hover:text-slate-800">
+                 <button onClick={() => setShowCrmPanelMobile(false)} className="2xl:hidden p-1 bg-slate-100 rounded-lg text-slate-500 hover:text-slate-800">
                    <X className="h-5 w-5" />
                  </button>
                </div>
