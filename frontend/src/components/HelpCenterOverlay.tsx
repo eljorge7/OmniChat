@@ -9,7 +9,7 @@ export default function HelpCenterOverlay() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const pathname = usePathname();
 
-  if (pathname === '/login' || pathname === '/') {
+  if (pathname.includes('/login') || pathname === '/') {
     return null;
   }
 
