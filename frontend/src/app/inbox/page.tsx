@@ -484,7 +484,7 @@ export default function InboxPage() {
                   <button className="hidden sm:flex h-9 w-9 bg-slate-100 hover:bg-slate-200 rounded-lg items-center justify-center text-slate-600 transition-colors">
                     <Filter className="h-4 w-4" />
                   </button>
-                  <button onClick={() => setShowCrmPanelMobile(!showCrmPanelMobile)} className="lg:hidden h-9 w-9 bg-slate-100 hover:bg-indigo-100 rounded-lg flex items-center justify-center text-slate-600 hover:text-indigo-600 transition-colors">
+                  <button onClick={() => setShowCrmPanelMobile(!showCrmPanelMobile)} className="2xl:hidden h-9 w-9 bg-slate-100 hover:bg-indigo-100 rounded-lg flex items-center justify-center text-slate-600 hover:text-indigo-600 transition-colors">
                     <PanelRight className="h-5 w-5" />
                   </button>
                   <button 
@@ -595,10 +595,10 @@ export default function InboxPage() {
 
         {/* Panel CRM (Notas y Etiquetas) */}
         {currentChat && (
-          <div className={`w-full md:w-72 lg:w-80 xl:w-80 bg-white border-l border-slate-200 flex-col shrink-0 overflow-y-auto ${showCrmPanelMobile ? 'flex absolute inset-0 z-50' : 'hidden lg:flex'}`}>
+          <div className={`w-full md:w-72 lg:w-80 xl:w-80 bg-white border-l border-slate-200 flex-col shrink-0 overflow-y-auto ${showCrmPanelMobile ? 'flex absolute right-0 inset-y-0 z-50 shadow-2xl border-l-[1px] border-indigo-200' : 'hidden 2xl:flex'}`}>
              
              {/* Header Responsivo Panel Dcho */}
-             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 md:bg-white lg:hidden">
+             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 md:bg-white 2xl:hidden">
                  <h3 className="font-bold text-slate-800 flex items-center gap-2">
                     <PanelRight className="w-4 h-4 text-indigo-500" /> CRM Cliente
                  </h3>
@@ -693,7 +693,7 @@ export default function InboxPage() {
                  <h3 className="font-black text-slate-800 flex items-center gap-2">
                    <Tag className="h-5 w-5 text-indigo-500" /> Clasificación (Tags)
                  </h3>
-                 <button onClick={() => setShowCrmPanelMobile(false)} className="lg:hidden p-1 bg-slate-100 rounded-lg text-slate-500 hover:text-slate-800">
+                 <button onClick={() => setShowCrmPanelMobile(false)} className="2xl:hidden p-1 bg-slate-100 rounded-lg text-slate-500 hover:text-slate-800">
                    <X className="h-5 w-5" />
                  </button>
                </div>
@@ -782,14 +782,14 @@ export default function InboxPage() {
       {/* Modal de Agendamiento Inteligente */}
       {isScheduleModalOpen && currentChat && (
         <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="bg-slate-900 p-6 flex justify-between items-center text-white">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+            <div className="bg-slate-900 p-6 flex justify-between items-center text-white shrink-0">
               <h2 className="text-xl font-black">🗓️ Agendar para {currentChat.name}</h2>
               <button onClick={() => setIsScheduleModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
                  <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto">
                <div>
                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Título del Servicio</label>
                  <input autoFocus type="text" className="w-full border-slate-200 rounded-xl bg-slate-50 focus:bg-white p-3 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ej. Instalación RadioTec, Lavado de Sala..." value={scheduleData.title} onChange={e => setScheduleData({...scheduleData, title: e.target.value})} />
@@ -828,8 +828,8 @@ export default function InboxPage() {
       {/* Modal de M2M Facturacion y Cotizacion Rapida */}
       {isFacturaModalOpen && currentChat && (
         <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200">
-            <div className={`p-6 flex justify-between items-center text-white ${facturaType === 'QUOTE' ? 'bg-gradient-to-r from-blue-600 to-indigo-700' : 'bg-gradient-to-r from-emerald-600 to-green-700'}`}>
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200 max-h-[90vh] flex flex-col">
+            <div className={`p-6 flex justify-between items-center text-white shrink-0 ${facturaType === 'QUOTE' ? 'bg-gradient-to-r from-blue-600 to-indigo-700' : 'bg-gradient-to-r from-emerald-600 to-green-700'}`}>
               <div className="flex items-center gap-3">
                  <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
                     {facturaType === 'QUOTE' ? <FileText className="w-6 h-6 text-white" /> : <Receipt className="w-6 h-6 text-white" />}
@@ -844,7 +844,7 @@ export default function InboxPage() {
               </button>
             </div>
             
-            <div className="p-6 space-y-5 bg-slate-50/50">
+            <div className="p-6 space-y-5 bg-slate-50/50 overflow-y-auto">
                
                <div className="bg-white border text-center border-slate-200 p-3 rounded-xl shadow-sm text-sm">
                   Emitiendo comprobante a nombre de: <br/>
