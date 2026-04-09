@@ -48,7 +48,7 @@ export class AiService {
          const contact = await this.prisma.contact.findUnique({ where: { id: contactId } });
          if (contact && contact.phone) {
              this.logger.log(`[AI-AGENT] Buscando identidad de RentControl para el cel: ${contact.phone}`);
-             const baseUrl = process.env.RENTCONTROL_API_URL || 'http://localhost:3001';
+             const baseUrl = process.env.RENTCONTROL_API_URL || 'https://radiotecpro.com/api';
              const rcResponse = await axios.get(`${baseUrl}/integrations/omnichat/identify/${contact.phone}`, {
                 headers: { 'x-api-key': process.env.OMNICHAT_WEBHOOK_SECRET || 'SUPER_SECRET_KEY_123' }
              });
