@@ -39,6 +39,9 @@ export class WhatsappService implements OnModuleInit {
     this.logger.log(`Preparando Sesión para Company: ${companyId}`);
     this.clients.set(companyId, { client: null as any, qr: '', status: 'INITIALIZING' });
 
+    // Guardar el tiempo estricto en que inicializa este contenedor para descartar TODO el historial de WA
+    const sessionStartupTime = Math.floor(Date.now() / 1000);
+
     const client = new Client({
       authStrategy: new LocalAuth({ clientId: companyId, dataPath: './.wwebjs_auth' }),
       puppeteer: {
@@ -63,7 +66,8 @@ export class WhatsappService implements OnModuleInit {
 
     client.on('message', async (message) => {
       // Ignorar mensajes históricos que llegan por montón al iniciar la sesión (QR scan)
-      if (message.timestamp < (Math.floor(Date.now() / 1000) - 60)) {
+      // Comparamos contra sessionStartupTime para evitar problemas de desfase de reloj del VPS
+      if (message.timestamp < sessionStartupTime - 60) {
          this.logger.log(`[OmniChat-${companyId}] Ignorando mensaje histórico procesado al arrancar motor WA.`);
          return;
       }
@@ -80,8 +84,11 @@ export class WhatsappService implements OnModuleInit {
   }
 
   async handleIncomingMessage(companyId: string, message: any) {
-    if (message.from.includes('@g.us')) return;
-    if (message.from === 'status@broadcast' || message.isStatus) return; // Corrección crítica de Bug: Evita publicar / responder a estados
+    if (message.from.includes('@g.us')) return; // No responder a grupos
+    // Corrección ultra agresiva de Bug: Evitar publicar / responder a Estados o Difusiones
+    if (message.isStatus || message.broadcast || message.from === 'status@broadcast' || message.id?.remote === 'status@broadcast') {
+       return; 
+    }
 
     const phone = message.from.replace('@c.us', '');
     let textBody = message.body.trim();

@@ -275,13 +275,14 @@ export class WhatsappController {
       botMessage = `🤖 ¡Hola ${body.name}! Recibimos tu contacto desde la página web. ¿En qué podemos ayudarte el día de hoy?`;
     }
 
-    // 3. Disparar mensaje outbound silenciosamente y guardarlo en Base de Datos
+    // 3. Registrar en silencio y esperar el INBOUND del prospecto
     try {
-      await this.whatsapp.sendDirectMessage(targetCompanyId, fullWaId, botMessage);
+      // Ya NO disparamos mensaje outbound para evitar baneos de SPAM por WhatsApp.
+      // El cliente debe mandar el primer mensaje manualmente. Solo lo dejamos perfilado.
       
       const savedMsg = await this.prisma.message.create({
          data: {
-           body: botMessage,
+           body: `[SYSTEM] Prospecto registrado vía Web. Interés: ${body.interest}. *Esperando mensaje de inicio del cliente...*`,
            fromMe: true,
            contactId: contact.id
          }
