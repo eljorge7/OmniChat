@@ -8,6 +8,7 @@ import { AiService } from '../ai/ai.service';
 @Injectable()
 export class WhatsappService implements OnModuleInit {
   private readonly clients = new Map<string, { client: Client, qr: string, status: string }>();
+  private readonly incomingRateLimit = new Map<string, { count: number, resetAt: number }>();
   private readonly logger = new Logger(WhatsappService.name);
 
   constructor(
@@ -92,6 +93,25 @@ export class WhatsappService implements OnModuleInit {
 
     const phone = message.from.replace('@c.us', '');
     let textBody = message.body.trim();
+
+    // =============== ANTI BOT-LOOP RATE LIMITER ===============
+    // Prevent infinite ping-pong loops against WA Business Auto-Responders
+    const now = Date.now();
+    let rateData = this.incomingRateLimit.get(phone);
+    
+    if (!rateData || now > rateData.resetAt) {
+        // Reset counter every 15 seconds
+        rateData = { count: 1, resetAt: now + 15000 };
+    } else {
+        rateData.count++;
+    }
+    this.incomingRateLimit.set(phone, rateData);
+
+    if (rateData.count > 3) {
+        this.logger.warn(`[ANTI-BOT LOOP] Ignorando a ${phone} temporalmente por SPAMMING (>3 msgs en 15s).`);
+        return; // Break the infinite auto-responder loop
+    }
+    // ==========================================================
 
     let contact = await this.prisma.contact.findFirst({
         where: { phone, companyId }
