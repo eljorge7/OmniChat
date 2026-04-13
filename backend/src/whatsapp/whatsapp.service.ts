@@ -97,6 +97,16 @@ export class WhatsappService implements OnModuleInit {
     }
 
     this.logger.log(`Preparando Sesión para Company: ${companyId}`);
+    const sessionPath = `./.wwebjs_auth/session-${companyId}`;
+    try {
+       const fs = require('fs');
+       const lockFile = `${sessionPath}/SingletonLock`;
+       const cookieFile = `${sessionPath}/SingletonCookie`;
+       if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
+       if (fs.existsSync(cookieFile)) fs.unlinkSync(cookieFile);
+       this.logger.log(`[OmniChat-${companyId}] Candados borrados preventivamente.`);
+    } catch {}
+
     this.clients.set(companyId, { client: null as any, qr: '', status: 'INITIALIZING' });
 
     // Guardar el tiempo estricto en que inicializa este contenedor para descartar TODO el historial de WA
