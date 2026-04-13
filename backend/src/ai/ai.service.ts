@@ -526,7 +526,7 @@ export class AiService {
             this.logger.log(`[AI-AGENT-RENTCONTROL] Verificando balances SQL para: ${args.phone}`);
             try {
                const { Client } = require('pg');
-               const rentcontrolDbUrl = "postgresql://rentadmin:admin123@localhost:5432/rentcontrol?schema=public";
+               const rentcontrolDbUrl = "postgresql://admin:admin123@172.17.0.1:5432/rentcontrol?schema=public";
                const pgClient = new Client({ connectionString: rentcontrolDbUrl });
                await pgClient.connect();
                
