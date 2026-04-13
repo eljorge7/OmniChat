@@ -102,8 +102,8 @@ export class WhatsappService implements OnModuleInit {
        const fs = require('fs');
        const lockFile = `${sessionPath}/SingletonLock`;
        const cookieFile = `${sessionPath}/SingletonCookie`;
-       if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
-       if (fs.existsSync(cookieFile)) fs.unlinkSync(cookieFile);
+       try { fs.unlinkSync(lockFile); } catch (e) {}
+       try { fs.unlinkSync(cookieFile); } catch (e) {}
        this.logger.log(`[OmniChat-${companyId}] Candados borrados preventivamente.`);
     } catch {}
 
