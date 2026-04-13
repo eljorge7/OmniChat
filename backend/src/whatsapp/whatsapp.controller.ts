@@ -440,6 +440,30 @@ export class WhatsappController {
     });
   }
 
+  @Post('contacts/edit-phone')
+  async editContactPhone(@Body() body: { contactId: string, newPhone: string }) {
+    if (!body.contactId || !body.newPhone) throw new BadRequestException("Faltan datos");
+    const cleanPhone = body.newPhone.replace(/[^0-9]/g, '');
+    if (cleanPhone.length < 10) throw new BadRequestException("El número de teléfono es muy corto");
+    
+    // Normalizar a formato WA
+    let finalPhone = cleanPhone;
+    if (!finalPhone.includes('@')) {
+       // Siempre asumimos que lo modificó a un número celular normal.
+       finalPhone = `521${cleanPhone.slice(-10)}@c.us`; 
+       // Usamos 521 + 10 dígitos estandarizado
+    }
+
+    try {
+        return await this.prisma.contact.update({
+           where: { id: body.contactId },
+           data: { phone: finalPhone }
+        });
+    } catch(e) {
+        throw new BadRequestException("Ese número ya existe en tu directorio.");
+    }
+  }
+
   @Delete('contacts/:companyId/:id')
   async deleteContact(@Param('companyId') companyId: string, @Param('id') id: string) {
     if(!companyId || !id) throw new BadRequestException("ID Invalido");

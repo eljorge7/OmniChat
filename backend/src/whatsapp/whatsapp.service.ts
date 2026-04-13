@@ -23,6 +23,65 @@ export class WhatsappService implements OnModuleInit {
     for (const company of companies) {
       this.startSession(company.id); // Lanza la carga asíncrona sin bloquear el arranque del módulo
     }
+    this.startFollowupCron();
+  }
+
+  private startFollowupCron() {
+    this.logger.log('Iniciando cron interno de Recordatorios/Followups (Revisión cada minuto)...');
+    setInterval(async () => {
+       try {
+           const pendingReminders = await this.prisma.calendarEvent.findMany({
+               where: {
+                   title: 'BOT_FOLLOWUP',
+                   status: 'SCHEDULED',
+                   startTime: { lte: new Date() } // Todo lo que esté en el pasado o presente exacto
+               },
+               include: { contact: true }
+           });
+
+           for (const reminder of pendingReminders) {
+               if (!reminder.contact || !reminder.contact.phone) continue;
+               
+               this.logger.log(`[FOLLOWUP CRON] Disparando recordatorio a ${reminder.contact.name} (${reminder.contact.phone})`);
+               
+               // Enviar mensaje real
+               try {
+                   await this.sendDirectMessage(reminder.companyId, `${reminder.contact.phone}@c.us`, reminder.description || "Hola, retomando nuestro tema pendiente.");
+                   
+                   // Guardar en tabla Messages simulado como enviado desde backend
+                   const savedMsg = await this.prisma.message.create({
+                       data: {
+                           body: reminder.description || "Hola, retomando nuestro tema pendiente.",
+                           fromMe: true,
+                           contactId: reminder.contact.id
+                       }
+                   });
+
+                   this.gateway.emitNewMessage({
+                       contactId: reminder.contact.id,
+                       message: savedMsg,
+                       pipeId: reminder.contact.pipelineId
+                   });
+
+                   // Marcar como COMPLETED para que no dispare doble
+                   await this.prisma.calendarEvent.update({
+                       where: { id: reminder.id },
+                       data: { status: 'COMPLETED' }
+                   });
+
+               } catch(ex) {
+                   this.logger.error(`Error enviando followup a ${reminder.contact.phone}`, ex);
+                   // Move to FAILED or leave scheduled to retry maybe?
+                   await this.prisma.calendarEvent.update({
+                       where: { id: reminder.id },
+                       data: { status: 'FAILED_RETRY' }
+                   });
+               }
+           }
+       } catch(e) {
+           this.logger.error('Error en loop cron de follow up', e);
+       }
+    }, 60000); // 1 minuto
   }
 
   getQrCode(companyId: string) {
@@ -75,6 +134,14 @@ export class WhatsappService implements OnModuleInit {
       await this.handleIncomingMessage(companyId, message);
     });
 
+    client.on('message_create', async (message) => {
+      // Interceptar los mensajes que salen físicamente desde el celular de Jorge
+      if (message.timestamp < sessionStartupTime - 60) return;
+      if (message.fromMe) {
+          await this.handleOutgoingPhoneMessage(companyId, message);
+      }
+    });
+
     try {
       await client.initialize();
       const sd = this.clients.get(companyId);
@@ -84,7 +151,59 @@ export class WhatsappService implements OnModuleInit {
     }
   }
 
+  async handleOutgoingPhoneMessage(companyId: string, message: any) {
+    if (message.to.includes('@g.us') || message.isStatus || message.broadcast) return;
+
+    const phone = message.to.replace('@c.us', '');
+    let textBody = message.body ? message.body.trim() : '';
+    if (!textBody && message.hasMedia) {
+        textBody = '[Multimedia o Archivo enviado desde Celular]';
+    }
+
+    let contact = await this.prisma.contact.findFirst({ where: { phone, companyId } });
+    if (!contact) {
+        // En caso de que Jorge le hable a alguien nuevo directo desde su móvil
+        contact = await this.prisma.contact.create({
+            data: { phone, name: 'Contacto (Desde Celular)', companyId }
+        });
+    }
+
+    // Prevención de duplicados originados por la propia API / WebHooks
+    const recentDuplicate = await this.prisma.message.findFirst({
+        where: {
+           contactId: contact.id,
+           fromMe: true,
+           body: textBody,
+           timestamp: { gte: new Date(Date.now() - 5000) } // Ignorar si se subió hace 5 segundos
+        }
+    });
+
+    if (recentDuplicate) return;
+
+    const savedMessage = await this.prisma.message.create({
+        data: {
+            body: textBody,
+            fromMe: true,
+            contactId: contact.id
+        }
+    });
+
+    // Animar la interfaz visual en tiempo real de OmniChat
+    this.gateway.emitNewMessage({
+       contactId: contact.id,
+       message: savedMessage,
+       pipeId: contact.pipelineId
+    });
+
+    this.logger.log(`[OmniChat-${companyId}] Mensaje saliente desde celular sincronizado: ${textBody}`);
+  }
+
   async handleIncomingMessage(companyId: string, message: any) {
+    // 0. Bloqueo absoluto de carreras M2M y Autorespuestas al inicio
+    if (message.fromMe) {
+        return; // handleOutgoingPhoneMessage ya procesa esto
+    }
+
     if (message.from.includes('@g.us')) return; // No responder a grupos
     // Corrección ultra agresiva de Bug: Evitar publicar / responder a Estados o Difusiones
     if (message.isStatus || message.broadcast || message.from === 'status@broadcast' || message.id?.remote === 'status@broadcast') {
@@ -153,7 +272,15 @@ export class WhatsappService implements OnModuleInit {
                 mediaUrl = `${baseUrl}/uploads/${filename}`;
                 mediaType = mimetype;
                 
-                if (!textBody || textBody.trim() === '') {
+                if (message.type === 'ptt' || mimetype.startsWith('audio/') || mimetype.startsWith('video/ogg')) {
+                   // Transcripción de Audio en vuelo
+                   const transcript = await this.ai.transcribeAudio(filepath, companyId);
+                   if (transcript) {
+                      textBody = `[Nota de voz transcrita automáticamente]: ${transcript}`;
+                   } else {
+                      textBody = `[El cliente ha enviado un AUDIO que no se pudo transcribir, escúchalo antes de responder]`;
+                   }
+                } else if (!textBody || textBody.trim() === '') {
                    textBody = `[El cliente ha enviado una imagen o archivo adjunto: ${mediaType}]`;
                 }
             }
@@ -181,7 +308,7 @@ export class WhatsappService implements OnModuleInit {
     // 4.5 Interceptar con Inteligencia Artificial (OpenAI)
     if (contact.botStatus === 'ACTIVE') {
        this.logger.log(`[OmniChat-${companyId}] Bot Activado para ${phone}, cediendo control a GPT-4.`);
-       const aiResponse = await this.ai.generateResponse(companyId, contact.id, textBody);
+       const aiResponse = await this.ai.generateResponse(companyId, contact.id, textBody, mediaUrl || undefined, mediaType || undefined);
        
        if (aiResponse) {
           await this.sendDirectMessage(companyId, message.from, aiResponse);

@@ -34,6 +34,9 @@ export default function InboxPage() {
   const [isEditingCrmName, setIsEditingCrmName] = useState(false);
   const [editedName, setEditedName] = useState("");
 
+  const [isEditingCrmPhone, setIsEditingCrmPhone] = useState(false);
+  const [editedPhone, setEditedPhone] = useState("");
+
   // Smart Scheduling
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [scheduleData, setScheduleData] = useState({ title: "", date: "", time: "10:00", location: "", pipelineId: "" });
@@ -133,6 +136,27 @@ export default function InboxPage() {
        console.error("Error renaming", e);
      }
   };
+
+  const handleRenameContactPhone = async () => {
+      if (!currentChat) return;
+      setIsEditingCrmPhone(false);
+      const cleanExisting = currentChat.phone.replace('@c.us', '').replace('@lid', '');
+      if (editedPhone.trim() === "" || editedPhone === cleanExisting) return;
+      
+      try {
+        await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/contacts/edit-phone`, {
+           contactId: currentChat.id,
+           newPhone: editedPhone
+        });
+        const activeCid = localStorage.getItem('activeCompanyId');
+        const qParams = activeCid ? `?companyId=${activeCid}` : '';
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox${qParams}`);
+        setChats(res.data.chats);
+      } catch(e: any) {
+        console.error("Error renaming phone", e);
+        alert(e.response?.data?.message || "No se pudo actualizar el número");
+      }
+   };
 
   const handleDeleteContact = async () => {
      if (!currentChat) return;
@@ -503,26 +527,35 @@ export default function InboxPage() {
                  <div className="flex justify-center">
                    <span className="bg-slate-200 text-slate-600 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">Ayer</span>
                  </div>
-                 {currentChat?.messages?.map((msg: any) => (
-                    <div key={msg.id} className={`flex max-w-[75%] items-end gap-2 ${msg.fromMe ? 'ml-auto flex-row-reverse' : ''}`}>
-                      <div className={`p-4 rounded-2xl shadow-sm relative group border ${msg.fromMe ? 'bg-indigo-600 text-white border-indigo-700 rounded-br-sm' : 'bg-white border-slate-200 rounded-bl-sm'}`}>
-                         
-                         {msg.mediaUrl && msg.mediaType?.startsWith('image/') && (
-                            <img src={msg.mediaUrl} alt="WhatsApp Adjunto" className="max-w-full max-h-64 object-cover rounded-xl mb-3 shadow-md border border-white/20" />
-                         )}
-                         {msg.mediaUrl && msg.mediaType?.startsWith('audio/') && (
-                            <audio controls src={msg.mediaUrl} className={`max-w-[260px] h-10 mb-3 rounded-full ${msg.fromMe ? 'opacity-90' : 'opacity-100'}`} />
-                         )}
-                         {msg.mediaUrl && !msg.mediaType?.startsWith('image/') && !msg.mediaType?.startsWith('audio/') && (
-                            <a href={msg.mediaUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-black/10 px-4 py-3 rounded-xl mb-3 text-sm font-bold no-underline hover:bg-black/20 transition-all">
-                              📎 Abrir Archivo
-                            </a>
-                         )}
-
-                         <p className={`text-sm whitespace-pre-wrap ${msg.fromMe ? 'text-white/90' : 'text-slate-700'}`}>{msg.body}</p>
-                      </div>
-                    </div>
-                 ))}
+                 {currentChat?.messages?.map((msg: any) => {
+                    const safeMediaUrl = msg.mediaUrl ? msg.mediaUrl.replace('http://localhost:3002', process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002') : null;
+                    return (
+                        <div key={msg.id} className={`flex max-w-[75%] items-end gap-2 ${msg.fromMe ? 'ml-auto flex-row-reverse' : ''}`}>
+                          <div className={`p-4 rounded-2xl shadow-sm relative group border ${msg.fromMe ? 'bg-indigo-600 text-white border-indigo-700 rounded-br-sm' : 'bg-white border-slate-200 rounded-bl-sm'}`}>
+                             
+                             {safeMediaUrl && msg.mediaType?.startsWith('image/') && (
+                                <img src={safeMediaUrl} alt="WhatsApp Adjunto" className="max-w-full max-h-64 object-cover rounded-xl mb-3 shadow-md border border-white/20" />
+                             )}
+                             {safeMediaUrl && msg.mediaType?.startsWith('audio/') && (
+                                <audio controls src={safeMediaUrl} className={`max-w-[260px] h-10 mb-3 rounded-full ${msg.fromMe ? 'opacity-90' : 'opacity-100'}`} />
+                             )}
+                             {safeMediaUrl && !msg.mediaType?.startsWith('image/') && !msg.mediaType?.startsWith('audio/') && (
+                                <a href={safeMediaUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-black/10 px-4 py-3 rounded-xl mb-3 text-sm font-bold no-underline hover:bg-black/20 transition-all">
+                                   📎 Abrir Archivo
+                                </a>
+                             )}
+    
+                             <p className={`text-sm whitespace-pre-wrap ${msg.fromMe ? 'text-white/90' : 'text-slate-700'}`}>{msg.body}</p>
+                             
+                             {msg.fromMe && (
+                                <div className="flex justify-end mt-1.5 -mb-1 opacity-80">
+                                   <CheckCheck className="w-3.5 h-3.5 text-blue-300" />
+                                </div>
+                             )}
+                          </div>
+                        </div>
+                    );
+                 })}
               </div>
 
               {/* Thread Input */}
@@ -640,10 +673,31 @@ export default function InboxPage() {
                     </div>
                   </div>
 
-                  <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+                  <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm hover:border-indigo-200 transition-colors">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">WhatsApp / Teléfono</label>
                     <div className="mt-1 font-mono font-medium text-slate-600 text-sm">
-                      {currentChat.phone.replace('@c.us', '')}
+                      {isEditingCrmPhone ? (
+                        <input 
+                          autoFocus
+                          value={editedPhone}
+                          onChange={e => setEditedPhone(e.target.value)}
+                          onBlur={() => handleRenameContactPhone()}
+                          onKeyDown={e => e.key === 'Enter' && handleRenameContactPhone()}
+                          className="font-bold text-slate-800 bg-indigo-50 px-2 py-1 rounded outline-none border border-indigo-200 w-full text-sm shadow-inner"
+                          placeholder="Ej. 6421042123"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-between group">
+                          <span className="font-mono font-medium text-slate-600 text-sm truncate pr-2">{currentChat.phone.replace('@c.us', '').replace('@lid', '')}</span>
+                          <button 
+                            onClick={() => { setIsEditingCrmPhone(true); setEditedPhone(currentChat.phone.replace('@c.us', '').replace('@lid', '') || "") }} 
+                            className="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 p-1.5 rounded-md transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
+                            title="Corregir Teléfono manualmente"
+                          >
+                            <PencilLine className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                   
