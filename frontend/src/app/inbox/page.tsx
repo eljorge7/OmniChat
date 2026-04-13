@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageCircle, Phone, Clock, Search, Filter, MoreVertical, Paperclip, SendHorizontal, Bot, Tag, StickyNote, X, User, ChevronLeft, PanelRight, PencilLine, CalendarDays, Trash2, Receipt, FileText } from "lucide-react";
+import { MessageCircle, Phone, Clock, Search, Filter, MoreVertical, Paperclip, SendHorizontal, Bot, Tag, StickyNote, X, User, ChevronLeft, PanelRight, PencilLine, CalendarDays, Trash2, Receipt, FileText, CheckCheck } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
