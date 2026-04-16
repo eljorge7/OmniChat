@@ -28,8 +28,15 @@ export class ApiController {
       const company = await this.prisma.company.findUnique({ where: { apiKey } });
       if (!company) throw new UnauthorizedException('API Key inválida');
       
-      let targetPhone = body.phone.replace(/\+/g, '').replace(' ', '');
+      let cleanPhone = body.phone.replace(/\D/g, ''); // Quita + y espacios
+      if (cleanPhone.length === 10) {
+          cleanPhone = `521${cleanPhone}`;
+      } else if (cleanPhone.length === 12 && cleanPhone.startsWith('52')) {
+          // Normaliza 52 a 521 (estándar OmniChat para MX)
+          cleanPhone = `521${cleanPhone.slice(2)}`;
+      }
       
+      let targetPhone = cleanPhone;
       let contact = await this.prisma.contact.findFirst({
           where: { phone: targetPhone, companyId: company.id }
       });
