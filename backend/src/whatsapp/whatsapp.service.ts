@@ -222,8 +222,8 @@ export class WhatsappService implements OnModuleInit {
     }
 
     if (message.from.includes('@g.us')) return; // No responder a grupos
-    // Evitar fantasmas de WhatsApp Business Linked Devices (@lid)
-    if (message.from.includes('@lid')) return; 
+    // Se removió el bloqueo de '@lid' porque clientes externos empresariales (ej. TotalPlay) 
+    // operan con IDs '@lid'. Los ecos "fantasmas" ya son descartados por isDuplicate.
 
     // Corrección ultra agresiva de Bug: Evitar publicar / responder a Estados o Difusiones
     if (message.isStatus || message.broadcast || message.from === 'status@broadcast' || message.id?.remote === 'status@broadcast') {
