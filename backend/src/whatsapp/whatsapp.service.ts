@@ -374,6 +374,11 @@ export class WhatsappService implements OnModuleInit {
        return; // Detenemos rutinas estáticas porque la IA está encargada de este hilo
     }
 
+    if (contact.botStatus === 'PAUSED' || contact.botStatus === 'INACTIVE') {
+        this.logger.log(`[OmniChat] Bot silenciado para ${phone} (botStatus: ${contact.botStatus}). Omitiendo auto-router estático.`);
+        return; // Silencio total. El agente humano tiene el control.
+    }
+
     // 5. Automated Routing Logic (Fallback Static)
     if (!contact.pipelineId) {
         
