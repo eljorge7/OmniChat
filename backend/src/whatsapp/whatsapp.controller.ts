@@ -104,7 +104,7 @@ export class WhatsappController {
       name: c.name || c.phone,
       phone: c.phone,
       lastMessage: c.messages[0]?.body || 'Sin mensajes', 
-      time: c.messages[0]?.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || '',
+      time: c.messages[0]?.timestamp.toISOString() || '',
       unread: c.unreadCount || 0,
       pipeId: c.pipelineId,
       botStatus: c.botStatus,

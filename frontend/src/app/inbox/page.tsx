@@ -467,7 +467,7 @@ export default function InboxPage() {
 
                  <div className="flex justify-between items-start mb-1">
                    <h3 className={`font-bold text-sm ${isActiveChat ? 'text-indigo-900' : (chat.unread > 0 ? 'text-slate-900 font-black' : 'text-slate-800')}`}>{chat.name}</h3>
-                   <span className={`text-xs font-medium ${chat.unread > 0 ? 'text-red-500 font-bold' : 'text-slate-400'}`}>{chat.time}</span>
+                   <span className={`text-xs font-medium ${chat.unread > 0 ? 'text-red-500 font-bold' : 'text-slate-400'}`}>{chat.time ? new Date(chat.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                  </div>
                  <p className={`text-xs truncate mb-2 ${chat.unread > 0 ? 'text-slate-800 font-semibold' : 'text-slate-500'}`}>{chat.lastMessage}</p>
                  <div className="flex items-center justify-between">
