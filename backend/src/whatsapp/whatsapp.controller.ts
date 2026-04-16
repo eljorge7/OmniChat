@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseInterceptors, UploadedFile, BadRequestException, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, UseInterceptors, UploadedFile, BadRequestException, Param, Delete, Query } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -41,6 +41,15 @@ export class WhatsappController {
        data.status = 'INITIALIZING';
     }
     return data;
+  }
+
+  @Post(':id/read')
+  async markAsRead(@Param('id') contactId: string) {
+      await this.prisma.contact.update({
+          where: { id: contactId },
+          data: { unreadCount: 0 }
+      });
+      return { success: true };
   }
 
   @Get('qr/:companyId')
@@ -96,7 +105,7 @@ export class WhatsappController {
       phone: c.phone,
       lastMessage: c.messages[0]?.body || 'Sin mensajes', 
       time: c.messages[0]?.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || '',
-      unread: 0,
+      unread: c.unreadCount || 0,
       pipeId: c.pipelineId,
       botStatus: c.botStatus,
       tags: c.tags || [],
@@ -409,16 +418,29 @@ export class WhatsappController {
   }
 
   @Post('contacts/notes')
-  async addInternalNote(@Body() body: { contactId: string, text: string, authorId: string }) {
-    if (!body.contactId || !body.text) throw new BadRequestException("Faltan datos de la nota");
-    const note = await this.prisma.contactNote.create({
-      data: {
-        text: body.text,
-        contactId: body.contactId,
-        authorId: body.authorId || 'Agente'
-      }
+  async addContactNote(@Body() data: { contactId: string, text: string, authorId: string }) {
+    return this.prisma.contactNote.create({
+       data: {
+         text: data.text,
+         contactId: data.contactId,
+         authorId: data.authorId
+       }
     });
-    return note;
+  }
+
+  @Delete('contacts/notes/:id')
+  async deleteContactNote(@Param('id') id: string) {
+    return this.prisma.contactNote.delete({
+       where: { id }
+    });
+  }
+
+  @Put('contacts/notes/:id')
+  async updateContactNote(@Param('id') id: string, @Body() data: { text: string }) {
+    return this.prisma.contactNote.update({
+       where: { id },
+       data: { text: data.text }
+    });
   }
 
   @Post('contacts/tags')

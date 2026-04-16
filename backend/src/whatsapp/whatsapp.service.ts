@@ -9,6 +9,7 @@ import { AiService } from '../ai/ai.service';
 export class WhatsappService implements OnModuleInit {
   private readonly clients = new Map<string, { client: Client, qr: string, status: string }>();
   private readonly incomingRateLimit = new Map<string, { count: number, resetAt: number }>();
+  private readonly aiDebounceTimers = new Map<string, NodeJS.Timeout>();
   private readonly logger = new Logger(WhatsappService.name);
 
   constructor(
@@ -179,16 +180,22 @@ export class WhatsappService implements OnModuleInit {
     }
 
     // Prevención de duplicados originados por la propia API / WebHooks
-    const recentDuplicate = await this.prisma.message.findFirst({
+    const tenSecondsAgo = new Date(Date.now() - 10000);
+    const recentDuplicates = await this.prisma.message.findMany({
         where: {
            contactId: contact.id,
            fromMe: true,
-           body: textBody,
-           timestamp: { gte: new Date(Date.now() - 5000) } // Ignorar si se subió hace 5 segundos
+           timestamp: { gte: tenSecondsAgo }
         }
     });
 
-    if (recentDuplicate) return;
+    // Comparación robusta ignorando saltos de línea y espacios
+    const incomingPreview = textBody.replace(/\s+/g, '').substring(0, 50);
+    const isDuplicate = recentDuplicates.some(msg => 
+        (msg.body || '').replace(/\s+/g, '').substring(0, 50) === incomingPreview
+    );
+
+    if (isDuplicate) return;
 
     const savedMessage = await this.prisma.message.create({
         data: {
@@ -215,6 +222,9 @@ export class WhatsappService implements OnModuleInit {
     }
 
     if (message.from.includes('@g.us')) return; // No responder a grupos
+    // Evitar fantasmas de WhatsApp Business Linked Devices (@lid)
+    if (message.from.includes('@lid')) return; 
+
     // Corrección ultra agresiva de Bug: Evitar publicar / responder a Estados o Difusiones
     if (message.isStatus || message.broadcast || message.from === 'status@broadcast' || message.id?.remote === 'status@broadcast') {
        return; 
@@ -252,6 +262,16 @@ export class WhatsappService implements OnModuleInit {
         });
     }
 
+    // Extracción asíncrona de Avatar (si no tiene)
+    if (!contact.avatarUrl) {
+       this.clients.get(companyId)?.client?.getProfilePicUrl(message.from)
+         .then(url => {
+            if (url) {
+               this.prisma.contact.update({ where: { id: contact.id }, data: { avatarUrl: url } }).catch(()=>{});
+            }
+         }).catch(()=>{});
+    }
+
     let mediaUrl = null;
     let mediaType = null;
 
@@ -271,7 +291,7 @@ export class WhatsappService implements OnModuleInit {
                 const ext = mimetype.includes('/') ? mimetype.split('/')[1].split(';')[0] : 'bin';
                 const filename = `media_${Date.now()}_${contact.id.substring(0,8)}.${ext}`;
                 
-                const uploadDir = path.join(__dirname, '..', '..', 'uploads');
+                const uploadDir = path.join(process.cwd(), 'uploads');
                 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
                 
                 const filepath = path.join(uploadDir, filename);
@@ -291,7 +311,7 @@ export class WhatsappService implements OnModuleInit {
                       textBody = `[El cliente ha enviado un AUDIO que no se pudo transcribir, escúchalo antes de responder]`;
                    }
                 } else if (!textBody || textBody.trim() === '') {
-                   textBody = `[El cliente ha enviado una imagen o archivo adjunto: ${mediaType}]`;
+                   textBody = `[El cliente ha enviado una imagen adjunta]`;
                 }
             }
         } catch(e) {
@@ -302,38 +322,56 @@ export class WhatsappService implements OnModuleInit {
     const savedMessage = await this.prisma.message.create({
         data: {
             body: textBody,
-            fromMe: false,
+            fromMe: false, // Cliente externo
             contactId: contact.id,
             mediaUrl,
             mediaType
         }
     });
 
+    // Subir el conteo de no leídos
+    await this.prisma.contact.update({
+        where: { id: contact.id },
+        data: { unreadCount: { increment: 1 } }
+    });
+
     this.gateway.emitNewMessage({
        contactId: contact.id,
        message: savedMessage,
-       pipeId: contact.pipelineId
+       pipeId: contact.pipelineId,
+       unreadCountUpdate: true
     });
 
-    // 4.5 Interceptar con Inteligencia Artificial (OpenAI)
+    // 4.5 Interceptar con Inteligencia Artificial o Verificar Pausa Humana
+    if (contact.botStatus === 'PAUSED') {
+       this.logger.log(`[OmniChat-${companyId}] IA Pausada para ${phone}. Ignorando ruteo automático.`);
+       return; 
+    }
+
     if (contact.botStatus === 'ACTIVE') {
-       this.logger.log(`[OmniChat-${companyId}] Bot Activado para ${phone}, cediendo control a GPT-4.`);
-       const aiResponse = await this.ai.generateResponse(companyId, contact.id, textBody, mediaUrl || undefined, mediaType || undefined);
+       this.logger.log(`[OmniChat-${companyId}] Bot IA Activado para ${phone}. Simulando espera humana (Debounce 5s)...`);
        
-       if (aiResponse) {
-          await this.sendDirectMessage(companyId, message.from, aiResponse);
-          
-          const savedAiMsg = await this.prisma.message.create({
-             data: {
-               body: aiResponse,
-               fromMe: true,
-               contactId: contact.id
-             }
-          });
-          
-          this.emitToInbox(contact.id, savedAiMsg, contact.pipelineId);
-          return; // Stop routing since AI answered
+       if (this.aiDebounceTimers.has(contact.id)) {
+           clearTimeout(this.aiDebounceTimers.get(contact.id));
        }
+
+       const timer = setTimeout(async () => {
+           this.aiDebounceTimers.delete(contact.id);
+           this.logger.log(`[OmniChat-DEBOUNCE] Evaluando ráfaga completa de historial para ${contact.name}...`);
+           
+           try {
+               const aiResponse = await this.ai.generateResponse(companyId, contact.id, textBody, mediaUrl || undefined, mediaType || undefined);
+               
+               if (aiResponse) {
+                  await this.sendDirectMessage(companyId, message.from, aiResponse);
+               }
+           } catch (error) {
+               this.logger.error("Error crítico en bloque Debounce de IA", error);
+           }
+       }, 5500); // 5.5s de espera natural para dejar que el cliente termine de tipear todo
+
+       this.aiDebounceTimers.set(contact.id, timer);
+       return; // Detenemos rutinas estáticas porque la IA está encargada de este hilo
     }
 
     // 5. Automated Routing Logic (Fallback Static)

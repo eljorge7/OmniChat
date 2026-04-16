@@ -113,14 +113,8 @@ export class WisphubController {
                 });
             }
 
-                // Registrar legalmente el mensaje enviado en el hilo
-                await this.prisma.message.create({
-                    data: {
-                        body: message,
-                        fromMe: true, // Fue el bot/consola
-                        contactId: contact.id
-                    }
-                });
+                // El interceptor 'message_create' en whatsapp.service.ts interceptará el mensaje 
+                // saliente y lo registrará en la DB y el web-socket para evitar duplicados.
 
                 this.logger.log(`[WispHub🚀OmniChat] Notificación despachada con éxito a ${contactName} tras ${delayMs}ms de espera.`);
             } catch (e: any) {

@@ -57,6 +57,8 @@ model Contact {
   name        String?
   tags        String[] @default([]) // Ej: ["Venta_Caliente", "Moroso"]
   botStatus   String   @default("ACTIVE") // ACTIVE | PAUSED | RESOLVED
+  avatarUrl   String?
+  unreadCount Int      @default(0) // Control de Notificaciones y Badges Visuales
 
   companyId   String
   company     Company  @relation(fields: [companyId], references: [id])

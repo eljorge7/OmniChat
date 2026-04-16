@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageCircle, Phone, Clock, Search, Filter, MoreVertical, Paperclip, SendHorizontal, Bot, Tag, StickyNote, X, User, ChevronLeft, PanelRight, PencilLine, CalendarDays, Trash2, Receipt, FileText, CheckCheck } from "lucide-react";
+import { MessageCircle, Phone, Clock, Search, Filter, MoreVertical, Paperclip, SendHorizontal, Bot, Tag, StickyNote, X, User, ChevronLeft, PanelRight, PencilLine, CalendarDays, Trash2, Receipt, FileText, CheckCheck, TrendingUp, LifeBuoy, Key, CreditCard, Wrench, Globe, Briefcase } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
@@ -8,6 +8,18 @@ import { useSession } from "next-auth/react";
 
 export default function InboxPage() {
   const { data: session } = useSession();
+  
+  const getPipelineIcon = (name: string, className: string) => {
+    if (!name) return <Globe className={className} />;
+    const n = name.toLowerCase();
+    if (n.includes('ventas') || n.includes('sales')) return <TrendingUp className={className} />;
+    if (n.includes('soporte') || n.includes('support')) return <LifeBuoy className={className} />;
+    if (n.includes('rent') || n.includes('rentcontrol')) return <Key className={className} />;
+    if (n.includes('pagos') || n.includes('cobro') || n.includes('factura')) return <CreditCard className={className} />;
+    if (n.includes('mantenimiento') || n.includes('lavado')) return <Wrench className={className} />;
+    return <Briefcase className={className} />;
+  };
+
   const [activePipeline, setActivePipeline] = useState<string | null>(null);
   const [pipelines, setPipelines] = useState<any[]>([]);
   const [chats, setChats] = useState<any[]>([]);
@@ -85,6 +97,17 @@ export default function InboxPage() {
     }
   };
 
+  const handleDeleteNote = async (noteId: string) => {
+    if (!currentChat) return;
+    try {
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/contacts/notes/${noteId}`);
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox`);
+      setChats(res.data.chats);
+    } catch (e) {
+      console.error("Error deleting note:", e);
+    }
+  };
+
   const handleUpdateTags = async (updatedTags: string[]) => {
     if (!currentChat) return;
     try {
@@ -112,6 +135,22 @@ export default function InboxPage() {
       setChats(res.data.chats);
     } catch (e) {
       console.error("Send error:", e);
+    }
+  };
+
+  const handleSelectChat = async (chatId: string) => {
+    setSelectedChatId(chatId);
+    
+    // Si la sala está marcada como no leída, la limpiamos a 0
+    const target = chats.find(c => c.id === chatId);
+    if (target && target.unread && target.unread > 0) {
+       // Optimistic UI clear
+       setChats(prev => prev.map(c => c.id === chatId ? { ...c, unread: 0 } : c));
+       try {
+           await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/${chatId}/read`);
+       } catch (error) {
+           console.error("Error limpiando notificación viva:", error);
+       }
     }
   };
 
@@ -330,33 +369,45 @@ export default function InboxPage() {
   const uniqueTags = Array.from(new Set(chats.filter(c => c.pipeId === activePipeline).flatMap(c => c.tags || [])));
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 relative">
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0 z-10">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 bg-indigo-100 rounded-xl flex items-center justify-center">
-            <MessageCircle className="h-5 w-5 text-indigo-600" />
+    <div className="flex flex-col h-full w-full max-w-full overflow-hidden bg-slate-50 relative">
+      <header className="bg-white border-b border-slate-200 px-4 lg:px-6 py-4 flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-4 shrink-0 z-10 w-full max-w-full">
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="h-10 w-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
+            <MessageCircle className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800">Bandeja Compartida</h1>
-            <p className="text-sm text-slate-500 font-medium">Gestiona todos los canales de WhatsApp de Grupo Hurtado en un solo lugar.</p>
+            <h1 className="text-xl font-black text-slate-800 tracking-tight">Bandeja Compartida</h1>
+            <p className="text-xs lg:text-sm text-slate-500 font-medium">Gestiona todos los canales de WhatsApp en un solo lugar.</p>
           </div>
         </div>
-        <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
-          {pipelines.map((p) => (
-            <button 
-              key={p.id} 
-              onClick={() => setActivePipeline(p.id)}
-              className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${activePipeline === p.id ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              {p.name}
-            </button>
-          ))}
+        
+        {/* Ultimate Scrollable Pipelines Bar con Scrollbar Nativo */}
+        <div 
+          className="flex gap-1 bg-slate-100/80 p-1.5 rounded-2xl overflow-x-auto min-w-0 w-full flex-1 snap-x shadow-inner [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-slate-100 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-400 pb-1.5"
+        >
+          {pipelines.map((p) => {
+            const isActive = activePipeline === p.id;
+            return (
+              <button 
+                key={p.id || 'general'} 
+                onClick={() => setActivePipeline(p.id)}
+                className={`whitespace-nowrap px-3 lg:px-4 py-2 rounded-xl text-xs lg:text-sm font-bold transition-all shrink-0 flex items-center gap-1.5 snap-start ${
+                  isActive 
+                    ? 'bg-white text-indigo-700 shadow border border-slate-200/50 scale-100' 
+                    : 'bg-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-200/80 scale-95 hover:scale-100'
+                }`}
+              >
+                {p.id === null ? <Globe className={`w-4 h-4 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} /> : getPipelineIcon(p.name, `w-4 h-4 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`)}
+                <span>{p.name || 'Sin Asignar'}</span>
+              </button>
+            );
+          })}
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden h-full relative">
+      <div className="flex flex-1 min-w-0 overflow-hidden h-full relative w-full">
         {/* Chat List (Kanban Column) */}
-        <div className={`w-full md:w-72 bg-white border-r border-slate-200 flex-col shrink-0 ${selectedChatId ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`w-full md:w-64 lg:w-72 bg-white border-r border-slate-200 flex-col shrink-0 ${selectedChatId ? 'hidden md:flex' : 'flex'}`}>
           <div className="p-4 border-b border-slate-100 space-y-3">
              <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
                <button 
@@ -405,13 +456,20 @@ export default function InboxPage() {
               return (
               <div 
                 key={chat.id} 
-                onClick={() => setSelectedChatId(chat.id)}
-                className={`p-3 rounded-xl border transition-all cursor-pointer group ${isActiveChat ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-slate-100 hover:border-indigo-200 hover:shadow-md'}`}>
+                onClick={() => handleSelectChat(chat.id)}
+                className={`p-3 rounded-xl border transition-all cursor-pointer group relative ${isActiveChat ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-slate-100 hover:border-indigo-200 hover:shadow-md'}`}>
+                 
+                 {chat.unread > 0 && (
+                     <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full shadow-md animate-pulse">
+                        {chat.unread > 99 ? '99+' : chat.unread}
+                     </div>
+                 )}
+
                  <div className="flex justify-between items-start mb-1">
-                   <h3 className={`font-bold text-sm ${isActiveChat ? 'text-indigo-900' : 'text-slate-800'}`}>{chat.name}</h3>
-                   <span className="text-xs text-slate-400 font-medium">{chat.time}</span>
+                   <h3 className={`font-bold text-sm ${isActiveChat ? 'text-indigo-900' : (chat.unread > 0 ? 'text-slate-900 font-black' : 'text-slate-800')}`}>{chat.name}</h3>
+                   <span className={`text-xs font-medium ${chat.unread > 0 ? 'text-red-500 font-bold' : 'text-slate-400'}`}>{chat.time}</span>
                  </div>
-                 <p className="text-xs text-slate-500 truncate mb-2">{chat.lastMessage}</p>
+                 <p className={`text-xs truncate mb-2 ${chat.unread > 0 ? 'text-slate-800 font-semibold' : 'text-slate-500'}`}>{chat.lastMessage}</p>
                  <div className="flex items-center justify-between">
                    <div className="flex items-center text-xs text-slate-400 font-medium font-mono">
                      <Phone className="h-3 w-3 mr-1" /> {chat.phone}
@@ -435,7 +493,7 @@ export default function InboxPage() {
         </div>
 
         {/* Active Chat Thread */}
-        <div className={`flex-1 flex-col bg-slate-50/50 relative ${selectedChatId && !showCrmPanelMobile ? 'flex' : 'hidden md:flex'}`}>
+        <div className={`flex-1 min-w-0 flex-col bg-slate-50/50 relative ${selectedChatId && !showCrmPanelMobile ? 'flex' : 'hidden md:flex'}`}>
           {activeChats.length > 0 ? (
             <>
               {/* Thread Header */}
@@ -447,9 +505,13 @@ export default function InboxPage() {
                   >
                     <ChevronLeft className="h-6 w-6" />
                   </button>
-                  <div className="h-10 w-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-500 font-bold uppercase hidden sm:flex">
-                    {currentChat?.name?.substring(0, 2)}
-                  </div>
+                  {currentChat?.avatarUrl ? (
+                    <img src={currentChat.avatarUrl} alt="Avatar" className="h-10 w-10 sm:h-12 sm:w-12 rounded-full object-cover shadow-sm border border-slate-200 hidden sm:block shrink-0 bg-white" />
+                  ) : (
+                    <div className="h-10 w-10 sm:h-12 sm:w-12 bg-slate-200 rounded-full flex items-center justify-center text-slate-500 font-bold uppercase hidden sm:flex shrink-0">
+                      {currentChat?.name?.substring(0, 2)}
+                    </div>
+                  )}
                   <div className="max-w-[130px] sm:max-w-xs md:max-w-md">
                     {isEditingHeaderName ? (
                       <input 
@@ -474,41 +536,7 @@ export default function InboxPage() {
                   </div>
                 </div>
                 <div className="flex gap-1.5 sm:gap-3 items-center">
-                  <select
-                    value={currentChat?.pipeId || ''}
-                    onChange={(e) => assignChat(currentChat?.id, e.target.value)}
-                    className="bg-purple-50 border border-purple-100 rounded-lg text-sm font-bold text-purple-700 focus:ring-2 focus:ring-purple-500 py-1.5 pl-3 pr-8 cursor-pointer shadow-sm outline-none appearance-none"
-                    style={{ backgroundImage: "url('data:image/svg+xml;charset=us-ascii,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22currentColor%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')", backgroundPosition: "right 0.5rem center", backgroundRepeat: "no-repeat", backgroundSize: "1em 1em" }}
-                  >
-                    <option value="" disabled>🔀 Mover a Embudo</option>
-                    {pipelines.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-
-                  <select 
-                    value={currentChat?.assignedTo?.id || ''}
-                    onChange={(e) => assignAgent(currentChat?.id, e.target.value)}
-                    className="bg-indigo-50 border border-indigo-100 rounded-lg text-sm font-bold text-indigo-700 focus:ring-2 focus:ring-indigo-500 py-1.5 pl-3 pr-8 cursor-pointer shadow-sm outline-none appearance-none hidden sm:block"
-                    style={{ backgroundImage: "url('data:image/svg+xml;charset=us-ascii,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22currentColor%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')", backgroundPosition: "right 0.5rem center", backgroundRepeat: "no-repeat", backgroundSize: "1em 1em" }}
-                  >
-                    <option value="" disabled>👤 Asignar Agente</option>
-                    {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                  </select>
-
-                  <button 
-                    onClick={() => toggleBot(currentChat?.id, currentChat?.botStatus || 'ACTIVE')}
-                    className={`hidden sm:flex px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm items-center gap-2 ${(!currentChat?.botStatus || currentChat?.botStatus === 'ACTIVE') ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-200' : 'bg-slate-200 text-slate-500 hover:bg-slate-300 border border-slate-300'}`}
-                  >
-                    {(!currentChat?.botStatus || currentChat?.botStatus === 'ACTIVE') ? (
-                       <><Bot className="h-4 w-4" /> Piloto IA Activo</>
-                    ) : (
-                       <><Bot className="h-4 w-4 opacity-50" /> IA Pausada</>
-                    )}
-                  </button>
-
-                  <button className="hidden sm:flex h-9 w-9 bg-slate-100 hover:bg-slate-200 rounded-lg items-center justify-center text-slate-600 transition-colors">
-                    <Filter className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => setShowCrmPanelMobile(!showCrmPanelMobile)} className="2xl:hidden h-9 w-9 bg-slate-100 hover:bg-indigo-100 rounded-lg flex items-center justify-center text-slate-600 hover:text-indigo-600 transition-colors">
+                  <button onClick={() => setShowCrmPanelMobile(!showCrmPanelMobile)} className="lg:hidden h-9 w-9 bg-slate-100 hover:bg-indigo-100 rounded-lg flex items-center justify-center text-slate-600 hover:text-indigo-600 transition-colors">
                     <PanelRight className="h-5 w-5" />
                   </button>
                   <button 
@@ -545,13 +573,16 @@ export default function InboxPage() {
                                 </a>
                              )}
     
-                             <p className={`text-sm whitespace-pre-wrap ${msg.fromMe ? 'text-white/90' : 'text-slate-700'}`}>{msg.body}</p>
+                             <p className={`text-sm whitespace-pre-wrap break-words ${msg.fromMe ? 'text-white/90' : 'text-slate-700'}`}>{msg.body}</p>
                              
-                             {msg.fromMe && (
-                                <div className="flex justify-end mt-1.5 -mb-1 opacity-80">
-                                   <CheckCheck className="w-3.5 h-3.5 text-blue-300" />
-                                </div>
-                             )}
+                             <div className={`flex w-full mt-1.5 -mb-1 items-center gap-1 ${msg.fromMe ? 'justify-end' : 'justify-start'}`}>
+                               <span className={`text-[9px] font-medium tracking-wide ${msg.fromMe ? 'text-indigo-200' : 'text-slate-400'}`}>
+                                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                               </span>
+                               {msg.fromMe && (
+                                  <CheckCheck className="w-3.5 h-3.5 text-blue-300 ml-1" />
+                               )}
+                             </div>
                           </div>
                         </div>
                     );
@@ -586,7 +617,7 @@ export default function InboxPage() {
 
                 <div className="flex items-center bg-slate-100 p-2 rounded-xl focus-within:ring-2 focus-within:ring-indigo-500 transition-all border border-transparent focus-within:border-indigo-200 focus-within:bg-white relative">
                   <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileUpload} accept="image/*,audio/*,video/*,application/pdf" />
-                  <button onClick={() => fileInputRef.current?.click()} className="p-2 text-slate-400 hover:text-indigo-500 transition-colors rounded-lg">
+                  <button onClick={() => fileInputRef.current?.click()} className="p-2 text-slate-400 hover:text-indigo-500 transition-colors rounded-lg shrink-0">
                     <Paperclip className="h-5 w-5" />
                   </button>
                   <input 
@@ -603,13 +634,13 @@ export default function InboxPage() {
                         else handleSendReply();
                       }
                     }}
-                    placeholder="Escribe un mensaje en nombre de la empresa, o teclea '/' para atajos..." 
-                    className="flex-1 bg-transparent border-none focus:outline-none px-4 text-sm text-slate-700 placeholder:text-slate-400"
+                    placeholder="Mensaje..." 
+                    className="flex-1 min-w-0 bg-transparent border-none focus:outline-none px-2 sm:px-4 text-sm text-slate-700 placeholder:text-slate-400"
                   />
                   <button 
                     onClick={handleSendReply}
                     disabled={!replyText.trim()}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white p-2.5 rounded-lg transition-colors flex items-center gap-2 shadow-sm font-bold text-sm ml-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white p-2.5 rounded-lg transition-colors flex items-center gap-2 shadow-sm font-bold text-sm ml-1 sm:ml-2 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                   >
                     <span>Enviar</span>
                     <SendHorizontal className="h-4 w-4" />
@@ -628,10 +659,10 @@ export default function InboxPage() {
 
         {/* Panel CRM (Notas y Etiquetas) */}
         {currentChat && (
-          <div className={`w-full md:w-72 lg:w-80 xl:w-80 bg-white border-l border-slate-200 flex-col shrink-0 overflow-y-auto ${showCrmPanelMobile ? 'flex absolute right-0 inset-y-0 z-50 shadow-2xl border-l-[1px] border-indigo-200' : 'hidden 2xl:flex'}`}>
+          <div className={`w-full md:w-64 lg:w-72 xl:w-72 bg-white border-l border-slate-200 flex-col shrink-0 overflow-y-auto ${showCrmPanelMobile ? 'flex absolute right-0 inset-y-0 z-50 shadow-2xl border-l-[1px] border-indigo-200' : 'hidden lg:flex'}`}>
              
              {/* Header Responsivo Panel Dcho */}
-             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 md:bg-white 2xl:hidden">
+             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 md:bg-white lg:hidden">
                  <h3 className="font-bold text-slate-800 flex items-center gap-2">
                     <PanelRight className="w-4 h-4 text-indigo-500" /> CRM Cliente
                  </h3>
@@ -645,6 +676,44 @@ export default function InboxPage() {
                 </h3>
                 
                 <div className="space-y-4">
+                  {/* Flujo de Trabajo (Movido del Header) */}
+                  <div className="bg-slate-800 p-4 rounded-xl shadow-lg border border-slate-700">
+                     <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <Bot className="w-3 h-3 text-emerald-400" /> Controles de Flujo
+                     </h4>
+                     
+                     <div className="space-y-2">
+                       <button 
+                         onClick={() => toggleBot(currentChat?.id, currentChat?.botStatus || 'ACTIVE')}
+                         className={`w-full flex px-3 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm items-center justify-center gap-2 ${(!currentChat?.botStatus || currentChat?.botStatus === 'ACTIVE') ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+                       >
+                         {(!currentChat?.botStatus || currentChat?.botStatus === 'ACTIVE') ? (
+                            <><Bot className="h-4 w-4" /> Piloto IA Activo</>
+                         ) : (
+                            <><Bot className="h-4 w-4 opacity-50" /> IA Pausada (Atención Humana)</>
+                         )}
+                       </button>
+
+                       <select
+                         value={currentChat?.pipeId || ''}
+                         onChange={(e) => assignChat(currentChat?.id, e.target.value)}
+                         className="w-full bg-slate-900 border border-slate-700 rounded-lg text-sm font-bold text-slate-200 focus:ring-2 focus:ring-purple-500 py-2 px-3 cursor-pointer outline-none"
+                       >
+                         <option value="" disabled>🔀 Mover a Embudo...</option>
+                         {pipelines.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                       </select>
+
+                       <select 
+                         value={currentChat?.assignedTo?.id || ''}
+                         onChange={(e) => assignAgent(currentChat?.id, e.target.value)}
+                         className="w-full bg-slate-900 border border-slate-700 rounded-lg text-sm font-bold text-slate-200 focus:ring-2 focus:ring-indigo-500 py-2 px-3 cursor-pointer outline-none"
+                       >
+                         <option value="" disabled>👤 Asignar Agente...</option>
+                         {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                       </select>
+                     </div>
+                  </div>
+
                   <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm hover:border-indigo-200 transition-colors">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Nombre o Razón Social</label>
                     <div className="mt-1">
@@ -797,13 +866,32 @@ export default function InboxPage() {
                  <StickyNote className="h-5 w-5 text-amber-500" /> Notas de Equipo
                </h3>
                
-               <div className="space-y-3 flex-1 overflow-y-auto mb-4 pr-1">
+               <div className="space-y-3 flex-1 overflow-y-auto max-h-[300px] mb-4 pr-2">
                  {currentChat.notes?.map((n: any) => (
-                   <div key={n.id} className="bg-[#feffc3] p-3 rounded-lg border border-[#e8ea96] shadow-sm transform rotate-1 hover:rotate-0 transition-all">
+                   <div key={n.id} className="bg-[#feffc3] p-3 rounded-xl border border-[#e8ea96] shadow-md relative group transition-all">
                      <p className="text-xs font-medium text-slate-800 whitespace-pre-wrap">{n.text}</p>
                      <div className="flex justify-between items-center mt-2 border-t border-[#e8ea96] pt-2">
                        <span className="text-[9px] font-bold text-slate-500 uppercase">{n.authorId}</span>
                        <span className="text-[9px] font-bold text-slate-400">{new Date(n.createdAt).toLocaleDateString()}</span>
+                     </div>
+                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1 bg-[#feffc3] pl-2">
+                       <button onClick={async () => {
+                         const newt = prompt("Editar nota:", n.text);
+                         if (newt && newt !== n.text) {
+                            await axios.put(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/contacts/notes/${n.id}`, { text: newt });
+                            axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox?companyId=${localStorage.getItem('activeCompanyId')}`).then(res => setChats(res.data.chats));
+                         }
+                       }} className="p-1 hover:bg-amber-100 rounded text-amber-700 transition">
+                         <PencilLine className="w-3.5 h-3.5" />
+                       </button>
+                       <button onClick={async () => {
+                         if (confirm("¿Borrar esta nota interna?")) {
+                            await axios.delete(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/contacts/notes/${n.id}`);
+                            axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox?companyId=${localStorage.getItem('activeCompanyId')}`).then(res => setChats(res.data.chats));
+                         }
+                       }} className="p-1 hover:bg-red-100 rounded text-red-600 transition">
+                         <Trash2 className="w-3.5 h-3.5" />
+                       </button>
                      </div>
                    </div>
                  ))}

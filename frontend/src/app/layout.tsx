@@ -28,9 +28,9 @@ export default function RootLayout({
          <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
            <Providers>
              <AuthGuard>
-             <div className="flex h-screen overflow-hidden">
+             <div className="flex h-screen overflow-hidden w-full max-w-full">
                <Sidebar />
-               <main className="flex-1 flex flex-col h-full relative z-0 overflow-y-auto">
+               <main className="flex-1 min-w-0 flex flex-col h-full relative z-0 overflow-y-auto">
                  {children}
                  <HelpCenterOverlay />
                  <WelcomeTourModal />

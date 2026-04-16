@@ -156,15 +156,19 @@ export class AiService {
               const fs = require('fs');
               const path = require('path');
               const filename = mediaUrl.split('/').pop();
-              const filepath = path.join(__dirname, '..', '..', 'uploads', filename);
+              const filepath = path.join(process.cwd(), 'uploads', filename);
 
               if (fs.existsSync(filepath)) {
                   const base64Img = fs.readFileSync(filepath, { encoding: 'base64' });
+                  let explicitText = incomingMessage.includes('[El cliente ha enviado una imagen adjunta]') 
+                      ? 'Aquí tienes la imagen adjunta del cliente. Obsérvala y cotiza u opina según tus instrucciones:' 
+                      : incomingMessage;
+                  
                   finalMessageContent = [
-                      { type: 'text', text: incomingMessage || '[El usuario adjuntó una imagen sin texto]' },
+                      { type: 'text', text: explicitText },
                       { type: 'image_url', image_url: { url: `data:${mediaType};base64,${base64Img}` } }
                   ];
-                  this.logger.log(`[AI-VISION] Imagen decodificada y parseada para GPT-4o-mini.`);
+                  this.logger.log(`[AI-VISION] Imagen extraída de volumen persistente y parseada para GPT-4o.`);
               }
           } catch(err) {
               this.logger.error("Error cargando media local para AI Vision", err);
@@ -318,6 +322,8 @@ export class AiService {
       // 5. Check if OpenAI wants to call a Function
       if (responseMessage?.tool_calls && responseMessage.tool_calls.length > 0) {
          const toolCall: any = responseMessage.tool_calls[0];
+         let toolReturnContext: string | null = null;
+
          if (toolCall.function.name === "create_maintenance_ticket") {
             const args = JSON.parse(toolCall.function.arguments);
             this.logger.log(`[AI-AGENT] Ejecutando 'create_maintenance_ticket' para Inquilino ${args.tenantId}`);
@@ -441,10 +447,10 @@ export class AiService {
                });
 
                // Importante: No detenemos a la IA silenciosamente, le anunciamos al cliente para que espere al especialista.
-               return `✅ ¡Entendido! Te acabo de formar en la fila directa con los especialistas de *${targetPipeline.name}*. Permanece en este mismo chat, te atenderán en seguida.`;
+               toolReturnContext = `[SISTEMA INTERNO: Has clasificado y enrutado a este usuario a la columna exclusiva de *${targetPipeline.name}*. Ahora eres "Julio", despídete cordialmente y coméntale que lo dejarás en espera con ese departamento.]`;
             } catch(e) {
                this.logger.error("Error en router local de pipeline", e);
-               return "Hubo un error técnico clasificando tu departamento, un humano leerá esto en breve.";
+               toolReturnContext = "[SISTEMA INTERNO: Hubo un fallo en la base de datos clasificando a la persona. Despídete cordialmente y dile que un agente leerá el historial]";
             }
          } else if (toolCall.function.name === "schedule_appointment") {
             const args = JSON.parse(toolCall.function.arguments);
@@ -472,10 +478,10 @@ export class AiService {
                   await this.prisma.contact.update({ where: { id: contactId }, data: { pipelineId: targetPipeline.id }});
                }
 
-               return `🗓️ ¡Hecho! He bloqueado nuestro calendario oficial para realizar tu servicio de *${args.title}*. Nos vemos en tu domicilio en la fecha acordada. Nuestro operativo humano de Grupo Hurtado checará tu archivo ahora para asegurar todo. ¡Pasa un gran día!`;
+               toolReturnContext = `[SISTEMA INTERNO: Has agendado exitosamente la cita en SQL para el servicio "${args.title}". Eres "Julio", infórmale al cliente que nuestro calendario está oficialmente separado y que los operativos están listos. ¡Habla muy natural y amable!]`;
             } catch(e) {
                this.logger.error("Error en Auto-Schedule de IA", e);
-               return "Lo lamento, hubo un error de sistema interno insertando tu cita en mi calendario cibernético, un humano tomará este reporte manualmente en breve. ¡Gracias por la espera!";
+               toolReturnContext = "[SISTEMA INTERNO: Hubo un fallo guardando la cita en BD. Discúlpate y dile que un humano agendará de forma manual]";
             }
          } else if (toolCall.function.name === "schedule_followup_reminder") {
             const args = JSON.parse(toolCall.function.arguments);
@@ -495,6 +501,14 @@ export class AiService {
                   }
                });
                
+               await this.prisma.contactNote.create({
+                  data: {
+                     text: `🤖 [MEMORIA IA] He programado enviarle un mensaje de seguimiento especial a este cliente el día ${new Date(args.targetDateIso).toLocaleString()}.\n\n💬 Mensaje que le enviaré: "${args.reminderMessage}"`,
+                     contactId: contactId,
+                     authorId: 'SYSTEM_BOT'
+                  }
+               });
+
                return `De acuerdo, ¡agendado! El sistema te mandará nuestro mensaje el día acordado para retomar la plática. Quedamos a la orden. ✅`;
             } catch(e) {
                this.logger.error("Error guardando followup reminder", e);
@@ -536,31 +550,51 @@ export class AiService {
                
                if (resTenant.rows.length === 0) {
                    await pgClient.end();
-                   const invisibleContext = `[ESTO NO ES UN TEXTO AL USUARIO, ES CONTEXTO PARA TI: No pude encontrar directamente al inquilino en RentControl registrado con el teléfono terminado en ${args.phone.slice(-10)}. Por favor dile al cliente educadamente que no encuentras su perfil y pídele que compruebe si tiene guardado otro teléfono principal con nosotros.]`;
-                   return invisibleContext;
+                   toolReturnContext = `[SISTEMA INTERNO: No pude encontrar directamente al inquilino registrado con el teléfono terminado en ${args.phone.slice(-10)}. Por favor comunícalo al cliente educadamente y pide si tiene guardado otro teléfono]`;
+               } else {
+                   const tenant = resTenant.rows[0];
+                   
+                   const resCharges = await pgClient.query(`
+                       SELECT type, amount, "dueDate" FROM "Charge" 
+                       WHERE "leaseId" IN (SELECT id FROM "Lease" WHERE "tenantId" = $1)
+                       AND status = 'PENDING'
+                   `, [tenant.id]);
+                   
+                   await pgClient.end();
+                   
+                   if (resCharges.rows.length === 0) {
+                       toolReturnContext = `[SISTEMA INTERNO: El inquilino ${tenant.name} fue encontrado pero NO tiene adeudos pendientes (saldo en ceros). Felicítalo educadamente y de forma muy natural.]`;
+                   } else {
+                       let adeudos = resCharges.rows.map((c: any) => `- ${c.type}: $${c.amount} MXN (Vence: ${new Date(c.dueDate).toLocaleDateString()})`).join("\n");
+                       toolReturnContext = `[SISTEMA INTERNO: El inquilino ${tenant.name} TIENE ADEUDOS reales en RentControl:\n${adeudos}\nPor favor informale este desglose de forma amigable y natural]`;
+                   }
                }
-               
-               const tenant = resTenant.rows[0];
-               
-               // Buscar saldos pendientes cruzados en 'Charge' y 'Lease'
-               const resCharges = await pgClient.query(`
-                   SELECT type, amount, "dueDate" FROM "Charge" 
-                   WHERE "leaseId" IN (SELECT id FROM "Lease" WHERE "tenantId" = $1)
-                   AND status = 'PENDING'
-               `, [tenant.id]);
-               
-               await pgClient.end();
-               
-               if (resCharges.rows.length === 0) {
-                   return `[CONTEXTO: El inquilino ${tenant.name} fue encontrado en RentControl pero NO tiene ningún adeudo pendiente, está totalmente al día y su saldo en ceros. Felicítalo educadamente y ponle carita feliz.]`;
-               }
-               
-               let adeudos = resCharges.rows.map((c: any) => `- Concepto ${c.type}: $${c.amount} MXN (Vencimiento: ${new Date(c.dueDate).toLocaleDateString()})`).join("\n");
-               return `[CONTEXTO: El inquilino ${tenant.name} TIENE ADEUDOS pendientes reales de RentControl:\n${adeudos}\nPor favor informale este desglose natural y amablemente diciéndole que este sistema arrojó su estado de cuenta total.]`;
             } catch (ex: any) {
-               this.logger.error("Error consultando la base de datos transversal de rentcontrol", ex.message);
-               return `[CONTEXTO: Hubo un error de conexión con los túneles SQL de RentControl. Finge demencia, discúlpate por fallas de mi sistema y dile que espere mientras lo checamos manual.]`;
+               this.logger.error("DB Err", ex.message);
+               toolReturnContext = `[SISTEMA INTERNO: Falló la conexión técnica a RentControl. Discúlpate sutilmente y pide que espere a un humano]`;
             }
+         }
+
+         // FLUJO DE INTERCEPCIÓN ORGÁNICA
+         if (toolReturnContext) {
+             messagesParams.push(responseMessage); // Agregamos la request original de la Función
+             messagesParams.push({
+                 role: "tool",
+                 tool_call_id: toolCall.id,
+                 name: toolCall.function.name,
+                 content: toolReturnContext
+             });
+
+             this.logger.log(`[AI-GENERATION] Re-inyectando resultado de ${toolCall.function.name} para generar respuesta orgánica.`);
+             
+             const secondCompletion = await openai.chat.completions.create({
+                 model: "gpt-4o-mini",
+                 messages: messagesParams,
+                 temperature: 0.7,
+                 max_tokens: 250
+             });
+
+             return secondCompletion.choices[0]?.message?.content?.trim() || null;
          }
       }
 
