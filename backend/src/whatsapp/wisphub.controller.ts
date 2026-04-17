@@ -56,6 +56,8 @@ export class WisphubController {
         }
         
         const waId = `521${cleanPhone}@c.us`; 
+        const rawPhoneForDb = `521${cleanPhone}`;
+
         this.logger.log(`[WispHub🚀OmniChat] Interceptada notificación para empresa ${masterCompany.name} -> ${waId}. Carga delegada a Queue.`);
 
         // Variable global (o estática local en Node) para el espaciado de WispHub
@@ -86,7 +88,7 @@ export class WisphubController {
             }
 
             let contact = await this.prisma.contact.findFirst({
-                where: { phone: waId, companyId: masterCompany.id }
+                where: { phone: rawPhoneForDb, companyId: masterCompany.id }
             });
 
             const contactName = body?.cliente || body?.name || query?.cliente || query?.name || 'Cliente WispHub';
@@ -94,7 +96,7 @@ export class WisphubController {
             if (!contact) {
                 contact = await this.prisma.contact.create({
                     data: { 
-                        phone: waId, 
+                        phone: rawPhoneForDb, 
                         name: contactName, 
                         companyId: masterCompany.id,
                         pipelineId: pipeline.id,
