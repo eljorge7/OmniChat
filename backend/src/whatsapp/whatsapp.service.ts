@@ -171,6 +171,13 @@ export class WhatsappService implements OnModuleInit {
         textBody = '[Multimedia o Archivo enviado desde Celular]';
     }
 
+    // Filtro Quirúrgico: Matar el Autoresponder Fantasma Inyectado por Facebook / Meta Business Suite
+    // (Aparece cuando WispHub abre un chat a un cliente y Meta detecta la sesión ligada)
+    if (textBody.includes('¿En qué puedo ayudarte hoy?') && message.to.includes('@lid')) {
+        this.logger.log(`[OmniChat] Filtro aplicado: Ignorando 'Mensaje de Bienvenida' fantasma de Meta Business Suite hacia el LID ${message.to}.`);
+        return;
+    }
+
     let contact = await this.prisma.contact.findFirst({ where: { phone, companyId } });
     if (!contact) {
         // En caso de que Jorge le hable a alguien nuevo directo desde su móvil
