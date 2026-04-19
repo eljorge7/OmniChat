@@ -73,47 +73,58 @@ export class WisphubController {
         // Procesamiento en Bloque Asíncrono Fire-and-Forget
         setTimeout(async () => {
             try {
-                // Disparar mensaje vía WhatsApp de la Empresa Específica
-                await this.whatsappService.sendDirectMessage(masterCompany.id, waId, message);
+                // 1. Asignación Dinámica de Embudo (Pipeline) PRIMERO (Anti Race-Condition)
+                let pipeline = await this.prisma.pipeline.findFirst({
+                    where: { name: embudoName, companyId: masterCompany.id },
+                });
+
+                if (!pipeline) {
+                    pipeline = await this.prisma.pipeline.create({
+                        data: { name: embudoName, companyId: masterCompany.id },
+                    });
+                }
+
+                // 2. Buscamos al contacto por los 10 dígitos (ignorando 52/521)
+                const phoneLike = `%${cleanPhone}`;
+                let contacts = await this.prisma.$queryRaw<any[]>`
+                    SELECT * FROM "Contact" 
+                    WHERE "companyId" = ${masterCompany.id} AND "phone" LIKE ${phoneLike}
+                    LIMIT 1
+                `;
                 
-                // Asignación Dinámica de Embudo (Pipeline)
-            let pipeline = await this.prisma.pipeline.findFirst({
-                where: { name: embudoName, companyId: masterCompany.id },
-            });
+                let contact = contacts && contacts.length > 0 ? contacts[0] : null;
 
-            if (!pipeline) {
-                pipeline = await this.prisma.pipeline.create({
-                    data: { name: embudoName, companyId: masterCompany.id },
-                });
-            }
+                const contactName = body?.cliente || body?.name || query?.cliente || query?.name || 'Cliente WispHub';
 
-            let contact = await this.prisma.contact.findFirst({
-                where: { phone: rawPhoneForDb, companyId: masterCompany.id }
-            });
+                if (!contact) {
+                    // Si no existe, creamos el contacto oficial. Usamos rawPhoneForDb.
+                    contact = await this.prisma.contact.create({
+                        data: { 
+                            phone: rawPhoneForDb, 
+                            name: contactName, 
+                            companyId: masterCompany.id,
+                            pipelineId: pipeline.id,
+                            tags: ['WispHub'] 
+                        }
+                    });
+                } else {
+                    // Forzar actualización de Etiqueta, Nombre y Embudo
+                    const currentTags = contact.tags || [];
+                    const updatedTags = currentTags.includes('WispHub') ? currentTags : [...currentTags, 'WispHub'];
+                    
+                    contact = await this.prisma.contact.update({
+                        where: { id: contact.id },
+                        data: { 
+                            pipelineId: pipeline.id, 
+                            tags: updatedTags,
+                            name: contact.name?.includes('Desde Celular') ? contactName : contact.name // Sobrescribir nombres genéricos
+                        }
+                    });
+                }
 
-            const contactName = body?.cliente || body?.name || query?.cliente || query?.name || 'Cliente WispHub';
-
-            if (!contact) {
-                contact = await this.prisma.contact.create({
-                    data: { 
-                        phone: rawPhoneForDb, 
-                        name: contactName, 
-                        companyId: masterCompany.id,
-                        pipelineId: pipeline.id,
-                        tags: ['WispHub'] 
-                    }
-                });
-            } else {
-                // Actualizar el contacto existente forzándolo al embudo
-                const updatedTags = contact.tags.includes('WispHub') ? contact.tags : [...contact.tags, 'WispHub'];
-                contact = await this.prisma.contact.update({
-                    where: { id: contact.id },
-                    data: { 
-                        pipelineId: pipeline.id,
-                        tags: updatedTags
-                    }
-                });
-            }
+                // 3. Disparar mensaje vía WhatsApp AL FINAL. 
+                // Así cuando whatsapp.service.ts lance el hook 'upsert', ¡el contacto YA EXISTE!
+                await this.whatsappService.sendDirectMessage(masterCompany.id, waId, message);
 
                 // El interceptor 'message_create' en whatsapp.service.ts interceptará el mensaje 
                 // saliente y lo registrará en la DB y el web-socket para evitar duplicados.
