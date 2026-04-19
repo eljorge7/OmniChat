@@ -123,8 +123,19 @@ export class WisphubController {
                 }
 
                 // 3. Disparar mensaje vía WhatsApp AL FINAL. 
-                // Así cuando whatsapp.service.ts lance el hook 'upsert', ¡el contacto YA EXISTE!
-                await this.whatsappService.sendDirectMessage(masterCompany.id, waId, message);
+                // sendDirectMessage nos devuelve el ID RESUELTO por WhatsApp (ej. si era un @lid oculto)
+                const resolvedTarget = await this.whatsappService.sendDirectMessage(masterCompany.id, waId, message);
+                
+                if (resolvedTarget) {
+                    const resolvedPhone = resolvedTarget.replace('@c.us', '');
+                    if (resolvedPhone !== contact.phone) {
+                        this.logger.log(`[WispHub🚀OmniChat] Mapeo nativo detectado: Re-alineando Contacto ${contact.phone} -> ${resolvedPhone}`);
+                        await this.prisma.contact.update({
+                            where: { id: contact.id },
+                            data: { phone: resolvedPhone }
+                        });
+                    }
+                }
 
                 // El interceptor 'message_create' en whatsapp.service.ts interceptará el mensaje 
                 // saliente y lo registrará en la DB y el web-socket para evitar duplicados.

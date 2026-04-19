@@ -505,6 +505,7 @@ export class WhatsappService implements OnModuleInit {
     }
 
     await data.client.sendMessage(finalTarget, text);
+    return finalTarget;
   }
 
   async sendDirectMediaMessage(companyId: string, targetPhone: string, filePath: string) {
