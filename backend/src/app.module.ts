@@ -9,8 +9,11 @@ import { AdminController } from './admin/admin.controller';
 import { UsersController } from './users/users.controller';
 import { CalendarModule } from './calendar/calendar.module';
 
+import { ThrottlerModule } from '@nestjs/throttler';
+
 @Module({
   imports: [
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'uploads'),
       serveRoot: '/uploads',
