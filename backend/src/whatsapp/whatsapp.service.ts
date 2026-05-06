@@ -136,18 +136,19 @@ export class WhatsappService implements OnModuleInit {
     });
 
     client.on('message', async (message) => {
-      // Ignorar mensajes históricos que llegan por montón al iniciar la sesión (QR scan)
-      // Comparamos contra sessionStartupTime para evitar problemas de desfase de reloj del VPS
-      if (message.timestamp < sessionStartupTime - 60) {
-         this.logger.log(`[OmniChat-${companyId}] Ignorando mensaje histórico procesado al arrancar motor WA.`);
+      // Ignorar mensajes con más de 24 horas de antigüedad para evitar procesar historial viejo
+      const twentyFourHoursAgo = Math.floor(Date.now() / 1000) - 86400;
+      if (message.timestamp < twentyFourHoursAgo) {
+         this.logger.log(`[OmniChat-${companyId}] Ignorando mensaje histórico (muy antiguo).`);
          return;
       }
       await this.handleIncomingMessage(companyId, message);
     });
 
     client.on('message_create', async (message) => {
-      // Interceptar los mensajes que salen físicamente desde el celular de Jorge
-      if (message.timestamp < sessionStartupTime - 60) return;
+      // Interceptar los mensajes que salen físicamente desde el celular
+      const twentyFourHoursAgo = Math.floor(Date.now() / 1000) - 86400;
+      if (message.timestamp < twentyFourHoursAgo) return;
       if (message.fromMe) {
           await this.handleOutgoingPhoneMessage(companyId, message);
       }
