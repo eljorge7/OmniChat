@@ -187,7 +187,7 @@ export class WhatsappService implements OnModuleInit {
     if (!contact) {
         // En caso de que Jorge le hable a alguien nuevo directo desde su móvil
         contact = await this.prisma.contact.create({
-            data: { phone, name: 'Contacto (Desde Celular)', companyId }
+            data: { phone, name: 'Contacto (Desde Celular)', companyId, botStatus: 'PAUSED' }
         });
     }
 
@@ -605,5 +605,80 @@ export class WhatsappService implements OnModuleInit {
 
       this.logger.log(`[OmniChat] ✅ Campaña Masiva Finalizada (${successCount} Éxitos, ${failedCount} Fallos).`);
     }, 100);
+  }
+
+  async syncHistoricalMessages(companyId: string) {
+      const sd = this.clients.get(companyId);
+      if (!sd || sd.status !== 'READY' || !sd.client) {
+          throw new Error("El motor de WhatsApp no está listo para sincronizar.");
+      }
+
+      this.logger.log(`[OmniChat-${companyId}] Iniciando sincronización manual de historial...`);
+      const chats = await sd.client.getChats();
+      
+      let syncedCount = 0;
+      let newContactsCount = 0;
+
+      for (const chat of chats) {
+          // Ignorar grupos y cuentas bloqueadas/anómalas
+          if (chat.isGroup) continue;
+          
+          const phone = chat.id.user;
+          // Ignorar cuentas de estado
+          if (phone === 'status' || chat.id._serialized === 'status@broadcast') continue;
+
+          let contact = await this.prisma.contact.findFirst({ where: { phone, companyId } });
+          if (!contact) {
+              contact = await this.prisma.contact.create({
+                  data: { 
+                      phone, 
+                      name: chat.name || 'Contacto Sincronizado', 
+                      companyId,
+                      botStatus: 'PAUSED' // Pausado por defecto si viene del historial para no asustar al cliente
+                  }
+              });
+              newContactsCount++;
+          }
+
+          try {
+              const messages = await chat.fetchMessages({ limit: 50 });
+              for (const msg of messages) {
+                  if (msg.isStatus || msg.broadcast || msg.type === 'e2e_notification' || msg.type === 'call_log') continue;
+
+                  let textBody = msg.body ? msg.body.trim() : '';
+                  if (!textBody && msg.hasMedia) {
+                      textBody = '[Multimedia o Archivo sincronizado]';
+                  }
+
+                  const timestamp = new Date(msg.timestamp * 1000);
+                  
+                  // Simple check directly in DB (Prisma findFirst is fast enough for 50 limit * active chats)
+                  const existingMsg = await this.prisma.message.findFirst({
+                      where: {
+                          contactId: contact.id,
+                          fromMe: msg.fromMe,
+                          body: textBody
+                      }
+                  });
+
+                  if (!existingMsg) {
+                      await this.prisma.message.create({
+                          data: {
+                              body: textBody,
+                              fromMe: msg.fromMe,
+                              timestamp: timestamp,
+                              contactId: contact.id
+                          }
+                      });
+                      syncedCount++;
+                  }
+              }
+          } catch (e) {
+              this.logger.error(`Error sincronizando chat ${phone}:`, e);
+          }
+      }
+
+      this.logger.log(`[OmniChat-${companyId}] Sincronización completada. ${syncedCount} mensajes nuevos, ${newContactsCount} contactos creados.`);
+      return { syncedMessages: syncedCount, newContacts: newContactsCount };
   }
 }

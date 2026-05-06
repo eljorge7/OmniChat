@@ -626,4 +626,13 @@ export class WhatsappController {
       where: { id }
     });
   }
+
+  @Post('sync-history')
+  async syncHistory(@Body() body: { companyId: string }) {
+    if (!body.companyId) {
+       throw new BadRequestException("companyId requerido para la sincronización");
+    }
+    const result = await this.whatsapp.syncHistoricalMessages(body.companyId);
+    return { success: true, ...result };
+  }
 }
