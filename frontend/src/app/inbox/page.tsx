@@ -59,6 +59,9 @@ export default function InboxPage() {
   const [facturaData, setFacturaData] = useState({ description: "", price: "", quantity: 1 });
   const [isFacturaLoading, setIsFacturaLoading] = useState(false);
 
+  // Sync History
+  const [isSyncing, setIsSyncing] = useState(false);
+
   const currentChat = chats.find(c => c.id === selectedChatId) || chats.filter(c => c.pipeId === activePipeline)[0];
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -274,6 +277,27 @@ export default function InboxPage() {
      }, 1500);
   };
 
+  const handleSyncHistory = async () => {
+     const activeCid = localStorage.getItem('activeCompanyId');
+     if (!activeCid) return alert("No hay empresa activa");
+     if (!confirm("Esto descargará los últimos 50 mensajes de cada chat activo desde tu teléfono. Puede tomar varios segundos. ¿Continuar?")) return;
+     
+     setIsSyncing(true);
+     try {
+       const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/sync-history`, { companyId: activeCid });
+       alert(`Sincronización Completa. Se guardaron ${res.data.syncedMessages} mensajes y se crearon ${res.data.newContacts} contactos nuevos.`);
+       // Refresh chats
+       const qParams = `?companyId=${activeCid}`;
+       const refreshRes = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox${qParams}`);
+       setChats(refreshRes.data.chats);
+     } catch (e: any) {
+       console.error("Error syncing history", e);
+       alert(e.response?.data?.message || "Hubo un error sincronizando el historial. ¿El motor de WhatsApp está conectado?");
+     } finally {
+       setIsSyncing(false);
+     }
+  };
+
 
 
   useEffect(() => {
@@ -449,6 +473,18 @@ export default function InboxPage() {
                  </select>
                </div>
              )}
+             
+               <button
+                 onClick={handleSyncHistory}
+                 disabled={isSyncing}
+                 className="w-full mt-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold py-2 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+               >
+                 {isSyncing ? (
+                   <><div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Sincronizando...</>
+                 ) : (
+                   <><Clock className="w-4 h-4" /> Sincronizar Historial</>
+                 )}
+               </button>
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {activeChats.map(chat => {
