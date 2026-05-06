@@ -627,21 +627,23 @@ export class WhatsappService implements OnModuleInit {
           // Ignorar cuentas de estado
           if (phone === 'status' || chat.id._serialized === 'status@broadcast') continue;
 
-          let contact = await this.prisma.contact.findFirst({ where: { phone, companyId } });
-          if (!contact) {
-              contact = await this.prisma.contact.create({
-                  data: { 
-                      phone, 
-                      name: chat.name || 'Contacto Sincronizado', 
-                      companyId,
-                      botStatus: 'PAUSED' // Pausado por defecto si viene del historial para no asustar al cliente
-                  }
-              });
-              newContactsCount++;
-          }
-
           try {
               const messages = await chat.fetchMessages({ limit: 50 });
+              if (!messages || messages.length === 0) continue;
+
+              let contact = await this.prisma.contact.findFirst({ where: { phone, companyId } });
+              if (!contact) {
+                  contact = await this.prisma.contact.create({
+                      data: { 
+                          phone, 
+                          name: chat.name || 'Contacto Sincronizado', 
+                          companyId,
+                          botStatus: 'PAUSED'
+                      }
+                  });
+                  newContactsCount++;
+              }
+
               for (const msg of messages) {
                   if (msg.isStatus || msg.broadcast || msg.type === 'e2e_notification' || msg.type === 'call_log') continue;
 
@@ -652,12 +654,19 @@ export class WhatsappService implements OnModuleInit {
 
                   const timestamp = new Date(msg.timestamp * 1000);
                   
-                  // Simple check directly in DB (Prisma findFirst is fast enough for 50 limit * active chats)
+                  // Verificar duplicados considerando una ventana de tiempo de 10 segundos
+                  const tenSecondsBefore = new Date(timestamp.getTime() - 10000);
+                  const tenSecondsAfter = new Date(timestamp.getTime() + 10000);
+
                   const existingMsg = await this.prisma.message.findFirst({
                       where: {
                           contactId: contact.id,
                           fromMe: msg.fromMe,
-                          body: textBody
+                          body: textBody,
+                          timestamp: {
+                              gte: tenSecondsBefore,
+                              lte: tenSecondsAfter
+                          }
                       }
                   });
 
