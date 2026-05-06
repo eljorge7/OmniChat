@@ -628,7 +628,7 @@ export class WhatsappService implements OnModuleInit {
           if (phone === 'status' || chat.id._serialized === 'status@broadcast') continue;
 
           try {
-              const messages = await chat.fetchMessages({ limit: 50 });
+              const messages = await chat.fetchMessages({ limit: 500 });
               if (!messages || messages.length === 0) continue;
 
               let contact = await this.prisma.contact.findFirst({ where: { phone, companyId } });
