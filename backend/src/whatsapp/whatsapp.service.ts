@@ -613,11 +613,14 @@ export class WhatsappService implements OnModuleInit {
           throw new Error("El motor de WhatsApp no está listo para sincronizar.");
       }
 
-      this.logger.log(`[OmniChat-${companyId}] Iniciando sincronización manual de historial...`);
-      const chats = await sd.client.getChats();
+      this.logger.log(`[OmniChat-${companyId}] Iniciando sincronización manual de historial en segundo plano...`);
       
-      let syncedCount = 0;
-      let newContactsCount = 0;
+      // Ejecutamos en segundo plano para evitar timeout HTTP
+      setTimeout(async () => {
+         try {
+            const chats = await sd.client.getChats();
+            let syncedCount = 0;
+            let newContactsCount = 0;
 
       for (const chat of chats) {
           // Ignorar grupos y cuentas bloqueadas/anómalas
@@ -682,12 +685,21 @@ export class WhatsappService implements OnModuleInit {
                       syncedCount++;
                   }
               }
-          } catch (e) {
-              this.logger.error(`Error sincronizando chat ${phone}:`, e);
+          } catch (e: any) {
+              this.logger.error(`[OmniChat-${companyId}] Error sincronizando chat ${phone}: ${e.message}`);
           }
       }
 
-      this.logger.log(`[OmniChat-${companyId}] Sincronización completada. ${syncedCount} mensajes nuevos, ${newContactsCount} contactos creados.`);
-      return { syncedMessages: syncedCount, newContacts: newContactsCount };
+      this.logger.log(`[OmniChat-${companyId}] ✅ Sincronización Finalizada. Mensajes: ${syncedCount}, Nuevos contactos: ${newContactsCount}`);
+      } catch(e: any) {
+          this.logger.error(`[OmniChat-${companyId}] Error fatal en sincronización de historial: ${e.message}`);
+      }
+    }, 0);
+
+    return { 
+        syncedMessages: "Background", 
+        newContacts: "Background",
+        message: "La sincronización se está ejecutando en segundo plano. Los mensajes aparecerán pronto en tu bandeja."
+    };
   }
 }
