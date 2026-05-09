@@ -159,7 +159,7 @@ export default function InboxPage() {
   };
 
   useEffect(() => {
-    if (isFacturaModalOpen && session?.user?.facturaproTenantId) {
+    if (isFacturaModalOpen && (session?.user as any)?.facturaproTenantId) {
       setIsFacturaLoading(true);
       fetch(`https://facturapro.radiotecpro.com/api/products`, {
         headers: { 'x-tenant-id': (session.user as any).facturaproTenantId }
