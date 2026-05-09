@@ -11,6 +11,7 @@ model Company {
   id        String   @id @default(uuid())
   name      String
   apiKey    String?  @unique // Llave maestra para Integración B2B (RentControl)
+  facturaproTenantId String? // ID del Tenant en FacturaPro para sincronización de inventario
   users     User[]
   contacts  Contact[]
   pipelines Pipeline[]

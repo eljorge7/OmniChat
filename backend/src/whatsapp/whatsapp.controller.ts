@@ -319,11 +319,17 @@ export class WhatsappController {
 
   @Post('login')
   async login(@Body() body: { email: string, password: string }) {
-    const user = await this.prisma.user.findUnique({ where: { email: body.email } });
+    const user = await this.prisma.user.findUnique({ 
+      where: { email: body.email },
+      include: { company: { select: { facturaproTenantId: true } } }
+    });
     if (!user || user.password !== body.password) {
       return { error: 'Credenciales inválidas' }; 
     }
-    return user;
+    return {
+      ...user,
+      facturaproTenantId: user.company?.facturaproTenantId
+    };
   }
 
   @Post('send')

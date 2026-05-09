@@ -18,7 +18,7 @@ export const authOptions = {
           });
           const user = await res.json();
           if (res.ok && user && !user.error) {
-            return { id: user.id, name: user.name, email: user.email, role: user.role, companyId: user.companyId, avatarUrl: user.avatarUrl };
+            return { id: user.id, name: user.name, email: user.email, role: user.role, companyId: user.companyId, avatarUrl: user.avatarUrl, facturaproTenantId: user.facturaproTenantId };
           }
           return null;
         } catch (e) {
@@ -34,6 +34,7 @@ export const authOptions = {
         token.companyId = user.companyId;
         token.id = user.id;
         token.avatarUrl = user.avatarUrl;
+        token.facturaproTenantId = user.facturaproTenantId;
       }
       return token;
     },
@@ -43,6 +44,7 @@ export const authOptions = {
         (session.user as any).companyId = token.companyId;
         (session.user as any).id = token.id;
         (session.user as any).avatarUrl = token.avatarUrl;
+        (session.user as any).facturaproTenantId = token.facturaproTenantId;
       }
       return session;
     }

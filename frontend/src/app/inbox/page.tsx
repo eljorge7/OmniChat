@@ -58,6 +58,7 @@ export default function InboxPage() {
   const [facturaType, setFacturaType] = useState<'QUOTE' | 'INVOICE'>('QUOTE');
   const [facturaData, setFacturaData] = useState({ description: "", price: "", quantity: 1 });
   const [isFacturaLoading, setIsFacturaLoading] = useState(false);
+  const [inventoryProducts, setInventoryProducts] = useState<any[]>([]);
 
   // Sync History
   const [isSyncing, setIsSyncing] = useState(false);
@@ -156,6 +157,23 @@ export default function InboxPage() {
        }
     }
   };
+
+  useEffect(() => {
+    if (isFacturaModalOpen && session?.user?.facturaproTenantId) {
+      setIsFacturaLoading(true);
+      fetch(`https://facturapro.radiotecpro.com/api/products`, {
+        headers: { 'x-tenant-id': (session.user as any).facturaproTenantId }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setInventoryProducts(data);
+        }
+      })
+      .catch(err => console.error("Error fetching FacturaPro inventory:", err))
+      .finally(() => setIsFacturaLoading(false));
+    }
+  }, [isFacturaModalOpen, session]);
 
   const handleRenameContact = async (source: 'header' | 'crm') => {
      if (!currentChat) return;
@@ -1030,14 +1048,31 @@ export default function InboxPage() {
                </div>
 
                <div>
-                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none block mb-2">Producto o Concepto</label>
-                 <textarea 
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none block mb-2 flex justify-between">
+                   <span>Producto o Concepto</span>
+                   {inventoryProducts.length > 0 && <span className="text-indigo-400 flex items-center gap-1"><CheckCheck className="w-3 h-3"/> Conectado a FacturaPro</span>}
+                 </label>
+                 <input 
                    autoFocus 
-                   className="w-full border border-slate-200 rounded-xl bg-white focus:bg-indigo-50/50 p-3 text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 resize-none h-20 shadow-inner" 
-                   placeholder="Ej. Juego de 4 llantas Michelin rin 15..." 
+                   list="facturapro-products"
+                   className="w-full border border-slate-200 rounded-xl bg-white focus:bg-indigo-50/50 p-3 text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner" 
+                   placeholder="Escribe para buscar en inventario..." 
                    value={facturaData.description} 
-                   onChange={e => setFacturaData({...facturaData, description: e.target.value})} 
+                   onChange={e => {
+                     const val = e.target.value;
+                     const foundProduct = inventoryProducts.find(p => p.name === val || `${p.sku} - ${p.name}` === val);
+                     if (foundProduct) {
+                       setFacturaData({...facturaData, description: val, price: foundProduct.salePrice.toString()});
+                     } else {
+                       setFacturaData({...facturaData, description: val});
+                     }
+                   }} 
                  />
+                 <datalist id="facturapro-products">
+                   {inventoryProducts.map(p => (
+                     <option key={p.id} value={`${p.sku} - ${p.name}`}>${p.salePrice}</option>
+                   ))}
+                 </datalist>
                </div>
                
                <div className="grid grid-cols-2 gap-4">
