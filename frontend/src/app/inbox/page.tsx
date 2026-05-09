@@ -162,7 +162,7 @@ export default function InboxPage() {
     if (isFacturaModalOpen && (session?.user as any)?.facturaproTenantId) {
       setIsFacturaLoading(true);
       fetch(`https://facturapro.radiotecpro.com/api/products`, {
-        headers: { 'x-tenant-id': (session.user as any).facturaproTenantId }
+        headers: { 'x-tenant-id': (session?.user as any)?.facturaproTenantId || '' }
       })
       .then(res => res.json())
       .then(data => {
