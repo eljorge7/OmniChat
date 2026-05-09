@@ -140,9 +140,8 @@ export class WhatsappService implements OnModuleInit {
     });
 
     client.on('message', async (message) => {
-      // Ignorar mensajes con más de 24 horas de antigüedad para evitar procesar historial viejo
-      const twentyFourHoursAgo = Math.floor(Date.now() / 1000) - 86400;
-      if (message.timestamp < twentyFourHoursAgo) {
+      // Ignorar mensajes enviados antes de que el servidor se conectara (sincronización inicial)
+      if (message.timestamp < sessionStartupTime) {
          this.logger.log(`[OmniChat-${companyId}] Ignorando mensaje histórico (muy antiguo).`);
          return;
       }
@@ -151,8 +150,7 @@ export class WhatsappService implements OnModuleInit {
 
     client.on('message_create', async (message) => {
       // Interceptar los mensajes que salen físicamente desde el celular
-      const twentyFourHoursAgo = Math.floor(Date.now() / 1000) - 86400;
-      if (message.timestamp < twentyFourHoursAgo) return;
+      if (message.timestamp < sessionStartupTime) return;
       if (message.fromMe) {
           await this.handleOutgoingPhoneMessage(companyId, message);
       }
