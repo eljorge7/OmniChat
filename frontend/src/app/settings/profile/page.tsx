@@ -146,7 +146,7 @@ export default function ProfilePage() {
                       type="button"
                       onClick={() => {
                          if ((session?.user as any)?.id) {
-                            window.location.href = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/google/auth?userId=${(session.user as any).id}`;
+                            window.location.href = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/google/auth?userId=${(session?.user as any).id}`;
                          }
                       }}
                       className="bg-white hover:bg-blue-50 text-blue-600 border border-blue-300 px-4 py-2 rounded-lg font-bold shadow-sm transition-all text-sm w-full"
