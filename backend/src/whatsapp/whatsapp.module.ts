@@ -6,9 +6,10 @@ import { ApiController } from './api.controller';
 import { WisphubController } from './wisphub.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AiModule } from '../ai/ai.module';
+import { GoogleModule } from '../google/google.module';
 
 @Module({
-  imports: [PrismaModule, AiModule],
+  imports: [PrismaModule, AiModule, GoogleModule],
   controllers: [WhatsappController, ApiController, WisphubController],
   providers: [WhatsappService, WhatsappGateway],
   exports: [WhatsappService, WhatsappGateway],

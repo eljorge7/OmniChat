@@ -34,6 +34,7 @@
     "class-validator": "^0.15.1",
     "compute-cosine-similarity": "^1.1.0",
     "cookie-parser": "^1.4.7",
+    "googleapis": "^171.4.0",
     "helmet": "^8.1.0",
     "nodemailer": "^8.0.4",
     "openai": "^6.33.0",

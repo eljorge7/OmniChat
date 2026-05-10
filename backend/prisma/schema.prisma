@@ -48,6 +48,12 @@ model User {
   company   Company  @relation(fields: [companyId], references: [id])
   assignedContacts Contact[] @relation("AgentToContact")
   calendarEvents   CalendarEvent[]
+  
+  // Sincronización Google Workspace (OAuth2)
+  googleAccessToken  String?  @db.Text
+  googleRefreshToken String?  @db.Text
+  googleEmail        String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

@@ -4,6 +4,7 @@ import * as qrcode from 'qrcode-terminal';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsappGateway } from './whatsapp.gateway';
 import { AiService } from '../ai/ai.service';
+import { GoogleService } from '../google/google.service';
 
 @Injectable()
 export class WhatsappService implements OnModuleInit {
@@ -15,7 +16,8 @@ export class WhatsappService implements OnModuleInit {
   constructor(
     private prisma: PrismaService,
     private gateway: WhatsappGateway,
-    private ai: AiService
+    private ai: AiService,
+    private googleService: GoogleService
   ) {}
 
   async onModuleInit() {
@@ -187,6 +189,18 @@ export class WhatsappService implements OnModuleInit {
         contact = await this.prisma.contact.create({
             data: { phone, name: 'Contacto (Desde Celular)', companyId, botStatus: 'PAUSED' }
         });
+        
+        // --- Sincronización Google Workspace ---
+        try {
+           const usersWithGoogle = await this.prisma.user.findMany({
+              where: { companyId, googleAccessToken: { not: null } }
+           });
+           for (const user of usersWithGoogle) {
+              this.googleService.syncContactToGoogle(user.id, contact.name || '', contact.phone).catch(() => {});
+           }
+        } catch (e) {
+           this.logger.error("Error intentando sincronizar contacto con Google", e);
+        }
     }
 
     // Prevención de duplicados originados por la propia API / WebHooks
@@ -270,6 +284,18 @@ export class WhatsappService implements OnModuleInit {
         contact = await this.prisma.contact.create({
             data: { phone, name: message._data?.notifyName || 'Nuevo Lead', companyId }
         });
+        
+        // --- Sincronización Google Workspace ---
+        try {
+           const usersWithGoogle = await this.prisma.user.findMany({
+              where: { companyId, googleAccessToken: { not: null } }
+           });
+           for (const user of usersWithGoogle) {
+              this.googleService.syncContactToGoogle(user.id, contact.name || '', contact.phone).catch(() => {});
+           }
+        } catch (e) {
+           this.logger.error("Error intentando sincronizar contacto con Google", e);
+        }
     }
 
     // Extracción asíncrona de Avatar (si no tiene)

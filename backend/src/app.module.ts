@@ -8,7 +8,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AdminController } from './admin/admin.controller';
 import { UsersController } from './users/users.controller';
 import { CalendarModule } from './calendar/calendar.module';
-
+import { GoogleModule } from './google/google.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
@@ -20,7 +20,8 @@ import { ThrottlerModule } from '@nestjs/throttler';
     }),
     PrismaModule, 
     WhatsappModule,
-    CalendarModule
+    CalendarModule,
+    GoogleModule
   ],
   controllers: [AppController, AdminController, UsersController],
   providers: [AppService],
