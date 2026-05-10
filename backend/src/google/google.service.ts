@@ -32,11 +32,16 @@ export class GoogleService {
       'https://www.googleapis.com/auth/userinfo.email'
     ];
 
+    const redirectUri = process.env.NODE_ENV === 'production' 
+      ? 'https://omnichat.radiotecpro.com/api/v1/google/callback'
+      : 'http://localhost:3000/api/v1/google/callback';
+
     return this.oauth2Client.generateAuthUrl({
       access_type: 'offline',
-      prompt: 'consent',
+      prompt: 'consent select_account',
       scope: scopes,
-      state: userId // pass the user ID as state so we know who to save the tokens for
+      state: userId,
+      redirect_uri: redirectUri
     });
   }
 
