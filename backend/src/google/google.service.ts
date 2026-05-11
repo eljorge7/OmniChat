@@ -14,7 +14,7 @@ export class GoogleService {
     // The frontend will receive the code and send it to our backend, or the backend will redirect back to frontend
     // Let's use the backend callback URI as configured in the console:
     const redirectUri = process.env.NODE_ENV === 'production' 
-      ? 'https://omnichat.radiotecpro.com/api/v1/google/callback'
+      ? 'https://api.omnichat.radiotecpro.com/api/v1/google/callback'
       : 'http://localhost:3000/api/v1/google/callback';
 
     this.oauth2Client = new google.auth.OAuth2(
@@ -33,7 +33,7 @@ export class GoogleService {
     ];
 
     const redirectUri = process.env.NODE_ENV === 'production' 
-      ? 'https://omnichat.radiotecpro.com/api/v1/google/callback'
+      ? 'https://api.omnichat.radiotecpro.com/api/v1/google/callback'
       : 'http://localhost:3000/api/v1/google/callback';
 
     return this.oauth2Client.generateAuthUrl({

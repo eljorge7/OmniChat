@@ -24,6 +24,7 @@ services:
     ports:
       - "3002:3002"
     environment:
+      - NODE_ENV=production
       - DATABASE_URL=postgresql://admin:omnichatpassword@omnichat-db:5432/omnichat?schema=public
       - JWT_SECRET=super_secret_omnichat_k3y
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
