@@ -136,6 +136,8 @@ export class GoogleService {
     } catch (e) {
       this.logger.error('Failed to sync contact to Google', e);
     }
+  }
+
   async syncEventToGoogle(userId: string, eventData: { title: string, description?: string, startTime: Date, endTime: Date, location?: string }) {
     try {
       const auth = await this.getAuthClient(userId);

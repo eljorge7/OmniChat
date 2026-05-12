@@ -38,4 +38,21 @@ export class CalendarController {
   ) {
     return await this.calendarService.deleteEvent(id, companyId);
   }
+
+  @Get('debug/test-sync/:userId')
+  async testSync(@Param('userId') userId: string) {
+    try {
+      const eventData = {
+        title: "Test Event OmniChat",
+        description: "Diagnostic test",
+        startTime: new Date(),
+        endTime: new Date(Date.now() + 3600000)
+      };
+      // Use any to bypass private access if needed, or call public method
+      await (this.calendarService as any).googleService.syncEventToGoogle(userId, eventData);
+      return { success: true, message: "Sync command sent to Google without throwing errors." };
+    } catch (e) {
+      return { success: false, error: e.message, stack: e.stack };
+    }
+  }
 }
