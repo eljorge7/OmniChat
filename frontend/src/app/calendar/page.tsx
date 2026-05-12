@@ -24,8 +24,9 @@ export default function CalendarPage() {
   
   // Modal de Crear Cita
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newEvent, setNewEvent] = useState({ title: "", description: "", date: format(new Date(), "yyyy-MM-dd"), time: "10:00", pipelineId: "" });
+  const [newEvent, setNewEvent] = useState({ id: "", title: "", description: "", location: "", date: format(new Date(), "yyyy-MM-dd"), time: "10:00", pipelineId: "", assignedToId: "" });
   const [pipelines, setPipelines] = useState<any[]>([]);
+  const [teamUsers, setTeamUsers] = useState<any[]>([]);
 
   // Modal de Detalles de Cita (Visualización y Borrado)
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
@@ -39,6 +40,11 @@ export default function CalendarPage() {
       // Fetch Pipelines para color-coding
       axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox?companyId=${cid}`)
         .then(res => setPipelines(res.data.pipelines || []))
+        .catch(console.error);
+        
+      // Fetch Técnicos/Usuarios
+      axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/whatsapp/agents/${cid}`)
+        .then(res => setTeamUsers(res.data || []))
         .catch(console.error);
     }
   }, []);
@@ -55,16 +61,23 @@ export default function CalendarPage() {
     const startObj = new Date(`${newEvent.date}T${newEvent.time}:00`);
     const endObj = new Date(startObj.getTime() + 60*60*1000); // +1 Hora default
 
-    const userId = (session?.user as any)?.id;
-
-    await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/calendar/${activeCompanyId}`, {
+    const payload = {
       title: newEvent.title,
       description: newEvent.description,
+      location: newEvent.location,
       startTime: startObj.toISOString(),
       endTime: endObj.toISOString(),
       pipelineId: newEvent.pipelineId || null,
-      assignedToId: userId || null
-    });
+      assignedToId: newEvent.assignedToId || null
+    };
+
+    if (newEvent.id) {
+       // UPDATE
+       await axios.put(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/calendar/${activeCompanyId}/${newEvent.id}`, payload);
+    } else {
+       // CREATE
+       await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/calendar/${activeCompanyId}`, payload);
+    }
     
     setIsModalOpen(false);
     fetchEvents(activeCompanyId);
@@ -91,7 +104,7 @@ export default function CalendarPage() {
         
         <div className="flex items-center gap-4">
           <button onClick={() => {
-             setNewEvent({ title: "", description: "", date: format(new Date(), "yyyy-MM-dd"), time: "10:00", pipelineId: "" });
+             setNewEvent({ id: "", title: "", description: "", location: "", date: format(new Date(), "yyyy-MM-dd"), time: "10:00", pipelineId: "", assignedToId: (session?.user as any)?.id || "" });
              setIsModalOpen(true);
           }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-indigo-200 transition-all hover:-translate-y-0.5">
             <Plus className="h-5 w-5" /> Nueva Cita
@@ -114,7 +127,7 @@ export default function CalendarPage() {
           }}
           selectable
           onSelectSlot={({ start }) => {
-            setNewEvent({ ...newEvent, date: format(start, "yyyy-MM-dd"), time: format(start, "HH:mm") });
+            setNewEvent({ id: "", title: "", description: "", location: "", date: format(start, "yyyy-MM-dd"), time: format(start, "HH:mm"), pipelineId: "", assignedToId: (session?.user as any)?.id || "" });
             setIsModalOpen(true);
           }}
           onSelectEvent={(event) => {
@@ -138,8 +151,8 @@ export default function CalendarPage() {
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-300 border border-slate-100 dark:border-slate-800">
             <div className="bg-gradient-to-br from-indigo-500 to-indigo-700 p-8 text-white text-center">
-              <h2 className="text-2xl font-black tracking-tight">Programar Cita</h2>
-              <p className="text-indigo-100 mt-2 text-sm font-medium">Asigna un técnico o cuadrilla al servicio.</p>
+              <h2 className="text-2xl font-black tracking-tight">{newEvent.id ? 'Editar Cita' : 'Programar Cita'}</h2>
+              <p className="text-indigo-100 mt-2 text-sm font-medium">{newEvent.id ? 'Modifica los datos del servicio.' : 'Asigna un técnico o cuadrilla al servicio.'}</p>
             </div>
             <div className="p-8 space-y-6">
                <div>
@@ -158,13 +171,27 @@ export default function CalendarPage() {
                  </div>
                </div>
 
-               <div>
-                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Embudo / Categoría (Color)</label>
-                 <select className="w-full border-slate-200 rounded-xl bg-slate-50 focus:bg-white p-3 font-medium outline-none focus:ring-2 focus:ring-indigo-500" value={newEvent.pipelineId} onChange={e => setNewEvent({...newEvent, pipelineId: e.target.value})}>
-                   <option value="">(Sin color / Mixto)</option>
-                   {pipelines.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                 </select>
-               </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Ubicación (Dirección)</label>
+                  <input type="text" className="w-full border-slate-200 rounded-xl bg-slate-50 focus:bg-white p-3 font-medium outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Av. Siempre Viva 123" value={newEvent.location} onChange={e => setNewEvent({...newEvent, location: e.target.value})} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Técnico Asignado</label>
+                    <select className="w-full border-slate-200 rounded-xl bg-slate-50 focus:bg-white p-3 font-medium outline-none focus:ring-2 focus:ring-indigo-500" value={newEvent.assignedToId} onChange={e => setNewEvent({...newEvent, assignedToId: e.target.value})}>
+                      <option value="">Sin asignar</option>
+                      {teamUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Embudo / Categoría</label>
+                    <select className="w-full border-slate-200 rounded-xl bg-slate-50 focus:bg-white p-3 font-medium outline-none focus:ring-2 focus:ring-indigo-500" value={newEvent.pipelineId} onChange={e => setNewEvent({...newEvent, pipelineId: e.target.value})}>
+                      <option value="">(Sin color / Mixto)</option>
+                      {pipelines.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
+                </div>
                
                <div className="pt-6 flex gap-4">
                  <button onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-3.5 text-slate-500 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl transition-colors">Cancelar</button>
@@ -204,6 +231,18 @@ export default function CalendarPage() {
                     {selectedEvent.pipeline.name}
                   </div>
                 )}
+                {selectedEvent.location && (
+                  <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400 font-medium mt-2">
+                    <svg className="h-5 w-5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    <span>{selectedEvent.location}</span>
+                  </div>
+                )}
+                {selectedEvent.assignedTo && (
+                  <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400 font-medium mt-2">
+                    <svg className="h-5 w-5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                    <span>Técnico: <span className="font-bold text-slate-700 dark:text-slate-300">{selectedEvent.assignedTo.name}</span></span>
+                  </div>
+                )}
                 {selectedEvent.description && (
                   <div className="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-400 font-medium mt-4 bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
                     <svg className="h-5 w-5 text-slate-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" /></svg>
@@ -212,7 +251,24 @@ export default function CalendarPage() {
                 )}
               </div>
 
-              <div className="flex gap-3 justify-end border-t border-slate-100 dark:border-slate-800 pt-4">
+              <div className="flex gap-3 justify-end border-t border-slate-100 dark:border-slate-800 pt-4 mt-6">
+                <button onClick={() => {
+                   setNewEvent({
+                     id: selectedEvent.id,
+                     title: selectedEvent.title,
+                     description: selectedEvent.description || "",
+                     location: selectedEvent.location || "",
+                     date: format(new Date(selectedEvent.startTime), "yyyy-MM-dd"),
+                     time: format(new Date(selectedEvent.startTime), "HH:mm"),
+                     pipelineId: selectedEvent.pipelineId || "",
+                     assignedToId: selectedEvent.assignedToId || ""
+                   });
+                   setSelectedEvent(null);
+                   setIsModalOpen(true);
+                }} className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold rounded-xl flex items-center gap-2 transition-colors text-sm mr-auto">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                  Editar
+                </button>
                 <button onClick={() => {
                   if (confirm(`¿Estás seguro de eliminar el evento "${selectedEvent.title}"? Esto lo borrará permanentemente de la agenda y de Google Calendar.`)) {
                     handleDelete(selectedEvent.id);

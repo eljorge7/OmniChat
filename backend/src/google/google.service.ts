@@ -179,4 +179,30 @@ export class GoogleService {
       this.logger.error(`Fallo al eliminar evento en Google Calendar (User: ${userId}, EventId: ${googleEventId})`, e);
     }
   }
+
+  async updateEventInGoogle(userId: string, googleEventId: string, eventData: { title: string, description?: string, startTime: Date, endTime: Date, location?: string }) {
+    try {
+      const auth = await this.getAuthClient(userId);
+      const calendar = google.calendar({ version: 'v3', auth });
+
+      await calendar.events.update({
+        calendarId: 'primary',
+        eventId: googleEventId,
+        requestBody: {
+          summary: eventData.title,
+          description: eventData.description || 'Actualizado desde OmniChat',
+          location: eventData.location || '',
+          start: {
+            dateTime: eventData.startTime.toISOString(),
+          },
+          end: {
+            dateTime: eventData.endTime.toISOString(),
+          }
+        }
+      });
+      this.logger.log(`Evento ${googleEventId} actualizado en Google Calendar del usuario ${userId}`);
+    } catch (e) {
+      this.logger.error(`Fallo al actualizar evento en Google Calendar (User: ${userId}, EventId: ${googleEventId})`, e);
+    }
+  }
 }

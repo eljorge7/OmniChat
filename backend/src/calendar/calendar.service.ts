@@ -50,6 +50,7 @@ export class CalendarService {
         startTime: new Date(data.startTime),
         endTime: new Date(data.endTime),
         status: data.status || 'SCHEDULED',
+        location: data.location || null,
         contactId: data.contactId || null,
         assignedToId: data.assignedToId || null,
         pipelineId: data.pipelineId || null
@@ -66,6 +67,7 @@ export class CalendarService {
       this.googleService.syncEventToGoogle(newEvent.assignedToId, {
         title: newEvent.title,
         description: newEvent.description || '',
+        location: newEvent.location || '',
         startTime: newEvent.startTime,
         endTime: newEvent.endTime
       }).then(googleEventId => {
@@ -93,11 +95,12 @@ export class CalendarService {
     });
     if(!ev) throw new NotFoundException('Cita no encontrada o acceso denegado.');
 
-    return await this.prisma.calendarEvent.update({
+    const updatedEvent = await this.prisma.calendarEvent.update({
       where: { id: eventId },
       data: {
         title: data.title,
         description: data.description,
+        location: data.location,
         startTime: data.startTime ? new Date(data.startTime) : undefined,
         endTime: data.endTime ? new Date(data.endTime) : undefined,
         status: data.status,
@@ -105,6 +108,20 @@ export class CalendarService {
         pipelineId: data.pipelineId
       }
     });
+
+    if (updatedEvent.assignedToId && updatedEvent.googleEventId) {
+      this.googleService.updateEventInGoogle(updatedEvent.assignedToId, updatedEvent.googleEventId, {
+        title: updatedEvent.title,
+        description: updatedEvent.description || '',
+        location: updatedEvent.location || '',
+        startTime: updatedEvent.startTime,
+        endTime: updatedEvent.endTime
+      }).catch(err => {
+        this.logger.error('Error background sync Google Calendar Update', err);
+      });
+    }
+
+    return updatedEvent;
   }
 
   /**
