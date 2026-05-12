@@ -68,6 +68,13 @@ export class CalendarService {
         description: newEvent.description || '',
         startTime: newEvent.startTime,
         endTime: newEvent.endTime
+      }).then(googleEventId => {
+        if (googleEventId) {
+          return this.prisma.calendarEvent.update({
+            where: { id: newEvent.id },
+            data: { googleEventId }
+          });
+        }
       }).catch(err => {
         this.logger.error('Error background sync Google Calendar', err);
       });
@@ -108,6 +115,12 @@ export class CalendarService {
        where: { id: eventId, companyId }
     });
     if(!ev) throw new NotFoundException('Cita no encontrada o acceso denegado.');
+
+    if (ev.assignedToId && ev.googleEventId) {
+      this.googleService.deleteEventFromGoogle(ev.assignedToId, ev.googleEventId).catch(err => {
+        this.logger.error('Error borrando evento en Google Calendar', err);
+      });
+    }
 
     return await this.prisma.calendarEvent.delete({
       where: { id: eventId }

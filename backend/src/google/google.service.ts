@@ -138,12 +138,12 @@ export class GoogleService {
     }
   }
 
-  async syncEventToGoogle(userId: string, eventData: { title: string, description?: string, startTime: Date, endTime: Date, location?: string }) {
+  async syncEventToGoogle(userId: string, eventData: { title: string, description?: string, startTime: Date, endTime: Date, location?: string }): Promise<string | null> {
     try {
       const auth = await this.getAuthClient(userId);
       const calendar = google.calendar({ version: 'v3', auth });
 
-      await calendar.events.insert({
+      const res = await calendar.events.insert({
         calendarId: 'primary',
         requestBody: {
           summary: eventData.title,
@@ -158,8 +158,25 @@ export class GoogleService {
         }
       });
       this.logger.log(`Evento "${eventData.title}" sincronizado a Google Calendar del usuario ${userId}`);
+      return res.data.id || null;
     } catch (e) {
       this.logger.error(`Fallo al sincronizar evento en Google Calendar (User: ${userId})`, e);
+      return null;
+    }
+  }
+
+  async deleteEventFromGoogle(userId: string, googleEventId: string) {
+    try {
+      const auth = await this.getAuthClient(userId);
+      const calendar = google.calendar({ version: 'v3', auth });
+
+      await calendar.events.delete({
+        calendarId: 'primary',
+        eventId: googleEventId
+      });
+      this.logger.log(`Evento ${googleEventId} eliminado de Google Calendar del usuario ${userId}`);
+    } catch (e) {
+      this.logger.error(`Fallo al eliminar evento en Google Calendar (User: ${userId}, EventId: ${googleEventId})`, e);
     }
   }
 }

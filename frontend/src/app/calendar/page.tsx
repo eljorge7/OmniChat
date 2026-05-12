@@ -27,6 +27,9 @@ export default function CalendarPage() {
   const [newEvent, setNewEvent] = useState({ title: "", description: "", date: format(new Date(), "yyyy-MM-dd"), time: "10:00", pipelineId: "" });
   const [pipelines, setPipelines] = useState<any[]>([]);
 
+  // Modal de Detalles de Cita (Visualización y Borrado)
+  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+
   useEffect(() => {
     const cid = localStorage.getItem("activeCompanyId") || "";
     setActiveCompanyId(cid);
@@ -69,6 +72,7 @@ export default function CalendarPage() {
 
   const handleDelete = async (id: string) => {
        await axios.delete(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/calendar/${activeCompanyId}/${id}`);
+       setSelectedEvent(null);
        fetchEvents(activeCompanyId);
   };
 
@@ -114,9 +118,7 @@ export default function CalendarPage() {
             setIsModalOpen(true);
           }}
           onSelectEvent={(event) => {
-            if(confirm(`¿Eliminar la cita "${event.title}"?`)) {
-               handleDelete(event.id);
-            }
+            setSelectedEvent(event);
           }}
           eventPropGetter={(event) => {
              const pipName = event.pipeline?.name || "";
@@ -168,6 +170,58 @@ export default function CalendarPage() {
                  <button onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-3.5 text-slate-500 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl transition-colors">Cancelar</button>
                  <button onClick={handleCreate} className="flex-1 px-4 py-3.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-500/30 transition-all hover:-translate-y-0.5">Guardar Cita</button>
                </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* DETAILS MODAL */}
+      {selectedEvent && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100 dark:border-slate-800">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-4 w-4 rounded-full shadow-sm" style={{ backgroundColor: selectedEvent.pipeline?.name?.toLowerCase().includes('radiotec') ? '#3b82f6' : selectedEvent.pipeline?.name?.toLowerCase().includes('rent') ? '#10b981' : selectedEvent.pipeline?.name?.toLowerCase().includes('lavado') ? '#f97316' : '#6366f1' }}></div>
+                  <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">{selectedEvent.title}</h3>
+                </div>
+                <button onClick={() => setSelectedEvent(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+              
+              <div className="space-y-3 mb-8">
+                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400 font-medium">
+                  <CalendarDays className="h-5 w-5 text-slate-400" />
+                  {format(new Date(selectedEvent.startTime), "EEEE, d 'de' MMMM", { locale: es })}
+                </div>
+                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400 font-medium">
+                  <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  {format(new Date(selectedEvent.startTime), "HH:mm")} - {format(new Date(selectedEvent.endTime), "HH:mm")}
+                </div>
+                {selectedEvent.pipeline && (
+                  <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400 font-medium">
+                    <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+                    {selectedEvent.pipeline.name}
+                  </div>
+                )}
+                {selectedEvent.description && (
+                  <div className="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-400 font-medium mt-4 bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
+                    <svg className="h-5 w-5 text-slate-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" /></svg>
+                    <p>{selectedEvent.description}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 justify-end border-t border-slate-100 dark:border-slate-800 pt-4">
+                <button onClick={() => {
+                  if (confirm(`¿Estás seguro de eliminar el evento "${selectedEvent.title}"? Esto lo borrará permanentemente de la agenda y de Google Calendar.`)) {
+                    handleDelete(selectedEvent.id);
+                  }
+                }} className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl flex items-center gap-2 transition-colors text-sm">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  Eliminar
+                </button>
+              </div>
             </div>
           </div>
         </div>
