@@ -15,7 +15,7 @@ export class GoogleService {
     // Let's use the backend callback URI as configured in the console:
     const redirectUri = process.env.NODE_ENV === 'production' 
       ? 'https://api.omnichat.radiotecpro.com/api/v1/google/callback'
-      : 'http://localhost:3000/api/v1/google/callback';
+      : (process.env.API_URL ? `${process.env.API_URL}/api/v1/google/callback` : 'http://localhost:3002/api/v1/google/callback');
 
     this.oauth2Client = new google.auth.OAuth2(
       clientId,
@@ -34,7 +34,7 @@ export class GoogleService {
 
     const redirectUri = process.env.NODE_ENV === 'production' 
       ? 'https://api.omnichat.radiotecpro.com/api/v1/google/callback'
-      : 'http://localhost:3000/api/v1/google/callback';
+      : (process.env.API_URL ? `${process.env.API_URL}/api/v1/google/callback` : 'http://localhost:3002/api/v1/google/callback');
 
     return this.oauth2Client.generateAuthUrl({
       access_type: 'offline',
@@ -135,6 +135,29 @@ export class GoogleService {
       this.logger.log(`Contacto ${name} (${phone}) sincronizado a Google Contacts del usuario ${userId}`);
     } catch (e) {
       this.logger.error('Failed to sync contact to Google', e);
+    }
+  async syncEventToGoogle(userId: string, eventData: { title: string, description?: string, startTime: Date, endTime: Date, location?: string }) {
+    try {
+      const auth = await this.getAuthClient(userId);
+      const calendar = google.calendar({ version: 'v3', auth });
+
+      await calendar.events.insert({
+        calendarId: 'primary',
+        requestBody: {
+          summary: eventData.title,
+          description: eventData.description || 'Creado desde OmniChat',
+          location: eventData.location || '',
+          start: {
+            dateTime: eventData.startTime.toISOString(),
+          },
+          end: {
+            dateTime: eventData.endTime.toISOString(),
+          }
+        }
+      });
+      this.logger.log(`Evento "${eventData.title}" sincronizado a Google Calendar del usuario ${userId}`);
+    } catch (e) {
+      this.logger.error(`Fallo al sincronizar evento en Google Calendar (User: ${userId})`, e);
     }
   }
 }

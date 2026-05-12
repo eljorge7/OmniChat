@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import axios from "axios";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { es } from "date-fns/locale";
@@ -17,6 +18,7 @@ const localizer = dateFnsLocalizer({
 });
 
 export default function CalendarPage() {
+  const { data: session } = useSession();
   const [activeCompanyId, setActiveCompanyId] = useState("");
   const [events, setEvents] = useState<any[]>([]);
   
@@ -50,12 +52,15 @@ export default function CalendarPage() {
     const startObj = new Date(`${newEvent.date}T${newEvent.time}:00`);
     const endObj = new Date(startObj.getTime() + 60*60*1000); // +1 Hora default
 
+    const userId = (session?.user as any)?.id;
+
     await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/calendar/${activeCompanyId}`, {
       title: newEvent.title,
       description: newEvent.description,
       startTime: startObj.toISOString(),
       endTime: endObj.toISOString(),
-      pipelineId: newEvent.pipelineId || null
+      pipelineId: newEvent.pipelineId || null,
+      assignedToId: userId || null
     });
     
     setIsModalOpen(false);

@@ -1,11 +1,15 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { GoogleService } from '../google/google.service';
 
 @Injectable()
 export class CalendarService {
   private readonly logger = new Logger(CalendarService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private googleService: GoogleService
+  ) {}
 
   /**
    * Obtener todas las citas de un mes/rango para una empresa
@@ -38,7 +42,7 @@ export class CalendarService {
   async createEvent(companyId: string, data: any) {
     this.logger.log(`Creando nueva cita para la compañía ${companyId}: ${data.title}`);
     
-    return await this.prisma.calendarEvent.create({
+    const newEvent = await this.prisma.calendarEvent.create({
       data: {
         companyId,
         title: data.title,
@@ -56,6 +60,20 @@ export class CalendarService {
         pipeline: true
       }
     });
+
+    if (newEvent.assignedToId) {
+      // Fire and forget Google Calendar Sync
+      this.googleService.syncEventToGoogle(newEvent.assignedToId, {
+        title: newEvent.title,
+        description: newEvent.description || '',
+        startTime: newEvent.startTime,
+        endTime: newEvent.endTime
+      }).catch(err => {
+        this.logger.error('Error background sync Google Calendar', err);
+      });
+    }
+
+    return newEvent;
   }
 
   /**
