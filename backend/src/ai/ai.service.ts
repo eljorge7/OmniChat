@@ -620,14 +620,36 @@ export class AiService {
                    
                    if (wispRes.data && wispRes.data.results && wispRes.data.results.length > 0) {
                        const cliente = wispRes.data.results[0];
-                       const saldo = cliente.saldo;
                        const nombre = cliente.nombre;
                        const estado = cliente.estado; // Ej. 'Activo', 'Suspendido'
+                       const usuario = cliente.usuario;
                        
-                       if (saldo <= 0) {
+                       // Consultar facturas de los ultimos 3 meses
+                       const today = new Date();
+                       const threeMonthsAgo = new Date();
+                       threeMonthsAgo.setMonth(today.getMonth() - 3);
+                       const endStr = today.toISOString().split('T')[0];
+                       const startStr = threeMonthsAgo.toISOString().split('T')[0];
+                       
+                       let numFacturas = 0;
+                       let totalDeuda = 0;
+                       
+                       try {
+                           const facturasRes = await axios.get(`https://api.wisphub.net/api/facturas/?cliente=${usuario}&estado=1&fecha_emision__range_0=${startStr}&fecha_emision__range_1=${endStr}`, {
+                               headers: { 'Authorization': `Api-Key ${company.wisphubApiKey}` }
+                           });
+                           if (facturasRes.data && facturasRes.data.results) {
+                               numFacturas = facturasRes.data.results.length;
+                               totalDeuda = facturasRes.data.results.reduce((sum: number, f: any) => sum + f.total, 0);
+                           }
+                       } catch (err) {
+                           this.logger.error("Error obteniendo facturas WispHub", err);
+                       }
+                       
+                       if (numFacturas === 0) {
                            toolReturnContext = `[SISTEMA INTERNO: Encontré al cliente de WispHub '${nombre}'. Su estado actual de internet es '${estado}'. NO DEBE NADA (Saldo: $0). Felicítalo por estar al día y ofrécele ayuda con soporte técnico si lo requiere.]`;
                        } else {
-                           toolReturnContext = `[SISTEMA INTERNO: Encontré al cliente de WispHub '${nombre}'. Su estado actual es '${estado}'. DEBE UN SALDO DE $${saldo} MXN. Infórmale amablemente cuánto debe y pásale nuestro número de tarjeta, CLABE o cuenta para que pague (Si tienes en tu memoria RAG la clabe, dásela. Si no, pídele un momento para que un humano le pase los datos bancarios). Dile que envíe el comprobante por aquí cuando esté listo.]`;
+                           toolReturnContext = `[SISTEMA INTERNO: Encontré al cliente de WispHub '${nombre}'. Eres Julio, Asistente Virtual. Dile exactamente esto con amabilidad y naturalidad: "Muy bien, veo que el servicio está a nombre de ${nombre}, su servicio está ${estado} pero tiene un adeudo de ${numFacturas} factura(s) que en total son $${totalDeuda} pesos." Luego pásale nuestro número de tarjeta, CLABE o cuenta para que pague (Si tienes en tu memoria RAG la clabe, dásela). Dile que envíe el comprobante por aquí cuando esté listo.]`;
                        }
                    } else {
                        toolReturnContext = `[SISTEMA INTERNO: No encontré a ningún cliente en WispHub registrado con el teléfono terminado en ${searchPhone}. Pídele cortésmente al cliente que te diga a nombre de quién está el contrato o si tiene otro teléfono registrado.]`;
@@ -652,11 +674,33 @@ export class AiService {
                    
                    if (wispRes.data && wispRes.data.results && wispRes.data.results.length > 0) {
                        const cliente = wispRes.data.results[0];
-                       const saldo = cliente.saldo;
                        const estado = cliente.estado;
+                       const nombre = cliente.nombre;
+                       const usuario = cliente.usuario;
                        
-                       if (estado.toLowerCase() === 'suspendido' || saldo > 0) {
-                           toolReturnContext = `[SISTEMA INTERNO: Alerta. El cliente reportó una falla técnica pero en WispHub aparece como '${estado}' y debe $${saldo}. Esto no es una falla técnica, es un corte por falta de pago. Como asistente virtual de la empresa, dile amablemente al cliente: "Veo en el sistema que tu servicio está pausado temporalmente por un saldo pendiente de $${saldo}. Si gustas pagarlo, tu internet regresará de inmediato." NUNCA LE OFREZCAS MANDAR TÉCNICOS.]`;
+                       // Consultar facturas de los ultimos 3 meses
+                       const today = new Date();
+                       const threeMonthsAgo = new Date();
+                       threeMonthsAgo.setMonth(today.getMonth() - 3);
+                       const endStr = today.toISOString().split('T')[0];
+                       const startStr = threeMonthsAgo.toISOString().split('T')[0];
+                       
+                       let numFacturas = 0;
+                       let totalDeuda = 0;
+                       try {
+                           const facturasRes = await axios.get(`https://api.wisphub.net/api/facturas/?cliente=${usuario}&estado=1&fecha_emision__range_0=${startStr}&fecha_emision__range_1=${endStr}`, {
+                               headers: { 'Authorization': `Api-Key ${company.wisphubApiKey}` }
+                           });
+                           if (facturasRes.data && facturasRes.data.results) {
+                               numFacturas = facturasRes.data.results.length;
+                               totalDeuda = facturasRes.data.results.reduce((sum: number, f: any) => sum + f.total, 0);
+                           }
+                       } catch (err) {
+                           this.logger.error("Error obteniendo facturas WispHub", err);
+                       }
+                       
+                       if (estado.toLowerCase() === 'suspendido' || numFacturas > 0) {
+                           toolReturnContext = `[SISTEMA INTERNO: Alerta. El cliente reportó una falla técnica pero en WispHub aparece como '${estado}' y debe ${numFacturas} facturas por un total de $${totalDeuda}. Esto no es una falla técnica, es un corte por falta de pago o adeudo. Como asistente virtual de la empresa (Julio), dile amablemente al cliente: "Muy bien, veo que el servicio está a nombre de ${nombre}, su servicio está ${estado} pero tiene un adeudo de ${numFacturas} factura(s) pendientes por un total de $${totalDeuda} pesos. Para restablecer o normalizar tu servicio, por favor ayúdanos a cubrir este saldo." NUNCA LE OFREZCAS MANDAR TÉCNICOS NI DIAGNÓSTICO FÍSICO.]`;
                        } else if ((cliente.router && cliente.router.falla_general) || (cliente.sectorial && cliente.sectorial.falla_general)) {
                            const fallaLugar = (cliente.sectorial && cliente.sectorial.falla_general) ? cliente.sectorial.nombre : (cliente.router ? cliente.router.nombre : "tu zona");
                            const fallaDesc = (cliente.sectorial && cliente.sectorial.falla_general_descripcion) || (cliente.router && cliente.router.falla_general_descripcion) || "interrupción de energía/enlace";
