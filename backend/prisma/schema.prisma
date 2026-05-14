@@ -19,6 +19,7 @@ model Company {
   calendarEvents CalendarEvent[]
   documents Document[]
   campaigns Campaign[]
+  paymentReceipts PaymentReceipt[]
   
   // Asistente AI RAG Multi-Tenant
   openAiKey    String?
@@ -79,6 +80,7 @@ model Contact {
   assignedToId String?
   assignedTo  User?    @relation("AgentToContact", fields: [assignedToId], references: [id])
   calendarEvents CalendarEvent[]
+  paymentReceipts PaymentReceipt[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -186,4 +188,21 @@ model Campaign {
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model PaymentReceipt {
+  id          String   @id @default(uuid())
+  folio       String   // Número de rastreo extraído por IA
+  amount      Float    // Monto del pago
+  bank        String   // Banco destino detectado
+  dateStr     String   // Fecha detectada en el ticket
+  
+  contactId   String
+  contact     Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  
+  @@unique([folio, companyId]) // Un mismo folio no se puede reusar en la misma empresa
 }
