@@ -29,6 +29,10 @@ model Company {
   // WispHub Integration
   wisphubApiKey String?
   
+  // Emergency Mode (Anti-Saturación)
+  emergencyMode    Boolean @default(false)
+  emergencyMessage String? @db.Text
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

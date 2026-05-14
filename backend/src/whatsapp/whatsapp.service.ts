@@ -237,6 +237,27 @@ export class WhatsappService implements OnModuleInit {
     });
 
     this.logger.log(`[OmniChat-${companyId}] Mensaje saliente desde celular sincronizado: ${textBody}`);
+
+    // === COMANDO SECRETO DE EMERGENCIA ===
+    const lowerBody = textBody.toLowerCase();
+    if (lowerBody.startsWith('!emergencia on')) {
+       const extraText = textBody.substring('!emergencia on'.length).trim();
+       const defaultMsg = "🚨 Hola, actualmente tenemos una falla general técnica en la zona. Nuestros técnicos ya están trabajando. Tiempo estimado de recuperación: 2 horas. Te pedimos una disculpa por el inconveniente.";
+       const emergencyMessage = extraText.length > 0 ? extraText : defaultMsg;
+       
+       await this.prisma.company.update({
+          where: { id: companyId },
+          data: { emergencyMode: true, emergencyMessage }
+       });
+       this.logger.log(`[OmniChat-${companyId}] MODO EMERGENCIA ACTIVADO por WhatsApp: ${emergencyMessage}`);
+    } else if (lowerBody.trim() === '!emergencia off') {
+       await this.prisma.company.update({
+          where: { id: companyId },
+          data: { emergencyMode: false }
+       });
+       this.logger.log(`[OmniChat-${companyId}] MODO EMERGENCIA DESACTIVADO por WhatsApp`);
+    }
+    // =====================================
   }
 
   async handleIncomingMessage(companyId: string, message: any) {
@@ -297,6 +318,21 @@ export class WhatsappService implements OnModuleInit {
            this.logger.error("Error intentando sincronizar contacto con Google", e);
         }
     }
+
+    // =============== EMERGENCY MODE INTERCEPTOR ===============
+    const currentCompany = await this.prisma.company.findUnique({ where: { id: companyId } });
+    if (currentCompany && currentCompany.emergencyMode && currentCompany.emergencyMessage) {
+        // Prevent infinite loops and spamming the user if they keep typing
+        const lastSent = await this.prisma.message.findFirst({
+           where: { contactId: contact.id, fromMe: true },
+           orderBy: { timestamp: 'desc' }
+        });
+        if (!lastSent || lastSent.body !== currentCompany.emergencyMessage) {
+            await this.sendDirectMessage(companyId, phone, currentCompany.emergencyMessage);
+        }
+        return; // Detener flujo total. No IA, no Media Download, no Auto-Router.
+    }
+    // ==========================================================
 
     // Extracción asíncrona de Avatar (si no tiene)
     if (!contact.avatarUrl) {
