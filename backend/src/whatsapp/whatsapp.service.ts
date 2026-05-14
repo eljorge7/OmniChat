@@ -170,7 +170,7 @@ export class WhatsappService implements OnModuleInit {
   async handleOutgoingPhoneMessage(companyId: string, message: any) {
     if (message.to.includes('@g.us') || message.isStatus || message.broadcast) return;
 
-    const phone = message.to.replace('@c.us', '');
+    let phone = message.to.replace('@c.us', '');
     let textBody = message.body ? message.body.trim() : '';
     if (!textBody && message.hasMedia) {
         textBody = '[Multimedia o Archivo enviado desde Celular]';
@@ -181,6 +181,23 @@ export class WhatsappService implements OnModuleInit {
     if (textBody.includes('¿En qué puedo ayudarte hoy?') && message.to.includes('@lid')) {
         this.logger.log(`[OmniChat] Filtro aplicado: Ignorando 'Mensaje de Bienvenida' fantasma de Meta Business Suite hacia el LID ${message.to}.`);
         return;
+    }
+
+    
+    
+    // Resolución de @lid (Problema común con Meta Cloud API)
+    if (phone.includes('@lid')) {
+        try {
+            const waContact = await message.getContact();
+            if (waContact && waContact.number) {
+                phone = waContact.number;
+                this.logger.log(`[OmniChat] @lid saliente resuelto a número real: ${phone}`);
+            } else {
+                return; // Ignoramos si no podemos obtener el número real
+            }
+        } catch(e) {
+            return;
+        }
     }
 
     let contact = await this.prisma.contact.findFirst({ where: { phone, companyId } });
@@ -275,7 +292,22 @@ export class WhatsappService implements OnModuleInit {
        return; 
     }
 
-    const phone = message.from.replace('@c.us', '');
+    let phone = message.from.replace('@c.us', '');
+    
+    // Resolución de @lid entrante
+    if (phone.includes('@lid')) {
+        try {
+            const waContact = await message.getContact();
+            if (waContact && waContact.number) {
+                phone = waContact.number;
+                this.logger.log(`[OmniChat] @lid entrante resuelto a número real: ${phone}`);
+            } else {
+                return;
+            }
+        } catch(e) {
+            return;
+        }
+    }
     let textBody = message.body.trim();
 
     // =============== ANTI BOT-LOOP RATE LIMITER ===============

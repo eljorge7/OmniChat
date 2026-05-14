@@ -128,7 +128,8 @@ export class WisphubController {
                 
                 if (resolvedTarget) {
                     const resolvedPhone = resolvedTarget.replace('@c.us', '');
-                    if (resolvedPhone !== contact.phone) {
+                    // IMPORTANTE: Nunca sobreescribir el teléfono real con un @lid
+                    if (resolvedPhone !== contact.phone && !resolvedPhone.includes('@lid')) {
                         this.logger.log(`[WispHub🚀OmniChat] Mapeo nativo detectado: Re-alineando Contacto ${contact.phone} -> ${resolvedPhone}`);
                         await this.prisma.contact.update({
                             where: { id: contact.id },
