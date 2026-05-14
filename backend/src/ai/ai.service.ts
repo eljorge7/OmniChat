@@ -178,7 +178,7 @@ export class AiService {
       messagesParams.push({ role: 'user', content: finalMessageContent });
 
       // Definir Herramientas (Function Calling)
-      const tools = [
+      const tools: any[] = [
         {
           type: "function",
           function: {
@@ -287,7 +287,6 @@ export class AiService {
               required: ["phone"]
             }
           }
-        },
         }
       ];
 
