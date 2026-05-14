@@ -378,6 +378,29 @@ export class WhatsappService implements OnModuleInit {
        unreadCountUpdate: true
     });
 
+    // === NPS SURVEY INTERCEPTOR ===
+    if (/^[1-5]$/.test(textBody)) {
+       const pendingSurvey = await this.prisma.npsSurvey.findFirst({
+          where: { contactId: contact.id, status: 'PENDING' }
+       });
+
+       if (pendingSurvey) {
+          await this.prisma.npsSurvey.update({
+             where: { id: pendingSurvey.id },
+             data: { score: parseInt(textBody), status: 'COMPLETED' }
+          });
+
+          await this.prisma.contactNote.create({
+             data: { text: `📊 Cliente respondió la encuesta NPS con calificación: ${textBody}/5`, contactId: contact.id, authorId: 'SYSTEM_BOT' }
+          });
+
+          const thankYouMsg = "¡Muchas gracias por tus comentarios! Nos ayudan a mejorar cada día. Que tengas un excelente día.";
+          await this.sendDirectMessage(companyId, phone, thankYouMsg);
+          return; // Skip AI and routing, the survey is complete
+       }
+    }
+    // ==============================
+
     // 4.5 Interceptar con Inteligencia Artificial o Verificar Pausa Humana
     if (contact.botStatus === 'PAUSED') {
        this.logger.log(`[OmniChat-${companyId}] IA Pausada para ${phone}. Ignorando ruteo automático.`);

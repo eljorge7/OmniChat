@@ -20,6 +20,7 @@ model Company {
   documents Document[]
   campaigns Campaign[]
   paymentReceipts PaymentReceipt[]
+  npsSurveys      NpsSurvey[]
   
   // Asistente AI RAG Multi-Tenant
   openAiKey    String?
@@ -81,6 +82,7 @@ model Contact {
   assignedTo  User?    @relation("AgentToContact", fields: [assignedToId], references: [id])
   calendarEvents CalendarEvent[]
   paymentReceipts PaymentReceipt[]
+  npsSurveys      NpsSurvey[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -205,4 +207,18 @@ model PaymentReceipt {
   createdAt   DateTime @default(now())
   
   @@unique([folio, companyId]) // Un mismo folio no se puede reusar en la misma empresa
+}
+
+model NpsSurvey {
+  id        String   @id @default(uuid())
+  score     Int?     // Del 1 al 5
+  status    String   @default("PENDING") // PENDING, COMPLETED
+  
+  contactId String
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

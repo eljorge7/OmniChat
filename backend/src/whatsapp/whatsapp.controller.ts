@@ -237,8 +237,37 @@ export class WhatsappController {
   async assignContact(@Body() body: { contactId: string, pipelineId: string }) {
     const updated = await this.prisma.contact.update({
       where: { id: body.contactId },
-      data: { pipelineId: body.pipelineId }
+      data: { pipelineId: body.pipelineId },
+      include: { company: true }
     });
+
+    if (body.pipelineId) {
+       const pipeline = await this.prisma.pipeline.findUnique({ where: { id: body.pipelineId } });
+       if (pipeline && (pipeline.name.toLowerCase().includes('resuelto') || pipeline.name.toLowerCase().includes('instalado'))) {
+          // Send NPS Survey
+          const existingSurvey = await this.prisma.npsSurvey.findFirst({
+             where: { contactId: body.contactId, status: 'PENDING' }
+          });
+
+          if (!existingSurvey) {
+             await this.prisma.npsSurvey.create({
+                data: {
+                   contactId: body.contactId,
+                   companyId: updated.companyId,
+                   status: 'PENDING'
+                }
+             });
+
+             const surveyText = `Hola, acabamos de cerrar tu reporte/instalación. Nos encantaría saber cómo fue tu experiencia. Del 1 al 5, ¿qué calificación le das a nuestra atención? (Siendo 5 excelente y 1 mala)`;
+             await this.whatsapp.sendDirectMessage(updated.companyId, updated.phone, surveyText);
+             
+             await this.prisma.contactNote.create({
+                 data: { text: `📊 Encuesta NPS enviada automáticamente al cliente.`, contactId: updated.id, authorId: 'SYSTEM_BOT' }
+             });
+          }
+       }
+    }
+
     return updated;
   }
 
