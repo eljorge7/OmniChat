@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { WhatsappService } from './whatsapp.service';
 import { ImportContactsDto } from './dto/import-contacts.dto';
 import { CaptureWebLeadDto } from './dto/capture-web-lead.dto';
+import axios from 'axios';
 
 @Controller('api/inbox')
 export class WhatsappController {
@@ -243,28 +244,58 @@ export class WhatsappController {
 
     if (body.pipelineId) {
        const pipeline = await this.prisma.pipeline.findUnique({ where: { id: body.pipelineId } });
-       if (pipeline && (pipeline.name.toLowerCase().includes('resuelto') || pipeline.name.toLowerCase().includes('instalado'))) {
-          // Send NPS Survey
-          const existingSurvey = await this.prisma.npsSurvey.findFirst({
-             where: { contactId: body.contactId, status: 'PENDING' }
-          });
+       if (pipeline) {
+           const pipeName = pipeline.name.toLowerCase();
+           
+           if (pipeName.includes('resuelto')) {
+              // Send NPS Survey
+              const existingSurvey = await this.prisma.npsSurvey.findFirst({
+                 where: { contactId: body.contactId, status: 'PENDING' }
+              });
 
-          if (!existingSurvey) {
-             await this.prisma.npsSurvey.create({
-                data: {
-                   contactId: body.contactId,
-                   companyId: updated.companyId,
-                   status: 'PENDING'
-                }
-             });
+              if (!existingSurvey) {
+                 await this.prisma.npsSurvey.create({
+                    data: {
+                       contactId: body.contactId,
+                       companyId: updated.companyId,
+                       status: 'PENDING'
+                    }
+                 });
 
-             const surveyText = `Hola, acabamos de cerrar tu reporte/instalación. Nos encantaría saber cómo fue tu experiencia. Del 1 al 5, ¿qué calificación le das a nuestra atención? (Siendo 5 excelente y 1 mala)`;
-             await this.whatsapp.sendDirectMessage(updated.companyId, updated.phone, surveyText);
-             
-             await this.prisma.contactNote.create({
-                 data: { text: `📊 Encuesta NPS enviada automáticamente al cliente.`, contactId: updated.id, authorId: 'SYSTEM_BOT' }
-             });
-          }
+                 const surveyText = `Hola, acabamos de cerrar tu reporte/instalación. Nos encantaría saber cómo fue tu experiencia. Del 1 al 5, ¿qué calificación le das a nuestra atención? (Siendo 5 excelente y 1 mala)`;
+                 await this.whatsapp.sendDirectMessage(updated.companyId, updated.phone, surveyText);
+                 
+                 await this.prisma.contactNote.create({
+                     data: { text: `📊 Encuesta NPS enviada automáticamente al cliente.`, contactId: updated.id, authorId: 'SYSTEM_BOT' }
+                 });
+              }
+           } else if (pipeName.includes('instalado') || pipeName.includes('instalaciones')) {
+              // Automatic Onboarding
+              let usernameWisp = 'No Encontrado';
+              if (updated.company.wisphubApiKey) {
+                 let searchPhone = updated.phone.replace('+52', '').replace(/\s+/g, '');
+                 if (searchPhone.length > 10) searchPhone = searchPhone.slice(-10);
+
+                 try {
+                     const res = await axios.get(`https://api.wisphub.net/api/clientes/?telefono__icontains=${searchPhone}`, {
+                         headers: { 'Authorization': `Api-Key ${updated.company.wisphubApiKey}` }
+                     });
+                     if (res.data && res.data.results && res.data.results.length > 0) {
+                         usernameWisp = res.data.results[0].usuario;
+                     }
+                 } catch(e) {
+                     // Silencioso
+                 }
+              }
+
+              const welcomeText = `🎉 ¡Felicidades por tu nueva instalación, ${updated.name || 'cliente'}! Bienvenido a la familia RadioTec.\n\nA partir de hoy, tienes el control total de tu servicio. Puedes consultar tus recibos, pagar en línea o descargar tus facturas desde tu Portal de Cliente:\n🌐 Link: https://clientes.portalinternet.net/panel/clientes/\n👤 Usuario: ${usernameWisp}\n🔑 Contraseña temporal: soporte1234\n\nPara cualquier duda, puedes escribirnos por este mismo medio las 24 hrs. ¡Que disfrutes tu navegación a máxima velocidad! 🚀`;
+              
+              await this.whatsapp.sendDirectMessage(updated.companyId, updated.phone, welcomeText);
+              
+              await this.prisma.contactNote.create({
+                  data: { text: `🎉 Mensaje de Onboarding de bienvenida enviado al cliente (Usuario WispHub: ${usernameWisp}).`, contactId: updated.id, authorId: 'SYSTEM_BOT' }
+              });
+           }
        }
     }
 
