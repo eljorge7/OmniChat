@@ -400,27 +400,38 @@ export class AiService {
             this.logger.log(`[AI-AGENT] Ejecutando 'verify_wisphub_receipt' para ${args.phone}. Folio: ${args.folio}`);
             
             try {
-               // 1. Validar Fecha
-               const today = new Date();
-               const todayStr = today.toISOString().split('T')[0];
-               const yesterday = new Date(today);
-               yesterday.setDate(yesterday.getDate() - 1);
-               const yesterdayStr = yesterday.toISOString().split('T')[0];
+               // Función Helper Local para mover al cliente a Validar
+               const moveToValidationAndAlert = async (reason: string, isPromesa: boolean, amountReceived: number, debtInfo: number) => {
+                  let validacionPipe = await this.prisma.pipeline.findFirst({
+                     where: { companyId: companyId, name: { contains: 'Validar', mode: 'insensitive' } }
+                  });
+                  if (!validacionPipe) {
+                     validacionPipe = await this.prisma.pipeline.create({
+                        data: { companyId: companyId, name: 'Pagos Por Validar', autoReply: '🤖 Tu pago está en revisión.' }
+                     });
+                  }
+                  await this.prisma.contact.update({
+                     where: { id: contactId },
+                     data: { pipelineId: validacionPipe.id, botStatus: 'PAUSED' }
+                  });
+                  
+                  const alertMsg = `🤖 *ALERTA OMNICHAT (Validación Manual Requerida)*\n\nHola Jorge, he recibido un ticket de *${args.phone}* por $${amountReceived}.\n\n⚠️ *Motivo:* ${reason}\nDeuda Real: $${debtInfo}\n\n👉 Ya lo moví a '*${validacionPipe.name}*'. ${isPromesa ? 'Le apliqué una Promesa de Pago provisional.' : 'No modifiqué su servicio en WispHub.'}`;
+                  try {
+                     await axios.post(`http://localhost:3002/api/v1/messages/send`, {
+                        phone: "5216421042123", text: alertMsg
+                     }, { headers: { 'Authorization': `Bearer ${company.apiKey || ''}` } });
+                  } catch(e) {}
+               };
 
-               if (args.date !== todayStr && args.date !== yesterdayStr) {
-                  return `He detectado la imagen de tu pago por $${args.amount}, pero la fecha del comprobante (${args.date}) parece antigua. Un asesor de finanzas revisará esto manualmente a la brevedad.`;
-               }
-
-               // 2. Validar Duplicados (Folio)
+               // 1. Validar Duplicados (Folio)
                const existingReceipt = await this.prisma.paymentReceipt.findFirst({
                   where: { folio: args.folio, companyId: companyId }
                });
-
                if (existingReceipt) {
                   return `❌ El comprobante que enviaste con folio ${args.folio} ya fue registrado en nuestro sistema previamente. Por favor envía el comprobante actual de este mes.`;
                }
 
-               // 3. Buscar Cliente en WispHub
+               // 2. Buscar Cliente en WispHub
                if (!company.wisphubApiKey) {
                   return `He recibido tu comprobante, pero los sistemas de cobro están en mantenimiento. Un asesor lo revisará manualmente.`;
                }
@@ -432,112 +443,92 @@ export class AiService {
                    headers: { 'Authorization': `Api-Key ${company.wisphubApiKey}` }
                });
 
-               if (wispClientesRes.data && wispClientesRes.data.results && wispClientesRes.data.results.length > 0) {
-                   const cliente = wispClientesRes.data.results[0];
-                   
-                   // 4. Buscar Facturas Pendientes
-                   const currentDate = new Date();
-                   const threeMonthsAgo = new Date();
-                   threeMonthsAgo.setMonth(currentDate.getMonth() - 3);
-                   const formattedDateStart = threeMonthsAgo.toISOString().split('T')[0];
+               if (!wispClientesRes.data || !wispClientesRes.data.results || wispClientesRes.data.results.length === 0) {
+                   await moveToValidationAndAlert("Teléfono no encontrado en WispHub", false, args.amount, 0);
+                   return `He recibido tu ticket por $${args.amount}, pero no logré vincular tu teléfono automáticamente. Un asesor lo revisará en breve.`;
+               }
 
-                   const facturasRes = await axios.get(`https://api.wisphub.net/api/facturas/?estado=1&fecha_emision__gte=${formattedDateStart}&cliente=${cliente.id_servicio}`, {
-                       headers: { 'Authorization': `Api-Key ${company.wisphubApiKey}` }
+               const cliente = wispClientesRes.data.results[0];
+               
+               // 3. Buscar Facturas Pendientes
+               const currentDate = new Date();
+               const threeMonthsAgo = new Date();
+               threeMonthsAgo.setMonth(currentDate.getMonth() - 3);
+               const formattedDateStart = threeMonthsAgo.toISOString().split('T')[0];
+
+               const facturasRes = await axios.get(`https://api.wisphub.net/api/facturas/?estado=1&fecha_emision__gte=${formattedDateStart}&cliente=${cliente.id_servicio}`, {
+                   headers: { 'Authorization': `Api-Key ${company.wisphubApiKey}` }
+               });
+
+               let totalDeuda = 0;
+               let facturas = facturasRes.data.results || [];
+               facturas.forEach((f: any) => totalDeuda += parseFloat(f.total));
+
+               if (facturas.length === 0) {
+                  return `✅ He recibido tu comprobante por $${args.amount}, sin embargo en este momento tu servicio aparece AL CORRIENTE y sin adeudos. Si tienes dudas, un humano te atenderá pronto.`;
+               }
+
+               // 4. Validar Fecha
+               const todayStr = currentDate.toISOString().split('T')[0];
+               const yesterday = new Date(currentDate);
+               yesterday.setDate(yesterday.getDate() - 1);
+               const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+               if (args.date !== todayStr && args.date !== yesterdayStr) {
+                  await moveToValidationAndAlert(`Fecha del ticket parece vieja (${args.date})`, false, args.amount, totalDeuda);
+                  return `He detectado la imagen de tu pago por $${args.amount}, pero la fecha del comprobante (${args.date}) parece antigua. Un asesor de finanzas revisará esto manualmente a la brevedad.`;
+               }
+
+               // 5. Validar Monto y Ejecutar
+               const facturaTarget = facturas[0];
+
+               if (parseFloat(args.amount) >= (totalDeuda * 0.95)) { // Tolerancia 5%
+                   await this.prisma.paymentReceipt.create({
+                      data: {
+                         folio: args.folio, amount: parseFloat(args.amount), bank: args.bank_name, dateStr: args.date, contactId: contactId, companyId: companyId
+                      }
                    });
 
-                   let totalDeuda = 0;
-                   let facturas = facturasRes.data.results || [];
-                   facturas.forEach((f: any) => totalDeuda += parseFloat(f.total));
-
-                   if (facturas.length === 0) {
-                      return `✅ He recibido tu comprobante por $${args.amount}, sin embargo en este momento tu servicio aparece AL CORRIENTE y sin adeudos. Si tienes dudas, un humano te atenderá pronto.`;
-                   }
-
-                   // 5. Validar Monto
-                   if (parseFloat(args.amount) >= (totalDeuda * 0.95)) { // Tolerancia del 5%
-                       await this.prisma.paymentReceipt.create({
-                          data: {
-                             folio: args.folio,
-                             amount: parseFloat(args.amount),
-                             bank: args.bank_name,
-                             dateStr: args.date,
-                             contactId: contactId,
-                             companyId: companyId
-                          }
+                   try {
+                       // Liquidar Factura Permanentemente (Forma Pago 1 = Efectivo/Transfer)
+                       await axios.post(`https://api.wisphub.net/api/facturas/${facturaTarget.id_factura}/pagos/`, {
+                           referencia: `BOT_${args.folio}`,
+                           fecha_pago: `${todayStr} 12:00`,
+                           nombre_user: cliente.nombre,
+                           forma_pago: 1,
+                           comprobante_pago: `Auto-Liquidado por IA OmniChat`
+                       }, {
+                           headers: { 'Authorization': `Api-Key ${company.wisphubApiKey}` }
                        });
 
-                       // 6. Aplicar Promesa de Pago a la factura más antigua
-                       const facturaTarget = facturas[0];
-                       const promesaLimit = new Date();
-                       promesaLimit.setDate(promesaLimit.getDate() + 1); // 1 día de prórroga
-                       
+                       await this.prisma.contactNote.create({
+                          data: { text: `🤖 [SISTEMA AI] PAGO LIQUIDADO DEFINITIVO.\nFolio: ${args.folio}\nMonto: $${args.amount}\nDeuda: $${totalDeuda}`, contactId, authorId: 'SYSTEM_BOT' }
+                       });
+
+                       // Alerta amigable directa a Jorge de éxito total (Sin mover pipeline)
+                       const successAlertMsg = `🤖 *OMNICHAT AUTO-PAGO*\n\nHola Jorge, te informo que procesé automáticamente el pago de *${cliente.nombre}* por $${args.amount}.\n\n✅ Su factura fue **liquidada** en WispHub permanentemente.\n✅ No tienes que hacer nada, yo me encargo.`;
                        try {
-                           await axios.post(`https://api.wisphub.net/api/promesa-pago/`, {
-                               id_factura: facturaTarget.id_factura,
-                               fecha_limite: promesaLimit.toISOString().split('T')[0]
-                           }, {
-                               headers: { 'Authorization': `Api-Key ${company.wisphubApiKey}` }
-                           });
+                          await axios.post(`http://localhost:3002/api/v1/messages/send`, { phone: "5216421042123", text: successAlertMsg }, { headers: { 'Authorization': `Bearer ${company.apiKey || ''}` } });
+                       } catch(ex) {}
 
-                           await this.prisma.contactNote.create({
-                              data: {
-                                 text: `🤖 [SISTEMA AI] Promesa de Pago generada automáticamente.\nFolio: ${args.folio}\nMonto: $${args.amount}\nDeuda Real: $${totalDeuda}\n🚨 PENDIENTE VALIDAR FINANZAS.`,
-                                 contactId,
-                                 authorId: 'SYSTEM_BOT'
-                              }
-                           });
-
-                           // Crear o Buscar la Columna "Por Validar"
-                           let validacionPipe = await this.prisma.pipeline.findFirst({
-                              where: { companyId: companyId, name: { contains: 'Validar', mode: 'insensitive' } }
-                           });
-
-                           if (!validacionPipe) {
-                              validacionPipe = await this.prisma.pipeline.create({
-                                 data: { companyId: companyId, name: 'Pagos Por Validar', autoReply: '🤖 Tu pago está siendo verificado.' }
-                              });
-                           }
-
-                           // Mover al cliente a la columna Por Validar
-                           await this.prisma.contact.update({
-                              where: { id: contactId },
-                              data: { pipelineId: validacionPipe.id, botStatus: 'PAUSED' }
-                           });
-                           
-                           // La notificación "Mágica" a Jorge
-                           const botAlertMessage = `🤖 *ALERTA OMNICHAT*\n\nHola Jorge, he procesado un comprobante de pago Automático de *${cliente.nombre}* por $${args.amount}.\n\n✅ *Motor IA:* Activé su servicio con Promesa de Pago.\n👉 Ya lo moví a la columna '*${validacionPipe.name}*' para que valides el depósito en tu banco mañana.`;
-
-                           try {
-                              await axios.post(`http://localhost:3002/api/v1/messages/send`, {
-                                 phone: "5216421042123",
-                                 text: botAlertMessage
-                              }, {
-                                 headers: { 'Authorization': `Bearer ${company.apiKey || ''}` }
-                              });
-                           } catch(ex) {
-                              this.logger.warn("No se pudo disparar el webhook de mensajes local a Jorge.");
-                           }
-
-                           return `✅ ¡Tu comprobante ha sido recibido con éxito!\n\nHe activado tu servicio provisionalmente mediante una **Promesa de Pago**. En la mañana nuestro equipo de finanzas validará el depósito en el banco para asentar tu pago de forma definitiva. ¡Gracias por tu puntualidad!`;
-                       } catch(e: any) {
-                           this.logger.error("Error aplicando promesa de pago en WispHub", e?.response?.data || e.message);
-                           return `✅ He recibido tu comprobante por $${args.amount}. Un asesor de finanzas activará tu servicio manualmente en breve.`;
-                       }
-                   } else {
-                       // Crear o Buscar la Columna "Por Validar"
-                       let validacionPipe = await this.prisma.pipeline.findFirst({
-                          where: { companyId: companyId, name: { contains: 'Validar', mode: 'insensitive' } }
-                       });
-                       if (validacionPipe) {
-                           await this.prisma.contact.update({
-                              where: { id: contactId },
-                              data: { pipelineId: validacionPipe.id, botStatus: 'PAUSED' }
-                           });
-                       }
-                       return `He analizado tu ticket y veo un monto de $${args.amount}, pero tu deuda actual es de $${totalDeuda}. He canalizado el caso con finanzas para que apliquen tu saldo como un pago parcial a la brevedad.`;
+                       return `✅ ¡Tu comprobante ha sido procesado exitosamente!\n\nTu factura ha quedado liquidada en nuestro sistema y tu internet está reactivado permanentemente. ¡Muchas gracias por tu pago y que tengas un excelente día! 🚀`;
+                   } catch(e: any) {
+                       this.logger.error("Error aplicando pago final en WispHub", e?.response?.data || e.message);
+                       await moveToValidationAndAlert(`Fallo la API de WispHub al asentar el pago.`, false, args.amount, totalDeuda);
+                       return `✅ He recibido tu comprobante por $${args.amount}. Un asesor de finanzas activará tu servicio manualmente en breve porque nuestros sistemas están lentos.`;
                    }
                } else {
-                   return `He recibido tu ticket, pero no logré vincular tu teléfono con una cuenta de WispHub automáticamente. Un asesor lo revisará en breve.`;
+                   // PAGO PARCIAL -> Promesa de Pago y Revisión Manual
+                   const promesaLimit = new Date();
+                   promesaLimit.setDate(promesaLimit.getDate() + 1);
+                   try {
+                       await axios.post(`https://api.wisphub.net/api/promesa-pago/`, { id_factura: facturaTarget.id_factura, fecha_limite: promesaLimit.toISOString().split('T')[0] }, { headers: { 'Authorization': `Api-Key ${company.wisphubApiKey}` } });
+                       await moveToValidationAndAlert(`Pago Parcial/Insuficiente`, true, args.amount, totalDeuda);
+                       return `He analizado tu ticket por $${args.amount}, pero tu deuda actual es de $${totalDeuda}. He activado tu internet temporalmente, pero un asesor se comunicará contigo para el ajuste.`;
+                   } catch(e) {
+                       await moveToValidationAndAlert(`Pago Parcial/Insuficiente (Falló promesa)`, false, args.amount, totalDeuda);
+                       return `He analizado tu ticket por $${args.amount}, pero tu deuda actual es de $${totalDeuda}. He canalizado tu caso a finanzas.`;
+                   }
                }
             } catch (e: any) {
                this.logger.error("Error validando receipt en AI", e?.response?.data || e.message);
