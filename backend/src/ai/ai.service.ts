@@ -199,24 +199,6 @@ export class AiService {
         {
           type: "function",
           function: {
-            name: "verify_wisphub_receipt",
-            description: "Audita y valida un ticket de pago enviado por el cliente. Úsala ÚNICAMENTE cuando un cliente envíe una imagen que parezca un comprobante de pago/transferencia bancaria para pagar su mensualidad de internet.",
-            parameters: {
-              type: "object",
-              properties: {
-                folio: { type: "string", description: "El número de rastreo, autorización o folio de la transacción (Extrae solo los números principales)." },
-                amount: { type: "number", description: "El monto total de la transferencia o pago extraído del ticket (Ej. 350.00)." },
-                bank_name: { type: "string", description: "El nombre del banco al que se envió el dinero (Ej. Banorte, Azteca, Coppel, etc)." },
-                date: { type: "string", description: "La fecha en la que se realizó la transacción en formato YYYY-MM-DD (Ej. '2026-05-13')." },
-                phone: { type: "string", description: "El número a 10 dígitos del cliente (Ej. 6421042123). Obtenlo del historial o solicítalo indirectamente." }
-              },
-              required: ["folio", "amount", "bank_name", "date", "phone"]
-            }
-          }
-        },
-        {
-          type: "function",
-          function: {
             name: "process_isp_installation_request",
             description: "Marca a un prospecto como 'Listo para Instalar' para un servicio de Internet. Ejecuta esta función SÓLO DESPUÉS de confirmar que el cliente subió foto de INE, Comprobante de Domicilio, un correo y número de teléfono. Avisa al humano que ya está completo.",
             parameters: {
@@ -306,35 +288,61 @@ export class AiService {
             }
           }
         },
-        {
-          type: "function",
-          function: {
-            name: "check_wisphub_balance",
-            description: "Consulta la base de datos externa de WispHub para saber si un cliente debe su mensualidad de Internet. Úsalo SIEMPRE que un cliente con etiqueta WispHub o que pregunte por 'Internet' te diga '¿Cuánto debo?' o 'Quiero pagar el internet'.",
-            parameters: {
-              type: "object",
-              properties: {
-                phone: { type: "string", description: "El número a 10 dígitos del cliente (Ej. 6421042123). Obtenlo del historial o solicítalo indirectamente si no está en tu memoria." }
-              },
-              required: ["phone"]
-            }
-          }
-        },
-        {
-          type: "function",
-          function: {
-            name: "check_wisphub_technical_status",
-            description: "Ejecuta un pre-diagnóstico técnico conectándose a WispHub. Úsalo SIEMPRE que un cliente reporte fallas de internet (lentitud, foco rojo, no conecta, sin servicio, internet caído).",
-            parameters: {
-              type: "object",
-              properties: {
-                phone: { type: "string", description: "El número a 10 dígitos del cliente (Ej. 6421042123). Obtenlo del historial o solicítalo indirectamente." }
-              },
-              required: ["phone"]
-            }
-          }
         }
       ];
+
+      // Add WispHub tools only if the company has the API Key configured
+      if (company.wisphubApiKey) {
+         tools.push(
+            {
+               type: "function",
+               function: {
+                  name: "verify_wisphub_receipt",
+                  description: "Audita y valida un ticket de pago enviado por el cliente. Úsala ÚNICAMENTE cuando un cliente envíe una imagen que parezca un comprobante de pago/transferencia bancaria para pagar su mensualidad de internet.",
+                  parameters: {
+                     type: "object",
+                     properties: {
+                        folio: { type: "string", description: "El número de rastreo, autorización o folio de la transacción (Extrae solo los números principales)." },
+                        amount: { type: "number", description: "El monto total de la transferencia o pago extraído del ticket (Ej. 350.00)." },
+                        bank_name: { type: "string", description: "El nombre del banco al que se envió el dinero (Ej. Banorte, Azteca, Coppel, etc)." },
+                        date: { type: "string", description: "La fecha en la que se realizó la transacción en formato YYYY-MM-DD (Ej. '2026-05-13')." },
+                        phone: { type: "string", description: "El número a 10 dígitos del cliente (Ej. 6421042123). Obtenlo del historial o solicítalo indirectamente." }
+                     },
+                     required: ["folio", "amount", "bank_name", "date", "phone"]
+                  }
+               }
+            },
+            {
+               type: "function",
+               function: {
+                  name: "check_wisphub_balance",
+                  description: "Consulta la base de datos externa de WispHub para saber si un cliente debe su mensualidad de Internet. Úsalo SIEMPRE que un cliente con etiqueta WispHub o que pregunte por 'Internet' te diga '¿Cuánto debo?' o 'Quiero pagar el internet'.",
+                  parameters: {
+                     type: "object",
+                     properties: {
+                        phone: { type: "string", description: "El número a 10 dígitos del cliente (Ej. 6421042123). Obtenlo del historial o solicítalo indirectamente si no está en tu memoria." }
+                     },
+                     required: ["phone"]
+                  }
+               }
+            },
+            {
+               type: "function",
+               function: {
+                  name: "check_wisphub_technical_status",
+                  description: "Ejecuta un pre-diagnóstico técnico conectándose a WispHub. Úsalo SIEMPRE que un cliente reporte fallas de internet (lentitud, foco rojo, no conecta, sin servicio, internet caído).",
+                  parameters: {
+                     type: "object",
+                     properties: {
+                        phone: { type: "string", description: "El número a 10 dígitos del cliente (Ej. 6421042123). Obtenlo del historial o solicítalo indirectamente." }
+                     },
+                     required: ["phone"]
+                  }
+               }
+            }
+         );
+      }
+
 
       // 4. Ping OpenAI API
       this.logger.log(`[AI] Solicitando Inferencia a OpenAI para Contact ${contactId}...`);
