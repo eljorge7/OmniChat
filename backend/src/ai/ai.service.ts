@@ -487,12 +487,53 @@ export class AiService {
                               }
                            });
 
+                           // Crear o Buscar la Columna "Por Validar"
+                           let validacionPipe = await this.prisma.pipeline.findFirst({
+                              where: { companyId: companyId, name: { contains: 'Validar', mode: 'insensitive' } }
+                           });
+
+                           if (!validacionPipe) {
+                              validacionPipe = await this.prisma.pipeline.create({
+                                 data: { companyId: companyId, name: 'Pagos Por Validar', autoReply: '🤖 Tu pago está siendo verificado.' }
+                              });
+                           }
+
+                           // Mover al cliente a la columna Por Validar
+                           await this.prisma.contact.update({
+                              where: { id: contactId },
+                              data: { pipelineId: validacionPipe.id, botStatus: 'PAUSED' }
+                           });
+                           
+                           // La notificación "Mágica" a Jorge
+                           const botAlertMessage = `🤖 *ALERTA OMNICHAT*\n\nHola Jorge, he procesado un comprobante de pago Automático de *${cliente.nombre}* por $${args.amount}.\n\n✅ *Motor IA:* Activé su servicio con Promesa de Pago.\n👉 Ya lo moví a la columna '*${validacionPipe.name}*' para que valides el depósito en tu banco mañana.`;
+
+                           try {
+                              await axios.post(`http://localhost:3002/api/v1/messages/send`, {
+                                 phone: "5216421042123",
+                                 text: botAlertMessage
+                              }, {
+                                 headers: { 'Authorization': `Bearer ${company.apiKey || ''}` }
+                              });
+                           } catch(ex) {
+                              this.logger.warn("No se pudo disparar el webhook de mensajes local a Jorge.");
+                           }
+
                            return `✅ ¡Tu comprobante ha sido recibido con éxito!\n\nHe activado tu servicio provisionalmente mediante una **Promesa de Pago**. En la mañana nuestro equipo de finanzas validará el depósito en el banco para asentar tu pago de forma definitiva. ¡Gracias por tu puntualidad!`;
                        } catch(e: any) {
                            this.logger.error("Error aplicando promesa de pago en WispHub", e?.response?.data || e.message);
                            return `✅ He recibido tu comprobante por $${args.amount}. Un asesor de finanzas activará tu servicio manualmente en breve.`;
                        }
                    } else {
+                       // Crear o Buscar la Columna "Por Validar"
+                       let validacionPipe = await this.prisma.pipeline.findFirst({
+                          where: { companyId: companyId, name: { contains: 'Validar', mode: 'insensitive' } }
+                       });
+                       if (validacionPipe) {
+                           await this.prisma.contact.update({
+                              where: { id: contactId },
+                              data: { pipelineId: validacionPipe.id, botStatus: 'PAUSED' }
+                           });
+                       }
                        return `He analizado tu ticket y veo un monto de $${args.amount}, pero tu deuda actual es de $${totalDeuda}. He canalizado el caso con finanzas para que apliquen tu saldo como un pago parcial a la brevedad.`;
                    }
                } else {
