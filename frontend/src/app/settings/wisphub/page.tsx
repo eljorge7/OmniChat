@@ -9,6 +9,8 @@ export default function WisphubSettingsPage() {
   const { data: session } = useSession();
   const [activeCompanyId, setActiveCompanyId] = useState("");
   const [copied, setCopied] = useState(false);
+  const [wisphubApiKey, setWisphubApiKey] = useState("");
+  const [savingKey, setSavingKey] = useState(false);
 
   useEffect(() => {
     // Intentar obtener de localStorage o de la base de datos
@@ -26,6 +28,17 @@ export default function WisphubSettingsPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (activeCompanyId) {
+      axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/bot/wisphub-config?companyId=${activeCompanyId}`)
+        .then(res => {
+          if (res.data.wisphubApiKey) {
+            setWisphubApiKey(res.data.wisphubApiKey);
+          }
+        }).catch(err => console.error("Error cargando WispHub Config", err));
+    }
+  }, [activeCompanyId]);
+
   const webhookUrl = `${process.env.NEXT_PUBLIC_API_URL || "https://api.radiotecpro.com"}/w/${activeCompanyId}`;
 
   const copyToClipboard = () => {
@@ -33,6 +46,23 @@ export default function WisphubSettingsPage() {
     navigator.clipboard.writeText(webhookUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 3000);
+  };
+
+  const handleSaveApiKey = async () => {
+    if (!activeCompanyId) return;
+    setSavingKey(true);
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/bot/wisphub-config`, {
+        companyId: activeCompanyId,
+        wisphubApiKey
+      });
+      alert("¡Llave de WispHub guardada con éxito!");
+    } catch (error) {
+      alert("Error al guardar la llave. Intenta de nuevo.");
+      console.error(error);
+    } finally {
+      setSavingKey(false);
+    }
   };
 
   return (
@@ -101,6 +131,34 @@ export default function WisphubSettingsPage() {
                 <h4 className="font-bold text-slate-800 text-lg mb-2">Pega la URL de OmniChat</h4>
                 <p className="text-slate-500 text-sm font-medium">Pega el link que copiaste arriba directamente en WispHub. Presiona Guardar y <b>Prueba de Mensaje</b>. ¡Listo!</p>
              </div>
+          </div>
+          
+          {/* Tarjeta de Conexion Bot Cajero */}
+          <div className="bg-slate-50 border border-slate-200 p-6 sm:p-8 rounded-3xl shadow-inner relative overflow-hidden group mt-8">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-emerald-400 to-teal-600"></div>
+            
+            <h3 className="text-xl font-black text-slate-800 flex items-center gap-2 mb-2">
+               <Key className="h-5 w-5 text-teal-500" />
+               Cobranza Automatizada (Bot Cajero)
+            </h3>
+            <p className="text-slate-500 font-medium mb-6">Pega tu API Key de WispHub aquí. Esto le dará permiso a la Inteligencia Artificial de consultar los saldos de tus clientes y cobrarles automáticamente cuando pregunten "¿Cuánto debo?".</p>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input 
+                type="password"
+                placeholder="Ej: wp_apikey_12345..."
+                value={wisphubApiKey}
+                onChange={(e) => setWisphubApiKey(e.target.value)}
+                className="flex-1 bg-white border border-slate-200 rounded-xl p-3 sm:p-4 font-mono text-sm text-slate-700 shadow-sm focus:ring-2 focus:ring-teal-500 outline-none transition-all"
+              />
+              <button 
+                onClick={handleSaveApiKey}
+                disabled={!activeCompanyId || savingKey}
+                className={`flex border items-center justify-center gap-2 px-6 py-3 sm:py-0 rounded-xl font-bold transition-all disabled:opacity-50 min-w-[160px] bg-teal-600 text-white hover:bg-teal-700 border-transparent shadow-lg shadow-teal-200`}
+              >
+                {savingKey ? "Guardando..." : "Guardar Llave"}
+              </button>
+            </div>
           </div>
         </div>
 

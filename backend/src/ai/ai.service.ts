@@ -24,7 +24,7 @@ export class AiService {
       // 1. Recover Company OpenAI Settings
       const company = await this.prisma.company.findUnique({
         where: { id: companyId },
-        select: { openAiKey: true, openAiPrompt: true, name: true, apiKey: true }
+        select: { openAiKey: true, openAiPrompt: true, name: true, apiKey: true, wisphubApiKey: true }
       });
 
       if (!company || !company.openAiKey) {
@@ -302,6 +302,34 @@ export class AiService {
               required: ["phone"]
             }
           }
+        },
+        {
+          type: "function",
+          function: {
+            name: "check_wisphub_balance",
+            description: "Consulta la base de datos externa de WispHub para saber si un cliente debe su mensualidad de Internet. Úsalo SIEMPRE que un cliente con etiqueta WispHub o que pregunte por 'Internet' te diga '¿Cuánto debo?' o 'Quiero pagar el internet'.",
+            parameters: {
+              type: "object",
+              properties: {
+                phone: { type: "string", description: "El número a 10 dígitos del cliente (Ej. 6421042123). Obtenlo del historial o solicítalo indirectamente si no está en tu memoria." }
+              },
+              required: ["phone"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "check_wisphub_technical_status",
+            description: "Ejecuta un pre-diagnóstico técnico conectándose a WispHub. Úsalo SIEMPRE que un cliente reporte fallas de internet (lentitud, foco rojo, no conecta, sin servicio, internet caído).",
+            parameters: {
+              type: "object",
+              properties: {
+                phone: { type: "string", description: "El número a 10 dígitos del cliente (Ej. 6421042123). Obtenlo del historial o solicítalo indirectamente." }
+              },
+              required: ["phone"]
+            }
+          }
         }
       ];
 
@@ -572,6 +600,77 @@ export class AiService {
             } catch (ex: any) {
                this.logger.error("DB Err", ex.message);
                toolReturnContext = `[SISTEMA INTERNO: Falló la conexión técnica a RentControl. Discúlpate sutilmente y pide que espere a un humano]`;
+            }
+         } else if (toolCall.function.name === "check_wisphub_balance") {
+            const args = JSON.parse(toolCall.function.arguments);
+            this.logger.log(`[AI-WISPHUB] Consultando saldo en WispHub para: ${args.phone}`);
+            
+            if (!company.wisphubApiKey) {
+                this.logger.warn(`[AI-WISPHUB] Intento de consulta de saldo pero la empresa no tiene API Key de WispHub guardada.`);
+                toolReturnContext = `[SISTEMA INTERNO: Como bot, acabo de notar que mi administrador no ha guardado la API Key de WispHub en el sistema. Por lo tanto, no puedo checar los saldos de internet ahora mismo. Discúlpate educadamente y dile al cliente que un humano atenderá su cobro en breve.]`;
+            } else {
+                try {
+                   // Clean phone string to 10 digits
+                   const searchPhone = args.phone.replace(/[^0-9]/g, '').slice(-10);
+                   
+                   // Fetch clients from WispHub by phone
+                   const wispRes = await axios.get(`https://api.wisphub.net/api/clientes/?telefono=${searchPhone}`, {
+                       headers: { 'Authorization': `Api-Key ${company.wisphubApiKey}` }
+                   });
+                   
+                   if (wispRes.data && wispRes.data.results && wispRes.data.results.length > 0) {
+                       const cliente = wispRes.data.results[0];
+                       const saldo = cliente.saldo;
+                       const nombre = cliente.nombre;
+                       const estado = cliente.estado; // Ej. 'Activo', 'Suspendido'
+                       
+                       if (saldo <= 0) {
+                           toolReturnContext = `[SISTEMA INTERNO: Encontré al cliente de WispHub '${nombre}'. Su estado actual de internet es '${estado}'. NO DEBE NADA (Saldo: $0). Felicítalo por estar al día y ofrécele ayuda con soporte técnico si lo requiere.]`;
+                       } else {
+                           toolReturnContext = `[SISTEMA INTERNO: Encontré al cliente de WispHub '${nombre}'. Su estado actual es '${estado}'. DEBE UN SALDO DE $${saldo} MXN. Infórmale amablemente cuánto debe y pásale nuestro número de tarjeta, CLABE o cuenta para que pague (Si tienes en tu memoria RAG la clabe, dásela. Si no, pídele un momento para que un humano le pase los datos bancarios). Dile que envíe el comprobante por aquí cuando esté listo.]`;
+                       }
+                   } else {
+                       toolReturnContext = `[SISTEMA INTERNO: No encontré a ningún cliente en WispHub registrado con el teléfono terminado en ${searchPhone}. Pídele cortésmente al cliente que te diga a nombre de quién está el contrato o si tiene otro teléfono registrado.]`;
+                   }
+                } catch (e: any) {
+                   this.logger.error("Error consultando API WispHub", e);
+                   toolReturnContext = `[SISTEMA INTERNO: Falló la conexión técnica a WispHub. Discúlpate sutilmente y dile al cliente que el sistema de finanzas está en mantenimiento y un humano le pasará el saldo en unos minutos]`;
+                }
+            }
+         } else if (toolCall.function.name === "check_wisphub_technical_status") {
+            const args = JSON.parse(toolCall.function.arguments);
+            this.logger.log(`[AI-WISPHUB] Consultando estado técnico en WispHub para: ${args.phone}`);
+            
+            if (!company.wisphubApiKey) {
+                toolReturnContext = `[SISTEMA INTERNO: La empresa no tiene API Key de WispHub configurada. Discúlpate y avisa que un técnico humano revisará su caso pronto.]`;
+            } else {
+                try {
+                   const searchPhone = args.phone.replace(/[^0-9]/g, '').slice(-10);
+                   const wispRes = await axios.get(`https://api.wisphub.net/api/clientes/?telefono=${searchPhone}`, {
+                       headers: { 'Authorization': `Api-Key ${company.wisphubApiKey}` }
+                   });
+                   
+                   if (wispRes.data && wispRes.data.results && wispRes.data.results.length > 0) {
+                       const cliente = wispRes.data.results[0];
+                       const saldo = cliente.saldo;
+                       const estado = cliente.estado;
+                       
+                       if (estado.toLowerCase() === 'suspendido' || saldo > 0) {
+                           toolReturnContext = `[SISTEMA INTERNO: Alerta. El cliente reportó una falla técnica pero en WispHub aparece como '${estado}' y debe $${saldo}. Esto no es una falla técnica, es un corte por falta de pago. Como asistente virtual de la empresa, dile amablemente al cliente: "Veo en el sistema que tu servicio está pausado temporalmente por un saldo pendiente de $${saldo}. Si gustas pagarlo, tu internet regresará de inmediato." NUNCA LE OFREZCAS MANDAR TÉCNICOS.]`;
+                       } else if ((cliente.router && cliente.router.falla_general) || (cliente.sectorial && cliente.sectorial.falla_general)) {
+                           const fallaLugar = (cliente.sectorial && cliente.sectorial.falla_general) ? cliente.sectorial.nombre : (cliente.router ? cliente.router.nombre : "tu zona");
+                           const fallaDesc = (cliente.sectorial && cliente.sectorial.falla_general_descripcion) || (cliente.router && cliente.router.falla_general_descripcion) || "interrupción de energía/enlace";
+                           toolReturnContext = `[SISTEMA INTERNO: Alerta. El cliente está activo y sin deudas, PERO su torre principal (${fallaLugar}) reporta FALLA GENERAL en WispHub. Eres Julio (el asistente virtual IA de RadioTec/RentControl). Dile al cliente: "Hemos detectado una falla general en la antena principal de tu zona (${fallaLugar}) debido a: ${fallaDesc}. Mis compañeros técnicos de campo ya están informados y trabajando para restablecer el servicio general a la brevedad. Te pedimos una sincera disculpa por el inconveniente." NO le pidas reiniciar su router, el problema es masivo.]`;
+                       } else {
+                           toolReturnContext = `[SISTEMA INTERNO: El cliente está '${estado}' y NO debe nada. Además, su torre principal no reporta ninguna falla general. Esto significa que la falla de internet es un PROBLEMA TÉCNICO INDIVIDUAL (router apagado, cable cortado o falla en la antena de su casa). Eres Julio (el asistente virtual). Pídele que revise si el foco LOS de su módem está parpadeando en rojo, o si ya desconectó el módem de la corriente por 1 minuto. IMPORTANTE: Dile que si después de hacer esto sigue sin internet, te avise diciendo "Ya lo hice y no funciona". Y si te dice eso, INMEDIATAMENTE ejecuta tu herramienta 'route_user_to_pipeline' con la palabra 'Soporte' para despachar a tus compañeros técnicos humanos a su domicilio.]`;
+                       }
+                   } else {
+                       toolReturnContext = `[SISTEMA INTERNO: No encontré a ningún cliente en WispHub con el teléfono ${searchPhone}. Pídele al cliente el nombre del titular para buscarlo en el sistema y ayudarle con su falla.]`;
+                   }
+                } catch (e: any) {
+                   this.logger.error("Error técnico WispHub", e);
+                   toolReturnContext = `[SISTEMA INTERNO: Error de conexión con WispHub. Dile al cliente que estamos experimentando una interrupción del sistema interno y que un técnico leerá su mensaje en unos momentos.]`;
+                }
             }
          }
 

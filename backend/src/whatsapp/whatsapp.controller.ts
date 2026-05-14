@@ -197,6 +197,42 @@ export class WhatsappController {
     return { success: true, message: "Cerebro IA actualizado" };
   }
 
+  // --- WISPHUB INTEGRATION CONFIGURATION ---
+  @Get('bot/wisphub-config')
+  async getWisphubConfig(@Query('companyId') companyId?: string) {
+    let company;
+    if (companyId) {
+      company = await this.prisma.company.findUnique({ where: { id: companyId }});
+    } else {
+      company = await this.prisma.company.findFirst();
+    }
+    if (!company) throw new BadRequestException("Empresa no encontrada");
+    
+    return {
+       wisphubApiKey: company.wisphubApiKey ? "********" + company.wisphubApiKey.slice(-4) : ""
+    };
+  }
+
+  @Post('bot/wisphub-config')
+  async updateWisphubConfig(@Body() body: { companyId?: string, wisphubApiKey: string }) {
+    let company;
+    if (body.companyId) {
+      company = await this.prisma.company.findUnique({ where: { id: body.companyId }});
+    } else {
+      company = await this.prisma.company.findFirst();
+    }
+    if (!company) throw new BadRequestException("Empresa no encontrada");
+    
+    await this.prisma.company.update({
+       where: { id: company.id },
+       data: {
+         wisphubApiKey: body.wisphubApiKey?.trim() || null
+       }
+    });
+
+    return { success: true, message: "Llave de WispHub actualizada con éxito" };
+  }
+
   @Post('assign')
   async assignContact(@Body() body: { contactId: string, pipelineId: string }) {
     const updated = await this.prisma.contact.update({
