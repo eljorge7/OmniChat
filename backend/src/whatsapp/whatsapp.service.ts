@@ -176,23 +176,6 @@ export class WhatsappService implements OnModuleInit {
         textBody = '[Multimedia o Archivo enviado desde Celular]';
     }
 
-    // Bugfix: Bulletproof detector for self-addressed phantom messages (whatsapp-web.js multi-device glitches)
-    const cleanFrom = message.from ? message.from.split('@')[0].split(':')[0] : '';
-    const cleanTo = message.to ? message.to.split('@')[0].split(':')[0] : '';
-    if (cleanFrom.length >= 10 && cleanTo.length >= 10 && cleanFrom.slice(-10) === cleanTo.slice(-10)) {
-        this.logger.log(`[OmniChat] Ignorando evento saliente rebotado a sí mismo (${cleanFrom} vs ${cleanTo})`);
-        return;
-    }
-
-    // Filtro Quirúrgico: Matar el Autoresponder Fantasma Inyectado por Facebook / Meta Business Suite
-    // (Aparece cuando WispHub abre un chat a un cliente y Meta detecta la sesión ligada)
-    if (textBody.includes('¿En qué puedo ayudarte hoy?') && message.to.includes('@lid')) {
-        this.logger.log(`[OmniChat] Filtro aplicado: Ignorando 'Mensaje de Bienvenida' fantasma de Meta Business Suite hacia el LID ${message.to}.`);
-        return;
-    }
-
-    
-    
     // Resolución de @lid (Problema común con Meta Cloud API)
     if (phone.includes('@lid')) {
         try {
@@ -206,6 +189,29 @@ export class WhatsappService implements OnModuleInit {
         } catch(e) {
             return;
         }
+    }
+
+    // Bugfix: Bulletproof detector for self-addressed phantom messages
+    const data = this.clients.get(companyId);
+    const botPhone = data?.client?.info?.wid?.user || '';
+    const cleanFrom = message.from ? message.from.split('@')[0].split(':')[0] : '';
+    const cleanTo = phone; // Now resolved from @lid!
+    
+    if (cleanFrom.length >= 10 && cleanTo.length >= 10 && cleanFrom.slice(-10) === cleanTo.slice(-10)) {
+        this.logger.log(`[OmniChat] Ignorando evento saliente rebotado a sí mismo (${cleanFrom} vs ${cleanTo})`);
+        return;
+    }
+    
+    if (botPhone && botPhone.length >= 10 && cleanTo.length >= 10 && cleanTo.slice(-10) === botPhone.slice(-10)) {
+        this.logger.log(`[OmniChat] Ignorando evento saliente rebotado hacia el bot (${botPhone} vs ${cleanTo})`);
+        return;
+    }
+
+    // Filtro Quirúrgico: Matar el Autoresponder Fantasma Inyectado por Facebook / Meta Business Suite
+    // (Aparece cuando WispHub abre un chat a un cliente y Meta detecta la sesión ligada)
+    if (textBody.includes('¿En qué puedo ayudarte hoy?') && message.to.includes('@lid')) {
+        this.logger.log(`[OmniChat] Filtro aplicado: Ignorando 'Mensaje de Bienvenida' fantasma de Meta Business Suite hacia el LID ${message.to}.`);
+        return;
     }
 
     let contact = await this.prisma.contact.findFirst({ where: { phone, companyId } });
