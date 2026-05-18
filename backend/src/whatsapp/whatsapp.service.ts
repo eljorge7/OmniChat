@@ -463,7 +463,7 @@ export class WhatsappService implements OnModuleInit {
           });
 
           const thankYouMsg = "¡Muchas gracias por tus comentarios! Nos ayudan a mejorar cada día. Que tengas un excelente día.";
-          await this.sendDirectMessage(companyId, phone, thankYouMsg);
+          await this.sendDirectMessage(companyId, phone, thankYouMsg, contact.id);
           return; // Skip AI and routing, the survey is complete
        }
     }
@@ -492,7 +492,7 @@ export class WhatsappService implements OnModuleInit {
                if (aiResponse) {
                   // Fix: Always use the resolved contact phone instead of the raw message.from to prevent @lid bounce loops
                   const targetJid = contact.phone.includes('@') ? contact.phone : `${contact.phone}@c.us`;
-                  await this.sendDirectMessage(companyId, targetJid, aiResponse);
+                  await this.sendDirectMessage(companyId, targetJid, aiResponse, contact.id);
                }
            } catch (error) {
                this.logger.error("Error crítico en bloque Debounce de IA", error);
@@ -542,7 +542,7 @@ export class WhatsappService implements OnModuleInit {
                : `✅ He detectado tu solicitud de asistencia. Te estoy canalizando de inmediato con el área de *${matchedPipe.name}*. Por favor espera un momento mientras te atendemos.`;
 
             const targetJid = contact.phone.includes('@') ? contact.phone : `${contact.phone}@c.us`;
-            await this.sendDirectMessage(companyId, targetJid, autoMsg);
+            await this.sendDirectMessage(companyId, targetJid, autoMsg, contact.id);
             return;
         }
 
@@ -562,29 +562,30 @@ export class WhatsappService implements OnModuleInit {
             await this.sendDirectMessage(
                 companyId,
                 targetJid, 
-                `✅ ¡Perfecto! Tu caso ha sido asignado al departamento de *${selectedPipe.name}*. Un técnico o asesor revisará tu caso y te contestará por aquí mismo muy pronto.`
+                `✅ ¡Perfecto! Tu caso ha sido asignado al departamento de *${selectedPipe.name}*. Un técnico o asesor revisará tu caso y te contestará por aquí mismo muy pronto.`,
+                contact.id
             );
             return;
         }
 
         const targetJid = contact.phone.includes('@') ? contact.phone : `${contact.phone}@c.us`;
-        return this.sendBotMenu(companyId, targetJid);
+        return this.sendBotMenu(companyId, targetJid, contact.id);
     }
 
     this.logger.log(`[OmniChat-${companyId}] Mensaje ruteado de ${phone}: ${textBody}`);
   }
 
-  async sendBotMenu(companyId: string, targetPhone: string) {
+  async sendBotMenu(companyId: string, targetPhone: string, contactId?: string) {
     const company = await this.prisma.company.findUnique({ where: { id: companyId }});
     const menu = `👋 *¡Hola! Bienvenido a ${company?.name || 'nuestro servicio'}*\n\nSoy tu asistente de Inteligencia Artificial. ¿En qué te puedo apoyar o hacia qué departamento deseas que te comuniquemos el día de hoy?`;
-    await this.sendDirectMessage(companyId, targetPhone, menu);
+    await this.sendDirectMessage(companyId, targetPhone, menu, contactId);
   }
 
   emitToInbox(contactId: string, message: any, pipeId: string | null) {
     this.gateway.emitNewMessage({ contactId, message, pipeId });
   }
 
-  async sendDirectMessage(companyId: string, targetPhone: string, text: string) {
+  async sendDirectMessage(companyId: string, targetPhone: string, text: string, contactIdToSave?: string) {
     const data = this.clients.get(companyId);
     if (!data || data.status !== 'READY' || !data.client) {
       throw new Error(`[OmniChat] La sesión de WhatsApp de la empresa no está inicializada o conectada.`);
@@ -632,6 +633,25 @@ export class WhatsappService implements OnModuleInit {
             } else {
                throw new Error(`El número ${rawNumber} no tiene cuenta de WhatsApp activa.`);
             }
+        }
+    }
+
+    // Save locally to avoid UI blindness due to aggressive filters
+    if (contactIdToSave) {
+        try {
+           const savedMsg = await this.prisma.message.create({
+               data: { body: text, fromMe: true, contactId: contactIdToSave }
+           });
+           
+           const contact = await this.prisma.contact.findUnique({ where: { id: contactIdToSave } });
+           
+           this.gateway.emitNewMessage({
+               contactId: contactIdToSave,
+               message: savedMsg,
+               pipeId: contact?.pipelineId || null
+           });
+        } catch(e) {
+           this.logger.error('Error guardando mensaje directo localmente', e);
         }
     }
 
