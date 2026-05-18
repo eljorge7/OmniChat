@@ -338,7 +338,7 @@ export class WhatsappController {
   async captureWebLead(@Body() body: CaptureWebLeadDto) {
     // Limpiar el teléfono para homogeneizar (quitar + y espacios) a 10 digitos MX
     const cleanPhone = body.phone.replace(/[^0-9]/g, '').slice(-10);
-    const fullWaId = `521${cleanPhone}@c.us`; 
+    const fullWaId = `521${cleanPhone}`; 
 
     // Obtener la compañía (Si no envían companyId, tomamos la de RadioTec/RentControl por defecto)
     let targetCompanyId = body.companyId;
@@ -574,7 +574,7 @@ export class WhatsappController {
     let finalPhone = cleanPhone;
     if (!finalPhone.includes('@')) {
        // Siempre asumimos que lo modificó a un número celular normal.
-       finalPhone = `521${cleanPhone.slice(-10)}@c.us`; 
+       finalPhone = `521${cleanPhone.slice(-10)}`; 
        // Usamos 521 + 10 dígitos estandarizado
     }
 

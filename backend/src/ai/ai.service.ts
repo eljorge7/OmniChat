@@ -459,11 +459,12 @@ export class AiService {
                
                // 3. Buscar Facturas Pendientes
                const currentDate = new Date();
+               const todayStrFetch = currentDate.toISOString().split('T')[0];
                const threeMonthsAgo = new Date();
                threeMonthsAgo.setMonth(currentDate.getMonth() - 3);
                const formattedDateStart = threeMonthsAgo.toISOString().split('T')[0];
 
-               const facturasRes = await axios.get(`https://api.wisphub.net/api/facturas/?estado=1&fecha_emision__gte=${formattedDateStart}&cliente=${cliente.id_servicio}`, {
+               const facturasRes = await axios.get(`https://api.wisphub.net/api/facturas/?estado=1&fecha_emision__range_0=${formattedDateStart}&fecha_emision__range_1=${todayStrFetch}&cliente=${cliente.usuario}`, {
                    headers: { 'Authorization': `Api-Key ${company.wisphubApiKey}` }
                });
 

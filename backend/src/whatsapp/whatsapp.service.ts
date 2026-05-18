@@ -490,7 +490,9 @@ export class WhatsappService implements OnModuleInit {
                const aiResponse = await this.ai.generateResponse(companyId, contact.id, textBody, mediaUrl || undefined, mediaType || undefined);
                
                if (aiResponse) {
-                  await this.sendDirectMessage(companyId, message.from, aiResponse);
+                  // Fix: Always use the resolved contact phone instead of the raw message.from to prevent @lid bounce loops
+                  const targetJid = contact.phone.includes('@') ? contact.phone : `${contact.phone}@c.us`;
+                  await this.sendDirectMessage(companyId, targetJid, aiResponse);
                }
            } catch (error) {
                this.logger.error("Error crítico en bloque Debounce de IA", error);
@@ -539,7 +541,8 @@ export class WhatsappService implements OnModuleInit {
                ? matchedPipe.autoReply.replace('{name}', contact.name || 'cliente') 
                : `✅ He detectado tu solicitud de asistencia. Te estoy canalizando de inmediato con el área de *${matchedPipe.name}*. Por favor espera un momento mientras te atendemos.`;
 
-            await this.sendDirectMessage(companyId, message.from, autoMsg);
+            const targetJid = contact.phone.includes('@') ? contact.phone : `${contact.phone}@c.us`;
+            await this.sendDirectMessage(companyId, targetJid, autoMsg);
             return;
         }
 
@@ -555,15 +558,17 @@ export class WhatsappService implements OnModuleInit {
             
             this.gateway.emitContactRouted({ contactId: contact.id, pipeId: selectedPipe.id });
 
+            const targetJid = contact.phone.includes('@') ? contact.phone : `${contact.phone}@c.us`;
             await this.sendDirectMessage(
                 companyId,
-                message.from, 
+                targetJid, 
                 `✅ ¡Perfecto! Tu caso ha sido asignado al departamento de *${selectedPipe.name}*. Un técnico o asesor revisará tu caso y te contestará por aquí mismo muy pronto.`
             );
             return;
         }
 
-        return this.sendBotMenu(companyId, message.from);
+        const targetJid = contact.phone.includes('@') ? contact.phone : `${contact.phone}@c.us`;
+        return this.sendBotMenu(companyId, targetJid);
     }
 
     this.logger.log(`[OmniChat-${companyId}] Mensaje ruteado de ${phone}: ${textBody}`);
@@ -585,7 +590,11 @@ export class WhatsappService implements OnModuleInit {
       throw new Error(`[OmniChat] La sesión de WhatsApp de la empresa no está inicializada o conectada.`);
     }
 
-    let finalTarget = targetPhone;
+    // Normalize the target if it lacks the protocol
+    if (!targetPhone.includes('@')) {
+        targetPhone = `${targetPhone}@c.us`;
+        finalTarget = targetPhone;
+    }
     
     if (targetPhone.endsWith('@c.us')) {
         const rawNumber = targetPhone.replace('@c.us', '');

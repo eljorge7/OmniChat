@@ -605,10 +605,7 @@ export default function InboxPage() {
 
               {/* Thread Messages */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                 {/* Auto-Bot Message */}
-                 <div className="flex justify-center">
-                   <span className="bg-slate-200 text-slate-600 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">Ayer</span>
-                 </div>
+
                  {currentChat?.messages?.map((msg: any) => {
                     const safeMediaUrl = msg.mediaUrl ? msg.mediaUrl.replace('http://localhost:3002', process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002') : null;
                     return (
