@@ -176,14 +176,12 @@ export class WhatsappService implements OnModuleInit {
         textBody = '[Multimedia o Archivo enviado desde Celular]';
     }
 
-    // Bugfix: Ignore self-addressed phantom messages created by whatsapp-web.js glitches
-    const data = this.clients.get(companyId);
-    const botPhone = data?.client?.info?.wid?.user;
-    if (botPhone && botPhone.length >= 10 && phone.length >= 10) {
-        if (phone.slice(-10) === botPhone.slice(-10)) {
-            this.logger.log(`[OmniChat] Ignorando evento saliente rebotado hacia el propio host (${phone} vs ${botPhone})`);
-            return;
-        }
+    // Bugfix: Bulletproof detector for self-addressed phantom messages (whatsapp-web.js multi-device glitches)
+    const cleanFrom = message.from ? message.from.split('@')[0].split(':')[0] : '';
+    const cleanTo = message.to ? message.to.split('@')[0].split(':')[0] : '';
+    if (cleanFrom.length >= 10 && cleanTo.length >= 10 && cleanFrom.slice(-10) === cleanTo.slice(-10)) {
+        this.logger.log(`[OmniChat] Ignorando evento saliente rebotado a sí mismo (${cleanFrom} vs ${cleanTo})`);
+        return;
     }
 
     // Filtro Quirúrgico: Matar el Autoresponder Fantasma Inyectado por Facebook / Meta Business Suite
