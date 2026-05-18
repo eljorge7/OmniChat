@@ -124,7 +124,7 @@ export class WisphubController {
 
                 // 3. Disparar mensaje vía WhatsApp AL FINAL. 
                 // sendDirectMessage nos devuelve el ID RESUELTO por WhatsApp (ej. si era un @lid oculto)
-                const resolvedTarget = await this.whatsappService.sendDirectMessage(masterCompany.id, waId, message);
+                const resolvedTarget = await this.whatsappService.sendDirectMessage(masterCompany.id, waId, message, contact.id);
                 
                 if (resolvedTarget) {
                     const resolvedPhone = resolvedTarget.replace('@c.us', '');
