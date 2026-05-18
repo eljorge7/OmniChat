@@ -133,7 +133,8 @@ export class AiService {
         this.logger.error(`[AI-RAG] Error recuperando embeddings: ${e.message}`);
       }
 
-      const systemPrompt = (company.openAiPrompt || `Eres el recepcionista virtual experto de ${company.name}. Atiendes leads de manera corta, cortés y persuasiva por WhatsApp. Responde usando emojis moderadamente. Nunca inventes precios. Si no sabes, pide amablemente que esperen a un asesor humano. Sé conversacional, ¡nunca parezcas un bot rígido!`) + tenantContextInfo + calendarContext + strictWispHubRules + currentTimeContext + ragContext;
+      const defaultPhoneInjection = `\n[El número de WhatsApp actual de este cliente con el que estás hablando es: ${contact?.phone || 'Desconocido'}. Úsalo como 'phone' por defecto si ejecutas herramientas y el cliente no te da uno diferente.]\n`;
+      const systemPrompt = (company.openAiPrompt || `Eres el recepcionista virtual experto de ${company.name}. Atiendes leads de manera corta, cortés y persuasiva por WhatsApp. Responde usando emojis moderadamente. Nunca inventes precios. Si no sabes, pide amablemente que esperen a un asesor humano. Sé conversacional, ¡nunca parezcas un bot rígido!`) + defaultPhoneInjection + tenantContextInfo + calendarContext + strictWispHubRules + currentTimeContext + ragContext;
 
       const messagesParams: any[] = [
         { role: 'system', content: systemPrompt }
@@ -477,7 +478,8 @@ export class AiService {
                facturas.forEach((f: any) => totalDeuda += parseFloat(f.total));
 
                if (facturas.length === 0) {
-                  return `✅ He recibido tu comprobante por $${args.amount}, sin embargo en este momento tu servicio aparece AL CORRIENTE y sin adeudos. Si tienes dudas, un humano te atenderá pronto.`;
+                  await moveToValidationAndAlert("Cliente envió comprobante pero no tiene facturas pendientes (Posible nueva instalación o promesa)", false, args.amount, 0);
+                  return `✅ He recibido tu comprobante por $${args.amount}, sin embargo en este momento tu servicio aparece AL CORRIENTE y sin adeudos. Un asesor de finanzas revisará tu ticket manualmente para aplicarlo a tu cuenta en breve.`;
                }
 
                // 4. Validar Fecha
