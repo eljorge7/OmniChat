@@ -179,9 +179,11 @@ export class WhatsappService implements OnModuleInit {
     // Bugfix: Ignore self-addressed phantom messages created by whatsapp-web.js glitches
     const data = this.clients.get(companyId);
     const botPhone = data?.client?.info?.wid?.user;
-    if (botPhone && phone === botPhone) {
-        this.logger.log(`[OmniChat] Ignorando evento saliente rebotado hacia el propio host (${phone})`);
-        return;
+    if (botPhone && botPhone.length >= 10 && phone.length >= 10) {
+        if (phone.slice(-10) === botPhone.slice(-10)) {
+            this.logger.log(`[OmniChat] Ignorando evento saliente rebotado hacia el propio host (${phone} vs ${botPhone})`);
+            return;
+        }
     }
 
     // Filtro Quirúrgico: Matar el Autoresponder Fantasma Inyectado por Facebook / Meta Business Suite
