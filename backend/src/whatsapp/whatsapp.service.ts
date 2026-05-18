@@ -590,6 +590,8 @@ export class WhatsappService implements OnModuleInit {
       throw new Error(`[OmniChat] La sesión de WhatsApp de la empresa no está inicializada o conectada.`);
     }
 
+    let finalTarget = targetPhone;
+
     // Normalize the target if it lacks the protocol
     if (!targetPhone.includes('@')) {
         targetPhone = `${targetPhone}@c.us`;
