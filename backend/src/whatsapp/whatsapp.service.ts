@@ -176,6 +176,14 @@ export class WhatsappService implements OnModuleInit {
         textBody = '[Multimedia o Archivo enviado desde Celular]';
     }
 
+    // Bugfix: Ignore self-addressed phantom messages created by whatsapp-web.js glitches
+    const data = this.clients.get(companyId);
+    const botPhone = data?.client?.info?.wid?.user;
+    if (botPhone && phone === botPhone) {
+        this.logger.log(`[OmniChat] Ignorando evento saliente rebotado hacia el propio host (${phone})`);
+        return;
+    }
+
     // Filtro Quirúrgico: Matar el Autoresponder Fantasma Inyectado por Facebook / Meta Business Suite
     // (Aparece cuando WispHub abre un chat a un cliente y Meta detecta la sesión ligada)
     if (textBody.includes('¿En qué puedo ayudarte hoy?') && message.to.includes('@lid')) {
