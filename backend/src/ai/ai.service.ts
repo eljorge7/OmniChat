@@ -361,9 +361,15 @@ export class AiService {
       if (responseMessage?.tool_calls && responseMessage.tool_calls.length > 0) {
          const toolCall: any = responseMessage.tool_calls[0];
          let toolReturnContext: string | null = null;
+         
+         let args: any = {};
+         try {
+             args = JSON.parse(toolCall.function.arguments || '{}');
+         } catch (parseError) {
+             this.logger.warn(`[AI] Error parseando argumentos de la herramienta ${toolCall.function.name}: ${toolCall.function.arguments}`);
+         }
 
          if (toolCall.function.name === "create_maintenance_ticket") {
-            const args = JSON.parse(toolCall.function.arguments);
             this.logger.log(`[AI-AGENT] Ejecutando 'create_maintenance_ticket' para Inquilino ${args.tenantId}`);
             
             try {
@@ -376,7 +382,6 @@ export class AiService {
                return "Lo siento, intenté registrar tu reporte de mantenimiento pero hubo un problema técnico en la nube. Un humano revisará este chat en breve.";
             }
          } else if (toolCall.function.name === "process_isp_installation_request") {
-            const args = JSON.parse(toolCall.function.arguments);
             this.logger.log(`[AI-AGENT] Ejecutando 'process_isp_installation_request' para Contacto ${contactId}`);
             
             try {
@@ -403,7 +408,6 @@ export class AiService {
                return "Lo siento, hubo un problema guardando tu solicitud, pero un asesor lo revisará manualmente en un momento.";
             }
          } else if (toolCall.function.name === "verify_wisphub_receipt") {
-            const args = JSON.parse(toolCall.function.arguments);
             this.logger.log(`[AI-AGENT] Ejecutando 'verify_wisphub_receipt' para ${args.phone}. Folio: ${args.folio}`);
             
             try {
@@ -543,7 +547,6 @@ export class AiService {
                return "Recibí tu imagen, pero hubo un error en mis servidores. Un asesor te atenderá pronto.";
             }
          } else if (toolCall.function.name === "route_user_to_pipeline") {
-            const args = JSON.parse(toolCall.function.arguments);
             this.logger.log(`[AI-AGENT] Enrutando prospecto a Embudo: ${args.pipelineKeyword}`);
             
             try {
@@ -580,7 +583,6 @@ export class AiService {
                toolReturnContext = "[SISTEMA INTERNO: Hubo un fallo en la base de datos clasificando a la persona. Despídete cordialmente y dile que un agente leerá el historial]";
             }
          } else if (toolCall.function.name === "schedule_appointment") {
-            const args = JSON.parse(toolCall.function.arguments);
             this.logger.log(`[AI-AGENT] Auto-Agendando Cita: ${args.title} en ${args.startDateIso}`);
             
             try {
@@ -611,7 +613,6 @@ export class AiService {
                toolReturnContext = "[SISTEMA INTERNO: Hubo un fallo guardando la cita en BD. Discúlpate y dile que un humano agendará de forma manual]";
             }
          } else if (toolCall.function.name === "schedule_followup_reminder") {
-            const args = JSON.parse(toolCall.function.arguments);
             this.logger.log(`[AI-AGENT] Agendando Recordatorio en Frío para: ${args.targetDateIso}`);
             
             try {
@@ -642,7 +643,6 @@ export class AiService {
                return "Claro, nos comunicamos ese día como lo indicas.";
             }
          } else if (toolCall.function.name === "escalate_to_human") {
-            const args = JSON.parse(toolCall.function.arguments);
             this.logger.log(`🚨 [AI-AGENT-SENTIMENT] Escalado de Emergencia. Razón: ${args.reason}`);
             try {
                await this.prisma.contact.update({
@@ -663,7 +663,6 @@ export class AiService {
                return "Un especialista humano va a revisar tu caso en un momento.";
             }
          } else if (toolCall.function.name === "check_rentcontrol_balance") {
-            const args = JSON.parse(toolCall.function.arguments);
             this.logger.log(`[AI-AGENT-RENTCONTROL] Verificando balances SQL para: ${args.phone}`);
             try {
                const { Client } = require('pg');
@@ -701,16 +700,17 @@ export class AiService {
                toolReturnContext = `[SISTEMA INTERNO: Falló la conexión técnica a RentControl. Discúlpate sutilmente y pide que espere a un humano]`;
             }
          } else if (toolCall.function.name === "check_wisphub_balance") {
-            const args = JSON.parse(toolCall.function.arguments);
             this.logger.log(`[AI-WISPHUB] Consultando saldo en WispHub para: ${args.phone}`);
             
             if (!company.wisphubApiKey) {
                 this.logger.warn(`[AI-WISPHUB] Intento de consulta de saldo pero la empresa no tiene API Key de WispHub guardada.`);
                 toolReturnContext = `[SISTEMA INTERNO: Como bot, acabo de notar que mi administrador no ha guardado la API Key de WispHub en el sistema. Por lo tanto, no puedo checar los saldos de internet ahora mismo. Discúlpate educadamente y dile al cliente que un humano atenderá su cobro en breve.]`;
+            } else if (!args.phone) {
+                toolReturnContext = `[SISTEMA INTERNO: No me proporcionaste un número de teléfono válido para buscar en la base de datos. Por favor pregúntale al cliente cuál es su número de teléfono registrado a 10 dígitos para poder buscar su saldo.]`;
             } else {
                 try {
                    // Clean phone string to 10 digits
-                   const searchPhone = args.phone.replace(/[^0-9]/g, '').slice(-10);
+                   const searchPhone = String(args.phone).replace(/[^0-9]/g, '').slice(-10);
                    
                    // Fetch clients from WispHub by phone
                    const wispRes = await axios.get(`https://api.wisphub.net/api/clientes/?telefono=${searchPhone}`, {
@@ -759,14 +759,15 @@ export class AiService {
                 }
             }
          } else if (toolCall.function.name === "check_wisphub_technical_status") {
-            const args = JSON.parse(toolCall.function.arguments);
             this.logger.log(`[AI-WISPHUB] Consultando estado técnico en WispHub para: ${args.phone}`);
             
             if (!company.wisphubApiKey) {
                 toolReturnContext = `[SISTEMA INTERNO: La empresa no tiene API Key de WispHub configurada. Discúlpate y avisa que un técnico humano revisará su caso pronto.]`;
+            } else if (!args.phone) {
+                toolReturnContext = `[SISTEMA INTERNO: No me proporcionaste un número de teléfono válido para buscar su estado técnico. Por favor pregúntale al cliente cuál es su número de teléfono a 10 dígitos para poder auditar su conexión.]`;
             } else {
                 try {
-                   const searchPhone = args.phone.replace(/[^0-9]/g, '').slice(-10);
+                   const searchPhone = String(args.phone).replace(/[^0-9]/g, '').slice(-10);
                    const wispRes = await axios.get(`https://api.wisphub.net/api/clientes/?telefono=${searchPhone}`, {
                        headers: { 'Authorization': `Api-Key ${company.wisphubApiKey}` }
                    });
@@ -815,6 +816,10 @@ export class AiService {
                    toolReturnContext = `[SISTEMA INTERNO: Error de conexión con WispHub. Dile al cliente que estamos experimentando una interrupción del sistema interno y que un técnico leerá su mensaje en unos momentos.]`;
                 }
             }
+         } else {
+             // Hallucinated tool
+             this.logger.warn(`[AI] OpenAI intentó llamar a una función no programada: ${toolCall.function.name}`);
+             toolReturnContext = `[SISTEMA INTERNO: Has intentado usar una herramienta técnica que no existe o está deshabilitada (${toolCall.function.name}). Por favor, dile al cliente amablemente que por el momento tus sistemas están actualizándose y que un humano le atenderá en breve.]`;
          }
 
          // FLUJO DE INTERCEPCIÓN ORGÁNICA
