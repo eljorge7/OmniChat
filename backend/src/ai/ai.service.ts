@@ -46,9 +46,11 @@ export class AiService {
 
       // 3. Lookup Tenant via HTTP to RentControl
       let tenantContextInfo = "";
+      let contactPhone = 'Desconocido';
       try {
          const contact = await this.prisma.contact.findUnique({ where: { id: contactId } });
          if (contact && contact.phone) {
+             contactPhone = contact.phone;
              this.logger.log(`[AI-AGENT] Buscando identidad de RentControl para el cel: ${contact.phone}`);
              const baseUrl = process.env.RENTCONTROL_API_URL || 'https://radiotecpro.com/api';
              const rcResponse = await axios.get(`${baseUrl}/integrations/omnichat/identify/${contact.phone}`, {
@@ -133,7 +135,7 @@ export class AiService {
         this.logger.error(`[AI-RAG] Error recuperando embeddings: ${e.message}`);
       }
 
-      const defaultPhoneInjection = `\n[El número de WhatsApp actual de este cliente con el que estás hablando es: ${contact?.phone || 'Desconocido'}. Úsalo como 'phone' por defecto si ejecutas herramientas y el cliente no te da uno diferente.]\n`;
+      const defaultPhoneInjection = `\n[El número de WhatsApp actual de este cliente con el que estás hablando es: ${contactPhone}. Úsalo como 'phone' por defecto si ejecutas herramientas y el cliente no te da uno diferente.]\n`;
       const systemPrompt = (company.openAiPrompt || `Eres el recepcionista virtual experto de ${company.name}. Atiendes leads de manera corta, cortés y persuasiva por WhatsApp. Responde usando emojis moderadamente. Nunca inventes precios. Si no sabes, pide amablemente que esperen a un asesor humano. Sé conversacional, ¡nunca parezcas un bot rígido!`) + defaultPhoneInjection + tenantContextInfo + calendarContext + strictWispHubRules + currentTimeContext + ragContext;
 
       const messagesParams: any[] = [
