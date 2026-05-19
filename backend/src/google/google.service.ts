@@ -1,13 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { google } from 'googleapis';
 import { PrismaService } from '../prisma/prisma.service';
+import { CryptoService } from '../crypto/crypto.service';
 
 @Injectable()
 export class GoogleService {
   private readonly logger = new Logger(GoogleService.name);
   private oauth2Client;
 
-  constructor(private prisma: PrismaService) {
+  constructor(
+    private prisma: PrismaService,
+    private crypto: CryptoService
+  ) {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     // We will use the frontend URL for redirect because the user starts auth from the frontend
@@ -59,8 +63,8 @@ export class GoogleService {
       await this.prisma.user.update({
         where: { id: userId },
         data: {
-          googleAccessToken: tokens.access_token,
-          googleRefreshToken: tokens.refresh_token, // might be undefined if not first time
+          googleAccessToken: this.crypto.encrypt(tokens.access_token),
+          googleRefreshToken: tokens.refresh_token ? this.crypto.encrypt(tokens.refresh_token) : undefined, // might be undefined if not first time
           googleEmail: email
         }
       });
@@ -70,7 +74,7 @@ export class GoogleService {
       if (tokens.refresh_token) {
         await this.prisma.user.update({
            where: { id: userId },
-           data: { googleRefreshToken: tokens.refresh_token }
+           data: { googleRefreshToken: this.crypto.encrypt(tokens.refresh_token) }
         });
       }
 
@@ -96,8 +100,8 @@ export class GoogleService {
     );
 
     client.setCredentials({
-      access_token: user.googleAccessToken,
-      refresh_token: user.googleRefreshToken,
+      access_token: this.crypto.decrypt(user.googleAccessToken),
+      refresh_token: this.crypto.decrypt(user.googleRefreshToken),
     });
 
     // Auto-refresh token if expired (handled by googleapis when making requests)
@@ -105,13 +109,13 @@ export class GoogleService {
       if (tokens.access_token) {
         await this.prisma.user.update({
           where: { id: userId },
-          data: { googleAccessToken: tokens.access_token }
+          data: { googleAccessToken: this.crypto.encrypt(tokens.access_token) }
         });
       }
       if (tokens.refresh_token) {
         await this.prisma.user.update({
           where: { id: userId },
-          data: { googleRefreshToken: tokens.refresh_token }
+          data: { googleRefreshToken: this.crypto.encrypt(tokens.refresh_token) }
         });
       }
     });

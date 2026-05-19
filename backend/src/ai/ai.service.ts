@@ -2,13 +2,17 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import OpenAI from 'openai';
 import axios from 'axios';
+import { CryptoService } from '../crypto/crypto.service';
 const computeCosineSimilarity = require('compute-cosine-similarity');
 
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private crypto: CryptoService
+  ) {}
 
   /**
    * Genera una respuesta inteligente utilizando el historial del cliente y el Prompt de su Compañía
@@ -26,6 +30,11 @@ export class AiService {
         where: { id: companyId },
         select: { openAiKey: true, openAiPrompt: true, name: true, apiKey: true, wisphubApiKey: true }
       });
+      
+      if (company) {
+        company.openAiKey = this.crypto.decrypt(company.openAiKey) as any;
+        company.wisphubApiKey = this.crypto.decrypt(company.wisphubApiKey) as any;
+      }
 
       if (!company || !company.openAiKey) {
         this.logger.debug(`[AI] Abortando RAG para Company ${companyId}: No hay API Key configurada.`);
@@ -874,6 +883,7 @@ export class AiService {
           if (!fs.existsSync(filepath)) return null;
           
           const company = await this.prisma.company.findUnique({ where: { id: companyId }, select: { openAiKey: true }});
+          if (company) company.openAiKey = this.crypto.decrypt(company.openAiKey) as any;
           if (!company || !company.openAiKey) return null;
           
           const openai = new OpenAI({ apiKey: company.openAiKey });

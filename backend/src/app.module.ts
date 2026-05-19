@@ -10,6 +10,7 @@ import { UsersController } from './users/users.controller';
 import { CalendarModule } from './calendar/calendar.module';
 import { GoogleModule } from './google/google.module';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { CryptoModule } from './crypto/crypto.module';
 
 @Module({
   imports: [
@@ -21,7 +22,8 @@ import { ThrottlerModule } from '@nestjs/throttler';
     PrismaModule, 
     WhatsappModule,
     CalendarModule,
-    GoogleModule
+    GoogleModule,
+    CryptoModule
   ],
   controllers: [AppController, AdminController, UsersController],
   providers: [AppService],

@@ -1,19 +1,25 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import OpenAI from 'openai';
+import { CryptoService } from '../crypto/crypto.service';
 const pdfParse = require('pdf-parse');
 
 @Injectable()
 export class KnowledgeService {
   private readonly logger = new Logger(KnowledgeService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private crypto: CryptoService
+  ) {}
 
   async processAndStoreDocument(file: Express.Multer.File, companyId: string) {
     try {
       this.logger.log(`Procesando documento: ${file.originalname} para Company: ${companyId}`);
       
       const company = await this.prisma.company.findUnique({ where: { id: companyId } });
+      if (company) company.openAiKey = this.crypto.decrypt(company.openAiKey) as any;
+      
       if (!company || !company.openAiKey) {
         throw new HttpException('La compañía no tiene configurada una OpenAI API Key', HttpStatus.BAD_REQUEST);
       }
