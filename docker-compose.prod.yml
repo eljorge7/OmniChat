@@ -29,6 +29,7 @@ services:
       - JWT_SECRET=super_secret_omnichat_k3y
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
     depends_on:
       - omnichat-db
     volumes:
