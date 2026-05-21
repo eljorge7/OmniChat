@@ -1,5 +1,5 @@
 @echo off
-title RentControl OS - Gestor de Arranque
+title OmniChat OS - Gestor de Arranque
 
 echo ===================================================
 echo [1] Iniciando el Backend (Servidor de Base de Datos y API)...
