@@ -299,6 +299,20 @@ export class AiService {
               required: ["phone"]
             }
           }
+        },
+        {
+          type: "function",
+          function: {
+            name: "search_store_catalog",
+            description: "Busca productos en la base de datos de la tienda (Catálogo local y Syscom) para verificar disponibilidad, precio o características. Úsalo cuando el cliente pregunte por un producto, modelo, existencias o cotización de equipos.",
+            parameters: {
+              type: "object",
+              properties: {
+                query: { type: "string", description: "El término de búsqueda (ej. modelo, marca, categoría o nombre del producto)." }
+              },
+              required: ["query"]
+            }
+          }
         }
       ];
 
@@ -392,6 +406,30 @@ export class AiService {
             } catch (err) {
                this.logger.error("Error ejecutando webhook de ticket hacia RC", err);
                return "Lo siento, intenté registrar tu reporte de mantenimiento pero hubo un problema técnico en la nube. Un humano revisará este chat en breve.";
+            }
+         } else if (toolCall.function.name === "search_store_catalog") {
+            this.logger.log(`[AI-AGENT] Ejecutando 'search_store_catalog' con query: ${args.query}`);
+            try {
+               // Consultar la API de la tienda (RentControl Store)
+               const storeRes = await axios.get(`http://localhost:3001/store/products?search=${encodeURIComponent(args.query)}`);
+               const products = storeRes.data.products || [];
+               
+               if (products.length === 0) {
+                  toolReturnContext = `[SISTEMA INTERNO: La búsqueda de '${args.query}' no arrojó resultados. Dile al cliente que por el momento no encuentras ese equipo exacto, pero pregúntale si busca alguna alternativa o marca diferente.]`;
+               } else {
+                  // Tomar los primeros 3 resultados para no saturar el token limit
+                  const topProducts = products.slice(0, 3).map((p: any) => {
+                     // Formatear precio
+                     const priceFormatted = `$${p.price.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN (o $${(p.price / (p.exchangeRate || 18.0)).toLocaleString('en-US', { minimumFractionDigits: 2 })} USD)`;
+                     const stockInfo = p.stock > 0 ? `${p.stock} disponibles` : `Agotado / Sobre pedido`;
+                     return `- ${p.title} (Marca: ${p.brand}, Modelo: ${p.model}). Precio: ${priceFormatted}. Inventario: ${stockInfo}`;
+                  }).join('\n');
+                  
+                  toolReturnContext = `[SISTEMA INTERNO: Estos son los mejores resultados de la tienda para '${args.query}':\n${topProducts}\n\nCon esta información, responde al cliente de forma natural, persuasiva y concisa. Si hay existencias, anímalo a comprar. Si es sobre pedido, dale la opción de cotizar. NUNCA menciones que usaste un 'sistema interno'.]`;
+               }
+            } catch (err) {
+               this.logger.error("Error buscando en catálogo", err);
+               toolReturnContext = "[SISTEMA INTERNO: Ocurrió un error al conectar con el inventario de la tienda. Discúlpate amablemente y dile que verificarás la disponibilidad manualmente en un momento.]";
             }
          } else if (toolCall.function.name === "process_isp_installation_request") {
             this.logger.log(`[AI-AGENT] Ejecutando 'process_isp_installation_request' para Contacto ${contactId}`);
