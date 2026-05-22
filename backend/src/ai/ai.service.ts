@@ -399,7 +399,7 @@ export class AiService {
             this.logger.log(`[AI-AGENT] Ejecutando 'create_maintenance_ticket' para Inquilino ${args.tenantId}`);
             
             try {
-               const rcRes = await axios.post(`http://localhost:3001/integrations/omnichat/tickets/create`, args, {
+               const rcRes = await axios.post(`https://radiotecpro.com/api/integrations/omnichat/tickets/create`, args, {
                   headers: { 'x-api-key': process.env.OMNICHAT_WEBHOOK_SECRET || 'SUPER_SECRET_KEY_123' }
                });
                return `✅ ¡Entendido! Acabo de levantar el *Ticket #${rcRes.data.ticketId}* de Mantenimiento oficial en el sistema para tu departamento. Hemos notificado al propietario/gestor y un especialista revisará esto a la brevedad. ¿Hay algo más en lo que te pueda ayudar?`;
@@ -411,7 +411,7 @@ export class AiService {
             this.logger.log(`[AI-AGENT] Ejecutando 'search_store_catalog' con query: ${args.query}`);
             try {
                // Consultar la API de la tienda (RentControl Store)
-               const storeRes = await axios.get(`http://localhost:3001/store/products?search=${encodeURIComponent(args.query)}`);
+               const storeRes = await axios.get(`https://radiotecpro.com/api/store/products?search=${encodeURIComponent(args.query)}`);
                const products = storeRes.data.products || [];
                
                if (products.length === 0) {
