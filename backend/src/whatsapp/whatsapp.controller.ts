@@ -763,6 +763,7 @@ export class WhatsappController {
   async summarizeChat(@Param('id') contactId: string, @Query('companyId') companyId: string) {
     if (!companyId) {
        const company = await this.prisma.company.findFirst();
+       if (!company) throw new BadRequestException("Company not found");
        companyId = company.id;
     }
     const summary = await this.ai.summarizeChat(companyId, contactId);
@@ -784,6 +785,7 @@ export class WhatsappController {
   async checkWisphub(@Param('phone') phone: string, @Query('companyId') companyId: string) {
      if (!companyId) {
         const company = await this.prisma.company.findFirst();
+        if (!company) throw new BadRequestException("Company not found");
         companyId = company.id;
      }
      const company = await this.prisma.company.findUnique({ where: { id: companyId }});
