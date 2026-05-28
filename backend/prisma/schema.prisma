@@ -72,6 +72,7 @@ model Contact {
   phone       String   // Número de WhatsApp del cliente externo
   name        String?
   tags        String[] @default([]) // Ej: ["Venta_Caliente", "Moroso"]
+  metadata    Json?    // Datos personalizados dinámicos desde Excel (Ej. {"deuda": 500, "plan": "10Megas"})
   botStatus   String   @default("ACTIVE") // ACTIVE | PAUSED | RESOLVED
   avatarUrl   String?
   unreadCount Int      @default(0) // Control de Notificaciones y Badges Visuales
@@ -188,9 +189,15 @@ model Campaign {
   audience        String   // "all", "tag"
   tag             String?
   
-  status          String   @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, FAILED
+  status          String   @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, FAILED, SCHEDULED, RECURRING
   successCount    Int      @default(0)
   failedCount     Int      @default(0)
+  
+  // Agendamiento CRON y Perenne
+  isScheduled     Boolean  @default(false)
+  cronRule        String?  // Ej. "15,30 * *" (Días 15 y 30 del mes)
+  lastRunAt       DateTime?
+  metadataFilter  Json?    // Ej. {"deuda": { "gt": 0 }} para enviar solo si debe algo
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

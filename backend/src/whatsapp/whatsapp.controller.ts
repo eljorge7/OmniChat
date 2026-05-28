@@ -8,13 +8,15 @@ import { ImportContactsDto } from './dto/import-contacts.dto';
 import { CaptureWebLeadDto } from './dto/capture-web-lead.dto';
 import axios from 'axios';
 import { CryptoService } from '../crypto/crypto.service';
+import { AiService } from '../ai/ai.service';
 
 @Controller('api/inbox')
 export class WhatsappController {
   constructor(
     private prisma: PrismaService, 
     private whatsapp: WhatsappService,
-    private crypto: CryptoService
+    private crypto: CryptoService,
+    private ai: AiService
   ) {}
 
   @Get('stats')
@@ -637,11 +639,15 @@ export class WhatsappController {
               companyId: body.companyId
             }
           },
-          update: { name: c.name },
+          update: { 
+            name: c.name,
+            ...(c.metadata && { metadata: c.metadata })
+          },
           create: {
             phone: cleanPhone,
             name: c.name,
-            companyId: body.companyId
+            companyId: body.companyId,
+            ...(c.metadata && { metadata: c.metadata })
           }
         });
         imported++;
@@ -671,7 +677,7 @@ export class WhatsappController {
     })
   }))
   async triggerBroadcast(
-    @Body() body: { companyId: string, message: string, audience: string, tag?: string },
+    @Body() body: { companyId: string, message: string, audience: string, tag?: string, cronRule?: string, isScheduled?: string },
     @UploadedFile() file?: any
   ) {
     if (!body.companyId || !body.message || !body.audience) {
@@ -685,7 +691,9 @@ export class WhatsappController {
       localFilePath = file.path;
     }
 
-    // 1. Guardar la Campaña Histórica en Prisma
+    const isRecurring = body.isScheduled === 'true';
+
+    // 1. Guardar la Campaña en Prisma
     const campaign = await this.prisma.campaign.create({
       data: {
         companyId: body.companyId,
@@ -693,14 +701,19 @@ export class WhatsappController {
         audience: body.audience,
         tag: body.tag || null,
         mediaUrl: mediaUrl,
-        status: "IN_PROGRESS"
+        status: isRecurring ? "RECURRING" : "IN_PROGRESS",
+        isScheduled: isRecurring,
+        cronRule: isRecurring && body.cronRule ? body.cronRule : null,
       }
     });
     
-    // 2. Invocación asíncrona al motor
-    this.whatsapp.launchBroadcast(campaign.id, body.companyId, body.message, body.audience, body.tag, localFilePath);
+    // 2. Invocación asíncrona al motor SOLO si no es recurrente
+    if (!isRecurring) {
+        this.whatsapp.launchBroadcast(campaign.id, body.companyId, body.message, body.audience, body.tag, localFilePath);
+        return { success: true, status: "Broadcast_Encolado", campaign };
+    }
     
-    return { success: true, status: "Broadcast_Encolado", campaign };
+    return { success: true, status: "Broadcast_Recurrente_Programado", campaign };
   }
 
   // --- QUICK REPLIES (SLASH COMMANDS) ---
@@ -743,5 +756,71 @@ export class WhatsappController {
     }
     const result = await this.whatsapp.syncHistoricalMessages(body.companyId);
     return { success: true, ...result };
+  }
+  // --- ZERO-SWITCHING & AI COPILOT ---
+
+  @Post('contacts/:id/summarize')
+  async summarizeChat(@Param('id') contactId: string, @Query('companyId') companyId: string) {
+    if (!companyId) {
+       const company = await this.prisma.company.findFirst();
+       companyId = company.id;
+    }
+    const summary = await this.ai.summarizeChat(companyId, contactId);
+    
+    if (summary) {
+        // Guardarlo como nota interna
+        await this.prisma.contactNote.create({
+            data: {
+               text: `🌟 [COPILOTO IA]\n${summary}`,
+               contactId: contactId,
+               authorId: 'SYSTEM_BOT'
+            }
+        });
+    }
+    return { success: true, summary };
+  }
+
+  @Post('wisphub/:phone/check')
+  async checkWisphub(@Param('phone') phone: string, @Query('companyId') companyId: string) {
+     if (!companyId) {
+        const company = await this.prisma.company.findFirst();
+        companyId = company.id;
+     }
+     const company = await this.prisma.company.findUnique({ where: { id: companyId }});
+     if (!company || !company.wisphubApiKey) throw new BadRequestException("No hay API Key de WispHub");
+
+     const apiKey = this.crypto.decrypt(company.wisphubApiKey);
+     const searchPhone = String(phone).replace(/[^0-9]/g, '').slice(-10);
+     
+     const wispRes = await axios.get(`https://api.wisphub.net/api/clientes/?telefono=${searchPhone}`, {
+         headers: { 'Authorization': `Api-Key ${apiKey}` }
+     });
+
+     if (wispRes.data && wispRes.data.results && wispRes.data.results.length > 0) {
+         const cliente = wispRes.data.results[0];
+         return {
+             success: true,
+             nombre: cliente.nombre,
+             estado: cliente.estado,
+             usuario: cliente.usuario,
+             router: cliente.router || null
+         };
+     } else {
+         return { success: false, message: "No encontrado" };
+     }
+  }
+
+  @Post('rentcontrol/ticket')
+  async createTicket(@Body() body: { contactId: string, title: string, description: string }) {
+      // Simulación de conexión a RentControl
+      const contact = await this.prisma.contact.findUnique({ where: { id: body.contactId } });
+      await this.prisma.contactNote.create({
+          data: {
+              text: `🔧 [TICKET RENTCONTROL CREADO]\nAsunto: ${body.title}\nProblema: ${body.description}`,
+              contactId: body.contactId,
+              authorId: 'AGENTE (Zero-Switching)'
+          }
+      });
+      return { success: true };
   }
 }

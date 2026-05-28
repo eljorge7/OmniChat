@@ -256,7 +256,8 @@ export class WhatsappService implements OnModuleInit {
         data: {
             body: textBody,
             fromMe: true,
-            contactId: contact.id
+            contactId: contact.id,
+            timestamp: new Date(message.timestamp * 1000)
         }
     });
 
@@ -365,6 +366,34 @@ export class WhatsappService implements OnModuleInit {
         }
     }
 
+    // =============== AUTO-REACTIVACIÓN (AUTO-CIERRE) ===============
+    if (contact.botStatus === 'PAUSED' || contact.botStatus === 'RESOLVED') {
+        const lastMsg = await this.prisma.message.findFirst({
+            where: { contactId: contact.id },
+            orderBy: { timestamp: 'desc' }
+        });
+        
+        if (lastMsg) {
+            const hoursSinceLastMsg = (Date.now() - lastMsg.timestamp.getTime()) / (1000 * 60 * 60);
+            if (hoursSinceLastMsg >= 24) {
+                this.logger.log(`[OmniChat] Auto-reactivando bot para ${phone} tras ${hoursSinceLastMsg.toFixed(1)}h de inactividad.`);
+                contact = await this.prisma.contact.update({
+                    where: { id: contact.id },
+                    data: { botStatus: 'ACTIVE', pipelineId: null, assignedToId: null }
+                });
+                
+                await this.prisma.contactNote.create({
+                    data: {
+                        text: `🤖 [SISTEMA] El chat se ha reabierto y el asistente virtual se ha reactivado automáticamente tras 24h de inactividad.`,
+                        contactId: contact.id,
+                        authorId: 'SYSTEM_BOT'
+                    }
+                });
+            }
+        }
+    }
+    // ===============================================================
+
     // =============== EMERGENCY MODE INTERCEPTOR ===============
     const currentCompany = await this.prisma.company.findUnique({ where: { id: companyId } });
     if (currentCompany && currentCompany.emergencyMode && currentCompany.emergencyMessage) {
@@ -443,7 +472,8 @@ export class WhatsappService implements OnModuleInit {
             fromMe: false, // Cliente externo
             contactId: contact.id,
             mediaUrl,
-            mediaType
+            mediaType,
+            timestamp: new Date(message.timestamp * 1000)
         }
     });
 
@@ -710,7 +740,15 @@ export class WhatsappService implements OnModuleInit {
             await new Promise(resolve => setTimeout(resolve, delayMs));
 
             // Token injection
-            const personalizedMsg = messageText.replace(/{name}/g, contact.name || 'cliente');
+            let personalizedMsg = messageText.replace(/{name}/g, contact.name || 'cliente');
+            
+            // Inyección Dinámica de Excel Metadata (ISOTEC Solution)
+            if (contact.metadata && typeof contact.metadata === 'object' && !Array.isArray(contact.metadata)) {
+                const meta = contact.metadata as Record<string, any>;
+                personalizedMsg = personalizedMsg.replace(/{metadata\.([^}]+)}/g, (match, key) => {
+                    return meta[key] !== undefined ? String(meta[key]) : match;
+                });
+            }
             
             let targetPhone = contact.phone;
             if (!targetPhone.includes('@')) targetPhone = `${targetPhone}@c.us`;

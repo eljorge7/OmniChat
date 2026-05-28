@@ -11,6 +11,9 @@ export class ContactItemDto {
   @Matches(/^[0-9]+$/, { message: 'El teléfono solo debe contener números' })
   @Length(10, 12, { message: 'El teléfono debe tener entre 10 y 12 dígitos' })
   phone: string;
+
+  @IsOptional()
+  metadata?: any;
 }
 
 export class ImportContactsDto {

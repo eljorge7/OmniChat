@@ -43,11 +43,12 @@ export class AiService {
 
       const openai = new OpenAI({ apiKey: company.openAiKey });
 
-      // 2. Recover Chat History (Last 10 messages)
+      // 2. Recover Chat History (Últimas 24 horas para ahorrar tokens y reiniciar memoria)
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
       const messageHistory = await this.prisma.message.findMany({
-         where: { contactId },
+         where: { contactId, timestamp: { gte: twentyFourHoursAgo } },
          orderBy: { timestamp: 'desc' },
-         take: 10
+         take: 15
       });
 
       // Reverse to chronological order
@@ -937,6 +938,44 @@ export class AiService {
           return response.text;
       } catch (err: any) {
           this.logger.error("Error catastrofico interceptando API de Whisper", err.message);
+          return null;
+      }
+  }
+
+  /**
+   * Resume los últimos mensajes de un chat para los agentes humanos (Copiloto IA)
+   */
+  async summarizeChat(companyId: string, contactId: string): Promise<string | null> {
+      try {
+          const company = await this.prisma.company.findUnique({ where: { id: companyId }, select: { openAiKey: true }});
+          if (company) company.openAiKey = this.crypto.decrypt(company.openAiKey) as any;
+          if (!company || !company.openAiKey) return null;
+          
+          const openai = new OpenAI({ apiKey: company.openAiKey });
+          
+          // Traer últimos 30 mensajes para el resumen
+          const messageHistory = await this.prisma.message.findMany({
+             where: { contactId },
+             orderBy: { timestamp: 'desc' },
+             take: 30
+          });
+
+          if (messageHistory.length === 0) return "No hay mensajes para resumir.";
+
+          const chatText = messageHistory.reverse().map(m => `${m.fromMe ? 'NOSOTROS' : 'CLIENTE'}: ${m.body}`).join('\n');
+          
+          const response = await openai.chat.completions.create({
+              model: "gpt-4o-mini",
+              messages: [
+                  { role: "system", content: "Eres un asistente interno. Tu trabajo es leer el historial de chat provisto y hacer un resumen EJECUTIVO en máximo 3-4 líneas de cuál es el estatus o problema principal del cliente. El resumen es para que un agente humano lo lea rápido." },
+                  { role: "user", content: `Resumen de este chat:\n\n${chatText}` }
+              ],
+              temperature: 0.3
+          });
+          
+          return response.choices[0]?.message?.content?.trim() || "No se pudo generar el resumen.";
+      } catch (err: any) {
+          this.logger.error("Error generando resumen de chat", err.message);
           return null;
       }
   }

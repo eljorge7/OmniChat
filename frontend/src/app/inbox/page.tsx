@@ -62,6 +62,7 @@ export default function InboxPage() {
 
   // Sync History
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
 
   const currentChat = chats.find(c => c.id === selectedChatId) || chats.filter(c => c.pipeId === activePipeline)[0];
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -311,8 +312,64 @@ export default function InboxPage() {
      } catch (e: any) {
        console.error("Error syncing history", e);
        alert(e.response?.data?.message || "Hubo un error sincronizando el historial. ¿El motor de WhatsApp está conectado?");
-     } finally {
+      } finally {
        setIsSyncing(false);
+     }
+  };
+
+  const handleSummarizeChat = async () => {
+     if (!currentChat) return;
+     const activeCid = localStorage.getItem('activeCompanyId');
+     setIsSummarizing(true);
+     try {
+       await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/contacts/${currentChat.id}/summarize?companyId=${activeCid}`);
+       const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox?companyId=${activeCid}`);
+       setChats(res.data.chats);
+       alert("🌟 ¡Resumen generado con éxito! Revisa las Notas de Equipo en el panel derecho.");
+     } catch(e) {
+       console.error("Error summarize", e);
+       alert("Error al resumir chat");
+     } finally {
+       setIsSummarizing(false);
+     }
+  };
+
+  const handleCheckWisphub = async () => {
+     if (!currentChat) return;
+     const activeCid = localStorage.getItem('activeCompanyId');
+     try {
+       const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/wisphub/${currentChat.phone}/check?companyId=${activeCid}`);
+       if (res.data.success) {
+           alert(`📡 ESTADO WISPHUB:\n\n👤 Titular: ${res.data.nombre}\n🔴 Estado: ${res.data.estado}\n🔑 Usuario: ${res.data.usuario}`);
+       } else {
+           alert("No se encontró al cliente en WispHub con ese número.");
+       }
+     } catch(e) {
+       console.error("Error wisphub", e);
+       alert("Error de conexión con WispHub o API Key no configurada.");
+     }
+  };
+
+  const handleCreateTicket = async () => {
+     if (!currentChat) return;
+     const title = prompt("Asunto del Ticket (Falla):");
+     if (!title) return;
+     const desc = prompt("Descripción de la Falla:");
+     if (!desc) return;
+     
+     try {
+       await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/rentcontrol/ticket`, {
+          contactId: currentChat.id,
+          title,
+          description: desc
+       });
+       const activeCid = localStorage.getItem('activeCompanyId');
+       const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox?companyId=${activeCid}`);
+       setChats(res.data.chats);
+       alert("✅ Ticket creado en RentControl exitosamente. Revisa las notas.");
+     } catch(e) {
+       console.error("Error ticket", e);
+       alert("Error al levantar ticket");
      }
   };
 
@@ -594,6 +651,14 @@ export default function InboxPage() {
                     <PanelRight className="h-5 w-5" />
                   </button>
                   <button 
+                    onClick={handleSummarizeChat} 
+                    disabled={isSummarizing}
+                    title="🌟 Copiloto IA: Resumir Chat"
+                    className="hidden sm:flex h-9 px-3 bg-amber-50 hover:bg-amber-100 rounded-lg items-center justify-center text-amber-600 hover:text-amber-700 transition-colors shadow-sm ml-2 font-bold text-xs gap-1 disabled:opacity-50 border border-amber-200"
+                  >
+                    {isSummarizing ? <div className="h-3 w-3 border-2 border-amber-600 border-t-transparent rounded-full animate-spin"></div> : '🌟 Resumir Chat'}
+                  </button>
+                  <button 
                     onClick={handleDeleteContact} 
                     title="Eliminar Conversación Permanentemente"
                     className="flex h-9 w-9 bg-red-50 hover:bg-red-100 rounded-lg items-center justify-center text-red-500 hover:text-red-700 transition-colors shadow-sm ml-2"
@@ -833,6 +898,25 @@ export default function InboxPage() {
                       <CalendarDays className="w-4 h-4" /> Agendar Servicio / Cita
                     </button>
                     <p className="text-[10px] text-slate-400 font-medium text-center mt-2 px-2">Crea recordatorios de instalación, mantenimiento o fechas de cobro.</p>
+                  </div>
+
+                  {/* ZERO SWITCHING CRM BUTTONS */}
+                  <div className="mt-4 pt-4 border-t border-slate-200">
+                    <h4 className="text-[10px] font-black uppercase text-indigo-400 tracking-wider mb-2 flex items-center gap-1.5"><LifeBuoy className="w-3.5 h-3.5" /> Acciones Rápidas (Zero-Switching)</h4>
+                    <div className="flex flex-col gap-2">
+                      <button 
+                         onClick={handleCheckWisphub}
+                         className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 shadow-sm border border-slate-200 py-2.5 rounded-xl font-bold text-xs flex justify-center items-center gap-1.5 transition-all hover:-translate-y-0.5"
+                      >
+                         📡 Consultar Deuda WispHub
+                      </button>
+                      <button 
+                         onClick={handleCreateTicket}
+                         className="w-full bg-amber-50 hover:bg-amber-100 text-amber-700 shadow-sm border border-amber-200 py-2.5 rounded-xl font-bold text-xs flex justify-center items-center gap-1.5 transition-all hover:-translate-y-0.5"
+                      >
+                         🔧 Reportar Falla a RentControl
+                      </button>
+                    </div>
                   </div>
 
                   {/* FACTURAPRO INLINE BOTONES (MAGIC LINKS) */}

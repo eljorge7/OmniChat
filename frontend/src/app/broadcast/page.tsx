@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Megaphone, SendHorizontal, Users, Tag, AlertTriangle, ShieldCheck, FileText, CheckCircle2, Image as ImageIcon, BarChart3, Clock, X } from "lucide-react";
+import { Megaphone, SendHorizontal, Users, Tag, AlertTriangle, ShieldCheck, FileText, CheckCircle2, Image as ImageIcon, BarChart3, Clock, X, ShoppingCart } from "lucide-react";
 import axios from "axios";
 
 export default function BroadcastStudioPage() {
@@ -11,10 +11,14 @@ export default function BroadcastStudioPage() {
   const [tags, setTags] = useState<string[]>([]);
   const [stats, setStats] = useState({ total: 0, tagged: 0 });
   const [sending, setSending] = useState(false);
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [cronRule, setCronRule] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState("");
 
   useEffect(() => {
     fetchData();
@@ -45,6 +49,21 @@ export default function BroadcastStudioPage() {
       }
     } catch (e) {
       console.error("Error fetching campaigns history", e);
+    }
+    
+    // Fetch Catalog
+    try {
+      const prodRes = await fetch('https://facturapro.radiotecpro.com/api/products', { headers: { 'x-tenant-id': 'demo' } });
+      const prods = await prodRes.json();
+      if (Array.isArray(prods)) setProducts(prods);
+    } catch (e) {
+      console.error("Error catálogo", e);
+      // Fallback
+      setProducts([
+         { id: '1', name: 'Router TP-Link WiFi 6 AX1500', price: 1299 },
+         { id: '2', name: 'Cámara de Seguridad PTZ 360', price: 899 },
+         { id: '3', name: 'Antena Ubiquiti LiteBeam 5AC', price: 1450 }
+      ]);
     }
   };
 
@@ -79,12 +98,16 @@ export default function BroadcastStudioPage() {
       formData.append('audience', audience);
       if (selectedTag) formData.append('tag', selectedTag);
       if (file) formData.append('file', file);
+      if (isScheduled) {
+        formData.append('isScheduled', 'true');
+        formData.append('cronRule', cronRule);
+      }
 
       await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/broadcast`, formData, {
          headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      alert("🚀 ¡Campaña Guardada Exitosamente!\\n\\nPuedes seguir trabajando. Los mensajes se enviarán automáticamente en 2do plano.");
+      alert(isScheduled ? "⏰ ¡Campaña Recurrente Programada Exitosamente!" : "🚀 ¡Campaña Guardada Exitosamente!\\n\\nPuedes seguir trabajando. Los mensajes se enviarán automáticamente en 2do plano.");
       setFile(null);
       setFilePreview(null);
       fetchData(); // Refresh historical list
@@ -126,8 +149,9 @@ export default function BroadcastStudioPage() {
                  onChange={e => setMessage(e.target.value)}
                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-48 font-medium text-slate-700"
                />
-               <p className="text-xs text-slate-500 mt-2 font-medium">Usa la variable <code className="bg-slate-100 text-indigo-600 px-1 rounded">&#123;name&#125;</code> para inyectar dinámicamente el nombre de la persona extraído del CSV.</p>
-             </div>
+                <p className="text-xs text-slate-500 mt-2 font-medium">Usa la variable <code className="bg-slate-100 text-indigo-600 px-1 rounded">&#123;name&#125;</code> para inyectar dinámicamente el nombre de la persona extraído del CSV.</p>
+                <p className="text-xs text-slate-500 mt-1 font-medium">✨ <b>Nuevo:</b> Si importaste un Excel, puedes usar variables de tus columnas. Ej: <code className="bg-amber-100 text-amber-700 px-1 rounded">&#123;metadata.deuda&#125;</code>.</p>
+              </div>
 
              {/* Upload Media Section */}
              <div className="mb-6 p-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 relative group">
@@ -174,6 +198,27 @@ export default function BroadcastStudioPage() {
                    <Tag className="h-5 w-5" /> Por Etiqueta
                  </button>
                </div>
+             </div>
+
+             {/* Catálogo de Productos */}
+             <div className="border-t border-slate-100 pt-5 mt-5">
+               <label className="block text-sm font-bold text-indigo-700 mb-3 flex items-center gap-2">
+                 <ShoppingCart className="w-4 h-4" /> Adjuntar Producto de Tienda (Opcional)
+               </label>
+               <select 
+                 value={selectedProductId}
+                 onChange={e => {
+                    setSelectedProductId(e.target.value);
+                    const p = products.find(x => String(x.id) === e.target.value);
+                    if(p) {
+                       setMessage(prev => prev + `\n\n📦 *${p.name}*\n💰 Oferta Especial: $${p.price}\n\n🛒 Adquiérelo seguro aquí: https://tienda.radiotecpro.com/checkout/${p.id}`);
+                    }
+                 }}
+                 className="w-full bg-indigo-50 border border-indigo-200 text-indigo-900 rounded-xl p-3 text-sm font-bold outline-none cursor-pointer shadow-sm transition-all focus:ring-2 focus:ring-indigo-500"
+               >
+                 <option value="">No adjuntar ningún producto...</option>
+                 {products.map(p => <option key={p.id} value={p.id}>{p.name} - ${p.price}</option>)}
+               </select>
              </div>
 
              {audience === 'tag' && (
@@ -248,6 +293,41 @@ export default function BroadcastStudioPage() {
              <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
              <p className="text-sm font-medium text-amber-800">Si un contacto te reporta como "Spam" o te bloquea, tu calificación de calidad bajará en WhatsApp. Utiliza la Difusión con precaución y aporta valor.</p>
            </div>
+
+           {/* Motor de Agendamiento Perenne */}
+           <div className="bg-white p-6 rounded-2xl border border-indigo-200 shadow-[0_4px_20px_rgb(79,70,229,0.1)] relative overflow-hidden">
+             <h2 className="text-sm font-bold uppercase tracking-wider text-indigo-600 mb-4 flex items-center gap-2">
+               <Clock className="w-4 h-4" /> Ejecución Automática
+             </h2>
+             <label className="flex items-center gap-3 cursor-pointer mb-4">
+               <input 
+                 type="checkbox" 
+                 className="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                 checked={isScheduled}
+                 onChange={e => setIsScheduled(e.target.checked)}
+               />
+               <span className="font-bold text-slate-800">Campaña Perenne (Recurrente)</span>
+             </label>
+
+             {isScheduled && (
+               <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                 <p className="text-xs text-slate-500 font-medium">Elige qué días del mes se ejecutará automáticamente esta campaña sin que tengas que intervenir.</p>
+                 <select 
+                   value={cronRule}
+                   onChange={e => setCronRule(e.target.value)}
+                   className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg p-3 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+                 >
+                   <option value="">Selecciona la frecuencia...</option>
+                   <option value="15">Todos los días 15 de cada mes</option>
+                   <option value="30">Todos los días 30 de cada mes</option>
+                   <option value="15,30">Los días 15 y 30 de cada mes (Quincenal)</option>
+                   <option value="1,15,30">Días 1, 15 y 30</option>
+                 </select>
+                 <p className="text-[10px] text-indigo-500 font-bold mt-2">💡 Ideal para recordatorios de cobro automáticos usando las variables de Excel.</p>
+               </div>
+             )}
+           </div>
+
         </div>
       </div>
 

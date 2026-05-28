@@ -7,11 +7,12 @@ import { WisphubController } from './wisphub.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AiModule } from '../ai/ai.module';
 import { GoogleModule } from '../google/google.module';
+import { BroadcastCronService } from './broadcast-cron.service';
 
 @Module({
   imports: [PrismaModule, AiModule, GoogleModule],
   controllers: [WhatsappController, ApiController, WisphubController],
-  providers: [WhatsappService, WhatsappGateway],
+  providers: [WhatsappService, WhatsappGateway, BroadcastCronService],
   exports: [WhatsappService, WhatsappGateway],
 })
 export class WhatsappModule {}

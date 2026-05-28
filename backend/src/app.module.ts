@@ -11,9 +11,11 @@ import { CalendarModule } from './calendar/calendar.module';
 import { GoogleModule } from './google/google.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { CryptoModule } from './crypto/crypto.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'uploads'),
