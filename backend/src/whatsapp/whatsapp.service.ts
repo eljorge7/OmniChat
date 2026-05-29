@@ -157,6 +157,16 @@ export class WhatsappService implements OnModuleInit {
       }
     });
 
+    client.on('call', async (call) => {
+      this.logger.log(`[OmniChat] Llamada entrante rechazada automáticamente de ${call.from}`);
+      try {
+        await call.reject();
+        await client.sendMessage(call.from, "Hola! Soy Julio 🤖. Ahorita las líneas telefónicas están saturadas, pero escríbeme o mándame un audio por aquí y te atiendo al instante. ¡Soy todo oídos!");
+      } catch (err) {
+        this.logger.error("Error rechazando llamada", err);
+      }
+    });
+
     try {
       await client.initialize();
       const sd = this.clients.get(companyId);
