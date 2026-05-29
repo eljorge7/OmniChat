@@ -146,6 +146,13 @@ export class WhatsappService implements OnModuleInit {
          this.logger.log(`[OmniChat-${companyId}] Ignorando mensaje histórico (muy antiguo).`);
          return;
       }
+
+      if (message.type === 'call_log') {
+         this.logger.log(`[OmniChat] Detectada llamada perdida de ${message.from}. Enviando auto-respuesta.`);
+         await client.sendMessage(message.from, "Hola! Soy Julio 🤖. Ahorita las líneas telefónicas están saturadas y no puedo contestar llamadas de voz, pero escríbeme o mándame un audio por aquí y te atiendo al instante. ¡Soy todo oídos!");
+         return;
+      }
+
       await this.handleIncomingMessage(companyId, message);
     });
 
