@@ -64,7 +64,7 @@ export function Sidebar() {
 
   const initials = session?.user?.name ? session.user.name.substring(0, 2).toUpperCase() : 'AG';
 
-  if (pathname === '/login') return null;
+  if (pathname === '/login' || pathname.startsWith('/rifas')) return null;
 
   return (
     <>
