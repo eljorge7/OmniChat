@@ -54,8 +54,14 @@ export default function BroadcastStudioPage() {
     // Fetch Catalog
     try {
       const prodRes = await fetch('https://facturapro.radiotecpro.com/api/products', { headers: { 'x-tenant-id': 'demo' } });
+      if (!prodRes.ok) throw new Error("API Status no OK");
       const prods = await prodRes.json();
-      if (Array.isArray(prods)) setProducts(prods);
+      
+      if (Array.isArray(prods) && prods.length > 0) {
+         setProducts(prods);
+      } else {
+         throw new Error("Catálogo vacío o inválido");
+      }
     } catch (e) {
       console.error("Error catálogo", e);
       // Fallback
