@@ -165,14 +165,20 @@ export class WhatsappService implements OnModuleInit {
     });
 
     client.on('call', async (call) => {
-      this.logger.log(`[OmniChat] Llamada entrante rechazada automáticamente de ${call.from}`);
+      this.logger.log(`[OmniChat] Llamada entrante detectada de ${call.from}`);
+      
+      if (call.from) {
+         try {
+            await client.sendMessage(call.from, "Hola! Soy Julio 🤖. Ahorita las líneas telefónicas están saturadas, pero escríbeme o mándame un audio por aquí y te atiendo al instante. ¡Soy todo oídos!");
+         } catch (e) {
+            this.logger.error("Error enviando mensaje de rechazo", e);
+         }
+      }
+
       try {
         await call.reject();
-        if (call.from) {
-           await client.sendMessage(call.from, "Hola! Soy Julio 🤖. Ahorita las líneas telefónicas están saturadas, pero escríbeme o mándame un audio por aquí y te atiendo al instante. ¡Soy todo oídos!");
-        }
       } catch (err) {
-        this.logger.error("Error rechazando llamada", err);
+        this.logger.error("Error rechazando llamada (Limitación de Meta Web)", err);
       }
     });
 
