@@ -1,4 +1,4 @@
-FROM node:18-bullseye-slim
+FROM node:20-bullseye-slim
 
 # Install Chromium, which automatically brings all the necessary shared libraries (libnss, libgbm, etc)
 RUN apt-get update --allow-releaseinfo-change || apt-get update --fix-missing || true
