@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Plus, Gift, Edit2, Trash2, Tag, Loader2, Link as LinkIcon, Ticket, CircleDollarSign } from "lucide-react";
+import { Plus, Gift, Edit2, Trash2, Tag, Loader2, Link as LinkIcon, Ticket, CircleDollarSign, QrCode } from "lucide-react";
+import { QRCodeCanvas } from "qrcode.react";
 
 export default function RifasAdminPage() {
   const [raffles, setRaffles] = useState<any[]>([]);
@@ -94,6 +95,21 @@ export default function RifasAdminPage() {
     alert("¡Link copiado al portapapeles!");
   };
 
+  const downloadQR = (id: string, name: string) => {
+    const canvas = document.getElementById(`qr-${id}`) as HTMLCanvasElement;
+    if (canvas) {
+      const pngUrl = canvas
+        .toDataURL("image/png")
+        .replace("image/png", "image/octet-stream");
+      let downloadLink = document.createElement("a");
+      downloadLink.href = pngUrl;
+      downloadLink.download = `QR_${name.substring(0,20).replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-8 flex justify-center items-center h-full">
@@ -135,6 +151,7 @@ export default function RifasAdminPage() {
           const ticketsVendidos = r.tickets?.filter((t: any) => t.status === 'PAID').length || 0;
           const ticketsApartados = r.tickets?.filter((t: any) => t.status === 'RESERVED').length || 0;
           const recaudado = ticketsVendidos * r.ticketPrice;
+          const url = `${typeof window !== 'undefined' ? window.location.origin : 'https://omnichat.radiotecpro.com'}/rifas/${companyId}/${r.id}`;
           
           return (
             <div key={r.id} className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden group hover:shadow-md transition-shadow">
@@ -172,9 +189,23 @@ export default function RifasAdminPage() {
                   </div>
                 </div>
 
+                {/* Hidden QR Code for downloading */}
+                <div className="hidden">
+                  <QRCodeCanvas
+                    id={`qr-${r.id}`}
+                    value={url}
+                    size={1024}
+                    level={"H"}
+                    includeMargin={true}
+                  />
+                </div>
+
                 <div className="flex gap-2 border-t border-slate-100 pt-4">
-                  <button onClick={() => copyLink(r.id)} className="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors">
-                    <LinkIcon className="w-4 h-4" /> Link
+                  <button onClick={() => downloadQR(r.id, r.name)} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-sm" title="Descargar QR en Alta Calidad">
+                    <QrCode className="w-4 h-4" /> Bajar QR
+                  </button>
+                  <button onClick={() => copyLink(r.id)} className="p-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition-colors" title="Copiar Link">
+                    <LinkIcon className="w-5 h-5" />
                   </button>
                   <button onClick={() => handleToggleStatus(r)} className="p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-colors" title="Pausar/Activar">
                     <Edit2 className="w-5 h-5" />
