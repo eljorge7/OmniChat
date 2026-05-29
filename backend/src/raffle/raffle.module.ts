@@ -3,9 +3,10 @@ import { RaffleController } from './raffle.controller';
 import { RaffleService } from './raffle.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { WhatsappModule } from '../whatsapp/whatsapp.module';
 
 @Module({
-  imports: [PrismaModule, ScheduleModule.forRoot()],
+  imports: [PrismaModule, ScheduleModule.forRoot(), WhatsappModule],
   controllers: [RaffleController],
   providers: [RaffleService],
   exports: [RaffleService]

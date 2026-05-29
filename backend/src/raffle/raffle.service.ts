@@ -1,12 +1,16 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { WhatsappService } from '../whatsapp/whatsapp.service';
 
 @Injectable()
 export class RaffleService {
   private readonly logger = new Logger(RaffleService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+      private prisma: PrismaService,
+      @Inject(forwardRef(() => WhatsappService)) private whatsapp: WhatsappService
+  ) {}
 
   async findAllActive(companyId: string) {
     return this.prisma.raffle.findMany({
@@ -86,6 +90,16 @@ export class RaffleService {
         }
       });
       reservations.push(ticket);
+    }
+
+    // Send automatic WhatsApp notification
+    const totalAmount = ticketNumbers.length * raffle.ticketPrice;
+    const notificationMessage = `🎟️ *¡Boletos Reservados!*\nHola ${contactName}, apartamos exitosamente tus boletos: *${ticketNumbers.join(', ')}* para la rifa "${raffle.name}".\n\n💰 *Total a pagar:* $${totalAmount.toFixed(2)} MXN.\n\n⚠️ *IMPORTANTE:* Cuentas con 12 horas para liquidar, de lo contrario se liberarán automáticamente.\n\nPor favor, responde a este mensaje enviando la FOTO de tu comprobante de pago para que te confirme.\n\nLink de la Rifa: https://omnichat.radiotecpro.com/rifas/${raffle.companyId}/${raffle.id}`;
+    
+    try {
+        await this.whatsapp.sendDirectMessage(raffle.companyId, `${phone}@c.us`, notificationMessage);
+    } catch(err) {
+        this.logger.error("No se pudo enviar notificacion whatsapp de reserva", err);
     }
 
     return {
