@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
 import { RaffleService } from './raffle.service';
 
 @Controller('api/v1/raffles')
@@ -21,5 +21,29 @@ export class RaffleController {
     @Body() body: { ticketNumbers: string[], contactPhone: string, contactName: string }
   ) {
     return this.raffleService.reserveTickets(id, body.ticketNumbers, body.contactPhone, body.contactName);
+  }
+
+  // --- ADMIN ENDPOINTS ---
+  @Get('admin/company/:companyId')
+  async getAllRafflesForAdmin(@Param('companyId') companyId: string) {
+    return this.raffleService.findAllForAdmin(companyId);
+  }
+
+  @Post()
+  async createRaffle(@Body() body: any) {
+    // En un entorno real se extraería companyId del JWT o Request
+    const { companyId, ...data } = body;
+    return this.raffleService.create(companyId, data);
+  }
+
+  @Put(':id')
+  async updateRaffle(@Param('id') id: string, @Body() body: any) {
+    const { companyId, ...data } = body;
+    return this.raffleService.update(id, companyId, data);
+  }
+
+  @Delete(':id')
+  async deleteRaffle(@Param('id') id: string, @Body() body: { companyId: string }) {
+    return this.raffleService.remove(id, body.companyId);
   }
 }

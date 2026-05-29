@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, MessageSquareText, Settings, Bot, Users, PieChart, Info, HelpCircle, LogOut, Megaphone, Zap, UserPlus, BrainCircuit, Building2, Menu, X, ChevronLeft, ChevronRight, CalendarDays, Server } from 'lucide-react';
+import { LayoutDashboard, MessageSquareText, Settings, Bot, Users, PieChart, Info, HelpCircle, LogOut, Megaphone, Zap, UserPlus, BrainCircuit, Building2, Menu, X, ChevronLeft, ChevronRight, CalendarDays, Server, Gift } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -54,6 +54,7 @@ export function Sidebar() {
 
   const secondaryNav = [
     { name: 'Cerebro IA', href: '/settings/ai', icon: BrainCircuit, adminOnly: true },
+    { name: 'Gestor de Rifas', href: '/settings/rifas', icon: Gift, adminOnly: true },
     { name: 'Atajos (Hooks)', href: '/settings/quick-replies', icon: Zap, adminOnly: true },
     { name: 'Ajustes del Bot', href: '/bot', icon: Bot, adminOnly: true },
     { name: 'Gestión de Equipo', href: '/settings/team', icon: UserPlus, adminOnly: true },

@@ -15,7 +15,16 @@ export class RaffleService {
   async findAllActive(companyId: string) {
     return this.prisma.raffle.findMany({
       where: { companyId, status: 'ACTIVE' },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      include: { tickets: true }
+    });
+  }
+
+  async findAllForAdmin(companyId: string) {
+    return this.prisma.raffle.findMany({
+      where: { companyId },
+      orderBy: { createdAt: 'desc' },
+      include: { tickets: true }
     });
   }
 
@@ -28,6 +37,32 @@ export class RaffleService {
     
     // Transform tickets array into a map or just return them
     return raffle;
+  }
+
+  async create(companyId: string, data: any) {
+    return this.prisma.raffle.create({
+      data: {
+        ...data,
+        companyId
+      }
+    });
+  }
+
+  async update(id: string, companyId: string, data: any) {
+    const raffle = await this.prisma.raffle.findUnique({ where: { id } });
+    if (!raffle || raffle.companyId !== companyId) throw new NotFoundException('Rifa no encontrada');
+
+    return this.prisma.raffle.update({
+      where: { id },
+      data
+    });
+  }
+
+  async remove(id: string, companyId: string) {
+    const raffle = await this.prisma.raffle.findUnique({ where: { id } });
+    if (!raffle || raffle.companyId !== companyId) throw new NotFoundException('Rifa no encontrada');
+
+    return this.prisma.raffle.delete({ where: { id } });
   }
 
   async reserveTickets(raffleId: string, ticketNumbers: string[], contactPhone: string, contactName: string) {
