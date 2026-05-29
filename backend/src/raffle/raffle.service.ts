@@ -40,6 +40,7 @@ export class RaffleService {
   }
 
   async create(companyId: string, data: any) {
+    if (data.drawDate) data.drawDate = new Date(data.drawDate);
     return this.prisma.raffle.create({
       data: {
         ...data,
@@ -51,6 +52,8 @@ export class RaffleService {
   async update(id: string, companyId: string, data: any) {
     const raffle = await this.prisma.raffle.findUnique({ where: { id } });
     if (!raffle || raffle.companyId !== companyId) throw new NotFoundException('Rifa no encontrada');
+
+    if (data.drawDate) data.drawDate = new Date(data.drawDate);
 
     return this.prisma.raffle.update({
       where: { id },

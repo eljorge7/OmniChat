@@ -9,6 +9,7 @@ export default function RifasAdminPage() {
   const [raffles, setRaffles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [companyId, setCompanyId] = useState("");
 
@@ -17,7 +18,8 @@ export default function RifasAdminPage() {
     description: "",
     ticketPrice: "",
     totalTickets: "",
-    imageUrl: ""
+    imageUrl: "",
+    drawDate: ""
   });
 
   useEffect(() => {
@@ -41,26 +43,53 @@ export default function RifasAdminPage() {
     setLoading(false);
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!companyId) return;
     setSaving(true);
+    
+    const payload = {
+      companyId,
+      name: formData.name,
+      description: formData.description,
+      ticketPrice: parseFloat(formData.ticketPrice),
+      totalTickets: parseInt(formData.totalTickets),
+      imageUrl: formData.imageUrl,
+      drawDate: formData.drawDate ? formData.drawDate : null
+    };
+
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/raffles`, {
-        companyId,
-        name: formData.name,
-        description: formData.description,
-        ticketPrice: parseFloat(formData.ticketPrice),
-        totalTickets: parseInt(formData.totalTickets),
-        imageUrl: formData.imageUrl
-      });
-      setIsModalOpen(false);
-      setFormData({ name: "", description: "", ticketPrice: "", totalTickets: "", imageUrl: "" });
+      if (editingId) {
+        await axios.put(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/raffles/${editingId}`, payload);
+      } else {
+        await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/raffles`, payload);
+      }
+      
+      closeModal();
       fetchRaffles(companyId);
     } catch (err) {
       console.error(err);
     }
     setSaving(false);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingId(null);
+    setFormData({ name: "", description: "", ticketPrice: "", totalTickets: "", imageUrl: "", drawDate: "" });
+  };
+
+  const openEditModal = (raffle: any) => {
+    setEditingId(raffle.id);
+    setFormData({
+      name: raffle.name,
+      description: raffle.description || "",
+      ticketPrice: raffle.ticketPrice.toString(),
+      totalTickets: raffle.totalTickets.toString(),
+      imageUrl: raffle.imageUrl || "",
+      drawDate: raffle.drawDate ? new Date(raffle.drawDate).toISOString().slice(0, 16) : ""
+    });
+    setIsModalOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -204,11 +233,11 @@ export default function RifasAdminPage() {
                   <button onClick={() => downloadQR(r.id, r.name)} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-sm" title="Descargar QR en Alta Calidad">
                     <QrCode className="w-4 h-4" /> Bajar QR
                   </button>
-                  <button onClick={() => copyLink(r.id)} className="p-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition-colors" title="Copiar Link">
-                    <LinkIcon className="w-5 h-5" />
+                  <button onClick={() => openEditModal(r)} className="p-2.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-colors" title="Editar">
+                    <Edit2 className="w-5 h-5" />
                   </button>
                   <button onClick={() => handleToggleStatus(r)} className="p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-colors" title="Pausar/Activar">
-                    <Edit2 className="w-5 h-5" />
+                    <Tag className="w-5 h-5" />
                   </button>
                   <button onClick={() => handleDelete(r.id)} className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors" title="Eliminar">
                     <Trash2 className="w-5 h-5" />
@@ -224,9 +253,9 @@ export default function RifasAdminPage() {
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h2 className="text-xl font-black text-slate-900">Crear Nuevo Sorteo</h2>
+              <h2 className="text-xl font-black text-slate-900">{editingId ? 'Editar Sorteo' : 'Crear Nuevo Sorteo'}</h2>
             </div>
-            <form onSubmit={handleCreate} className="p-6 space-y-5">
+            <form onSubmit={handleSave} className="p-6 space-y-5">
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">Nombre del Sorteo</label>
                 <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ej. Gran Rifa Panel Solar 3.3kWh" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium" />
@@ -245,13 +274,19 @@ export default function RifasAdminPage() {
                   <input required type="number" min="1" value={formData.totalTickets} onChange={e => setFormData({...formData, totalTickets: e.target.value})} placeholder="Ej. 200" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium" />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">URL de Imagen (Opcional)</label>
-                <input type="url" value={formData.imageUrl} onChange={e => setFormData({...formData, imageUrl: e.target.value})} placeholder="https://..." className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-sm" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">URL de Imagen (Opcional)</label>
+                  <input type="url" value={formData.imageUrl} onChange={e => setFormData({...formData, imageUrl: e.target.value})} placeholder="https://..." className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Fecha del Sorteo (Opcional)</label>
+                  <input type="datetime-local" value={formData.drawDate} onChange={e => setFormData({...formData, drawDate: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-sm text-slate-600" />
+                </div>
               </div>
               
               <div className="flex gap-3 pt-4 border-t border-slate-100">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-6 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
+                <button type="button" onClick={closeModal} className="flex-1 px-6 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
                   Cancelar
                 </button>
                 <button type="submit" disabled={saving} className="flex-[2] px-6 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2">

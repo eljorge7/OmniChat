@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useParams, useRouter } from 'next/navigation';
+import { Calendar } from 'lucide-react';
 
 export default function RaffleDetail() {
   const { companyId, id } = useParams();

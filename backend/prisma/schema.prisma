@@ -244,6 +244,7 @@ model Raffle {
   totalTickets Int
   imageUrl    String?
   status      String   @default("ACTIVE") // ACTIVE, FINISHED, CANCELLED
+  drawDate    DateTime?
   companyId   String
   company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   tickets     Ticket[]
