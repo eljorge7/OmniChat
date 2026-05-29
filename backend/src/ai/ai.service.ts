@@ -145,9 +145,29 @@ export class AiService {
         this.logger.error(`[AI-RAG] Error recuperando embeddings: ${e.message}`);
       }
 
+      // --- RAFFLES CONTEXT ---
+      let raffleContext = '';
+      try {
+          const activeRaffles = await this.prisma.raffle.findMany({
+              where: { companyId, status: 'ACTIVE' },
+              include: { tickets: { where: { contactId: contactId, status: 'RESERVED' } } }
+          });
+          
+          if (activeRaffles.length > 0) {
+             raffleContext = `\n\n[CONTEXTO DE RIFAS ACTIVAS:\nLa empresa tiene rifas activas. Si el cliente envía un comprobante de pago para apartar boletos, tu labor es verificar si el monto coincide. Tienes las siguientes rifas activas:\n`;
+             for (const r of activeRaffles) {
+                raffleContext += `- Rifa: ${r.name} (ID de Rifa: ${r.id}). Precio x Boleto: $${r.ticketPrice}.\n`;
+                if (r.tickets.length > 0) {
+                   raffleContext += `  >>> IMPORTANTE: ESTE CLIENTE TIENE ${r.tickets.length} BOLETO(S) RESERVADOS SIN PAGAR (Números: ${r.tickets.map(t=>t.ticketNumber).join(', ')}). Monto total a pagar: $${r.tickets.length * r.ticketPrice}.\n`;
+                }
+             }
+             raffleContext += `REGLA DE ORO RIFAS: Si el cliente acaba de mandar un comprobante de pago y el monto cubre los boletos reservados que leíste arriba, DEBES ejecutar INMEDIATAMENTE la función 'verify_raffle_payment' para confirmar su pago en la base de datos y evitar que caduquen.]\n`;
+          }
+      } catch(e) {}
+
       const defaultPhoneInjection = `\n[El número de WhatsApp actual de este cliente con el que estás hablando es: ${contactPhone}. Úsalo como 'phone' por defecto si ejecutas herramientas y el cliente no te da uno diferente.]\n`;
       const personalityBaseline = `\n[INSTRUCCIÓN DE PERSONALIDAD: Te llamas 'Julio'. Tienes una personalidad hiper-humana, amigable, ingeniosa y empática (estilo mexicano relajado). 1) ESTÁ ESTRICTAMENTE PROHIBIDO usar frases robóticas, acartonadas o corporativas como "nuestro equipo de humanos les atenderá" o "un agente se pondrá en contacto". En su lugar usa lenguaje natural como "Ahorita te paso con uno de mis compañeros", "Enseguida le aviso a los chicos del taller", o "Dame chance y te conecto con un especialista". 2) Tienes excelente sentido del humor: Si el cliente te pide un chiste, DEBES contarle uno (preferiblemente de tecnología, ingenieros, internet o cosas de oficina) y reírte con ellos usando 'jajaja' o emojis. 3) Siéntete libre de tener conversaciones triviales breves si el cliente está aburrido.]\n`;
-      const systemPrompt = (company.openAiPrompt || `Eres el recepcionista virtual experto de ${company.name}. Atiendes leads de manera corta, cortés y persuasiva por WhatsApp. Responde usando emojis moderadamente. Nunca inventes precios. Si no sabes, pide amablemente que esperen a un asesor humano. Sé conversacional, ¡nunca parezcas un bot rígido!`) + personalityBaseline + defaultPhoneInjection + tenantContextInfo + calendarContext + strictWispHubRules + currentTimeContext + ragContext;
+      const systemPrompt = (company.openAiPrompt || `Eres el recepcionista virtual experto de ${company.name}. Atiendes leads de manera corta, cortés y persuasiva por WhatsApp. Responde usando emojis moderadamente. Nunca inventes precios. Si no sabes, pide amablemente que esperen a un asesor humano. Sé conversacional, ¡nunca parezcas un bot rígido!`) + personalityBaseline + defaultPhoneInjection + tenantContextInfo + calendarContext + strictWispHubRules + currentTimeContext + ragContext + raffleContext;
 
       const messagesParams: any[] = [
         { role: 'system', content: systemPrompt }
@@ -193,6 +213,21 @@ export class AiService {
 
       // Definir Herramientas (Function Calling)
       const tools: any[] = [
+        {
+          type: "function",
+          function: {
+            name: "verify_raffle_payment",
+            description: "Verifica y aprueba el pago de boletos de rifa. Ejecútalo ÚNICAMENTE si el cliente ya te mandó una imagen de comprobante y el pago cubre correctamente el monto de los boletos.",
+            parameters: {
+              type: "object",
+              properties: {
+                raffleId: { type: "string", description: "El ID de la rifa que se indicó en el contexto." },
+                ticketNumbers: { type: "array", items: { type: "string" }, description: "Los números de boleto exactos que el cliente está pagando (Ej. ['045', '1024'])." }
+              },
+              required: ["raffleId", "ticketNumbers"]
+            }
+          }
+        },
         {
           type: "function",
           function: {
@@ -406,8 +441,22 @@ export class AiService {
                });
                return `✅ ¡Entendido! Acabo de levantar el *Ticket #${rcRes.data.ticketId}* de Mantenimiento oficial en el sistema para tu departamento. Hemos notificado al propietario/gestor y un especialista revisará esto a la brevedad. ¿Hay algo más en lo que te pueda ayudar?`;
             } catch (err) {
-               this.logger.error("Error ejecutando webhook de ticket hacia RC", err);
                return "Lo siento, intenté registrar tu reporte de mantenimiento pero hubo un problema técnico en la nube. Un humano revisará este chat en breve.";
+            }
+         } else if (toolCall.function.name === "verify_raffle_payment") {
+            this.logger.log(`[AI-AGENT] Ejecutando 'verify_raffle_payment' para rifa ${args.raffleId}`);
+            try {
+               const updated = await this.prisma.ticket.updateMany({
+                   where: { raffleId: args.raffleId, ticketNumber: { in: args.ticketNumbers }, status: 'RESERVED' },
+                   data: { status: 'PAID', paidAt: new Date() }
+               });
+               if (updated.count > 0) {
+                   return `🎉 ¡Excelente noticia! Acabo de validar tu comprobante de pago en el sistema. Tus boletos (${args.ticketNumbers.join(', ')}) ya están oficialmente pagados y asegurados a tu nombre. ¡Muchísima suerte en el sorteo! Te avisaremos por este medio de los resultados.`;
+               } else {
+                   return `Mmm, intenté confirmar el pago de los boletos ${args.ticketNumbers.join(', ')} pero parece que ya estaban pagados o el tiempo de reserva expiró. Un asesor humano revisará esto en breve para ayudarte.`;
+               }
+            } catch(err) {
+               return `Hubo un error técnico al registrar tu pago en el sistema de rifas. Un agente humano lo revisará manualmente. ¡Tu pago está a salvo!`;
             }
          } else if (toolCall.function.name === "search_store_catalog") {
             this.logger.log(`[AI-AGENT] Ejecutando 'search_store_catalog' con query: ${args.query}`);

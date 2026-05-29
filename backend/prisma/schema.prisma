@@ -21,6 +21,7 @@ model Company {
   campaigns Campaign[]
   paymentReceipts PaymentReceipt[]
   npsSurveys      NpsSurvey[]
+  raffles         Raffle[]
   
   // Asistente AI RAG Multi-Tenant
   openAiKey    String?
@@ -88,6 +89,7 @@ model Contact {
   calendarEvents CalendarEvent[]
   paymentReceipts PaymentReceipt[]
   npsSurveys      NpsSurvey[]
+  tickets         Ticket[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -232,4 +234,35 @@ model NpsSurvey {
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Raffle {
+  id          String   @id @default(uuid())
+  name        String   // Ej. "Rifa Panel Solar 3.3kWh"
+  description String?  @db.Text
+  ticketPrice Float
+  totalTickets Int
+  imageUrl    String?
+  status      String   @default("ACTIVE") // ACTIVE, FINISHED, CANCELLED
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  tickets     Ticket[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Ticket {
+  id          String   @id @default(uuid())
+  ticketNumber String  // "000" to "199"
+  status      String   @default("AVAILABLE") // AVAILABLE, RESERVED, PAID
+  raffleId    String
+  raffle      Raffle   @relation(fields: [raffleId], references: [id], onDelete: Cascade)
+  
+  contactId   String?
+  contact     Contact? @relation(fields: [contactId], references: [id])
+  
+  reservedAt  DateTime?
+  paidAt      DateTime?
+  
+  @@unique([raffleId, ticketNumber])
 }
