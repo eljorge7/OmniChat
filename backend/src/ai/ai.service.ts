@@ -154,7 +154,7 @@ export class AiService {
           });
           
           if (activeRaffles.length > 0) {
-             raffleContext = `\n\n[CONTEXTO DE RIFAS ACTIVAS:\nLa empresa tiene rifas activas. Si el cliente envía un comprobante de pago para apartar boletos, tu labor es verificar si el monto coincide. Tienes las siguientes rifas activas:\n`;
+             raffleContext = `\n\n[CONTEXTO DE RIFAS ACTIVAS Y PAGOS:\nLa empresa tiene rifas activas. Si el cliente pregunta a dónde pagar o depositar por sus boletos, entrégale ESTOS DATOS EXACTOS:\n- Banco: Banorte\n- CLABE: 072762006567799946\n- A nombre de: Jorge Hurtado Cota\n\nTienes las siguientes rifas activas:\n`;
              for (const r of activeRaffles) {
                 raffleContext += `- Rifa: ${r.name} (ID de Rifa: ${r.id}). Precio x Boleto: $${r.ticketPrice}.\n`;
                 if (r.tickets.length > 0) {

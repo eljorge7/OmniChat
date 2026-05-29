@@ -94,7 +94,7 @@ export class RaffleService {
 
     // Send automatic WhatsApp notification
     const totalAmount = ticketNumbers.length * raffle.ticketPrice;
-    const notificationMessage = `🎟️ *¡Boletos Reservados!*\nHola ${contactName}, apartamos exitosamente tus boletos: *${ticketNumbers.join(', ')}* para la rifa "${raffle.name}".\n\n💰 *Total a pagar:* $${totalAmount.toFixed(2)} MXN.\n\n⚠️ *IMPORTANTE:* Cuentas con 12 horas para liquidar, de lo contrario se liberarán automáticamente.\n\nPor favor, responde a este mensaje enviando la FOTO de tu comprobante de pago para que te confirme.\n\nLink de la Rifa: https://omnichat.radiotecpro.com/rifas/${raffle.companyId}/${raffle.id}`;
+    const notificationMessage = `🎟️ *¡Boletos Reservados!*\nHola ${contactName}, apartamos exitosamente tus boletos: *${ticketNumbers.join(', ')}* para la rifa "${raffle.name}".\n\n💰 *Total a pagar:* $${totalAmount.toFixed(2)} MXN.\n\n🏦 *DATOS DE PAGO:*\n- Banco: *Banorte*\n- CLABE: *072762006567799946*\n- A nombre de: *Jorge Hurtado Cota*\n\n⚠️ *IMPORTANTE:* Cuentas con 12 horas para liquidar, de lo contrario se liberarán automáticamente.\n\nPor favor, responde a este mensaje enviando la FOTO de tu comprobante de pago para que te confirme.\n\nLink de la Rifa: https://omnichat.radiotecpro.com/rifas/${raffle.companyId}/${raffle.id}`;
     
     try {
         await this.whatsapp.sendDirectMessage(raffle.companyId, `${phone}@c.us`, notificationMessage);
