@@ -41,7 +41,7 @@ export default function RafflesCatalog() {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center">
              {branding.logoUrl ? (
-               <img src={branding.logoUrl} alt="Logo" className="h-12 object-contain" />
+               <img src={branding.logoUrl.replace('http://localhost:3002', process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002')} alt="Logo" className="h-12 object-contain" />
              ) : (
                <span className="text-2xl font-black text-white tracking-wider uppercase drop-shadow-md bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${branding.themeColor || '#3B82F6'}, #10B981)` }}>
                  SORTEOS HURTADO

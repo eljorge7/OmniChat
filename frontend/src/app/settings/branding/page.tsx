@@ -138,7 +138,7 @@ export default function BrandingPage() {
             <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl border border-slate-700/50 p-6 flex items-center justify-between">
               <div className="flex items-center">
                 {logoUrl ? (
-                  <img src={logoUrl} alt="Logo" className="h-12 object-contain" />
+                  <img src={logoUrl.replace('http://localhost:3002', process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002')} alt="Logo" className="h-12 object-contain" />
                 ) : (
                   <span className="text-2xl font-black text-white tracking-wider uppercase drop-shadow-md bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${themeColor}, #10B981)` }}>
                     TU EMPRESA
@@ -170,7 +170,7 @@ export default function BrandingPage() {
                 <div className="flex items-center gap-4">
                   <div className="h-16 w-16 bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden flex-shrink-0">
                     {logoUrl ? (
-                      <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-2" />
+                      <img src={logoUrl.replace('http://localhost:3002', process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002')} alt="Logo" className="w-full h-full object-contain p-2" />
                     ) : (
                       <ImageIcon className="text-slate-400 w-6 h-6" />
                     )}

@@ -185,7 +185,7 @@ export default function RaffleDetail() {
           </button>
           <div className="flex items-center gap-3">
              {branding.logoUrl ? (
-               <img src={branding.logoUrl} alt="Logo" className="h-10 sm:h-12 object-contain" />
+               <img src={branding.logoUrl.replace('http://localhost:3002', process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002')} alt="Logo" className="h-10 sm:h-12 object-contain" />
              ) : (
                <span className="text-xl sm:text-2xl font-black text-white tracking-wider uppercase drop-shadow-md bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${branding.themeColor || '#818cf8'}, #34d399)` }}>
                  SORTEOS HURTADO
