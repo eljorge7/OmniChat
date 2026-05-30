@@ -13,9 +13,7 @@ export const metadata: Metadata = {
 import { Providers } from '@/components/Providers';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import AuthGuard from '@/components/AuthGuard';
-import HelpCenterOverlay from "@/components/HelpCenterOverlay";
-import WelcomeTourModal from "@/components/WelcomeTourModal";
-import WhatsAppWidget from "@/components/WhatsAppWidget";
+import LayoutClientWrapper from "@/components/LayoutClientWrapper";
 
 export default function RootLayout({
   children,
@@ -28,16 +26,8 @@ export default function RootLayout({
          <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
            <Providers>
              <AuthGuard>
-             <div className="flex h-screen overflow-hidden w-full max-w-full">
-               <Sidebar />
-               <main className="flex-1 min-w-0 flex flex-col h-full relative z-0 overflow-y-auto">
-                 {children}
-                 <HelpCenterOverlay />
-                 <WelcomeTourModal />
-                 <WhatsAppWidget />
-               </main>
-             </div>
-            </AuthGuard>
+               <LayoutClientWrapper>{children}</LayoutClientWrapper>
+             </AuthGuard>
            </Providers>
          </ThemeProvider>
        </body>

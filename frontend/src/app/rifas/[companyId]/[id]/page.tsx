@@ -176,8 +176,7 @@ export default function RaffleDetail() {
             <span className="hidden sm:inline">Catálogo</span>
           </button>
           <div className="flex items-center gap-3">
-             <ShieldCheck className="w-5 h-5 text-emerald-400" />
-             <span className="text-sm font-bold text-slate-300 tracking-widest uppercase">Plataforma Segura</span>
+             <span className="text-2xl font-black text-white tracking-wider uppercase drop-shadow-md bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">SORTEOS HURTADO</span>
           </div>
         </div>
       </header>
@@ -222,8 +221,8 @@ export default function RaffleDetail() {
                   <Calendar className="w-5 h-5 text-indigo-400" />
                   <span className="text-sm font-bold text-indigo-300 uppercase tracking-wider">Fecha del Sorteo</span>
                 </div>
-                <div className="text-lg font-black text-white mb-5">
-                  {new Date(raffle.drawDate).toLocaleDateString('es-MX', { timeZone: 'America/Hermosillo', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                <div className="text-lg font-black text-white mb-5 capitalize">
+                  {new Date(raffle.drawDate).toLocaleString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
                 </div>
                 
                 {/* Countdown */}
@@ -372,18 +371,20 @@ export default function RaffleDetail() {
             </h2>
             
             <div className="bg-slate-950 rounded-2xl p-5 mb-8 border border-slate-800 relative z-10">
-              <div className="flex flex-col sm:flex-row justify-between mb-4 pb-4 border-b border-slate-800/50 gap-4">
-                <div className="flex items-center">
+              <div className="mb-4 pb-4 border-b border-slate-800/50">
+                <div className="flex items-center justify-between mb-3">
                   <span className="text-slate-400 font-medium">Boletos Seleccionados <span className="bg-indigo-500 text-white text-xs px-2 py-0.5 rounded-full ml-2">{selectedTickets.length}</span></span>
                   {selectedTickets.length > 0 && (
-                    <button onClick={() => setSelectedTickets([])} className="ml-4 text-xs text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1 transition-colors bg-rose-500/10 hover:bg-rose-500/20 px-2 py-1 rounded-lg" title="Borrar toda la selección">
+                    <button onClick={() => setSelectedTickets([])} className="text-xs text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1 transition-colors bg-rose-500/10 hover:bg-rose-500/20 px-2 py-1 rounded-lg" title="Borrar toda la selección">
                       <X className="w-3 h-3" /> Limpiar
                     </button>
                   )}
                 </div>
-                <span className="font-bold text-white flex-wrap max-w-xs text-right leading-relaxed text-sm">
-                  {selectedTickets.length > 0 ? selectedTickets.join(', ') : <span className="text-slate-600 font-normal">Ninguno, usa la Máquina arriba</span>}
-                </span>
+                <div className="bg-slate-900/50 rounded-xl p-3 max-h-32 overflow-y-auto border border-slate-800/50 shadow-inner">
+                  <span className="font-bold text-emerald-400 text-sm leading-relaxed tracking-wider break-words block">
+                    {selectedTickets.length > 0 ? selectedTickets.join(', ') : <span className="text-slate-600 font-normal">Ninguno, usa la Máquina arriba</span>}
+                  </span>
+                </div>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-400 font-medium">Total a Pagar</span>
