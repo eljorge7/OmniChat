@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Plus, Gift, Edit2, Trash2, Tag, Loader2, Link as LinkIcon, Ticket, CircleDollarSign, QrCode, Users, X, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Gift, Edit2, Trash2, Tag, Loader2, Link as LinkIcon, Ticket, CircleDollarSign, QrCode, Users, X, CheckCircle2, XCircle, Trophy } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { useRouter } from "next/navigation";
 
@@ -292,14 +292,14 @@ export default function RifasAdminPage() {
                   />
                 </div>
 
-                <div className="flex gap-2 border-t border-slate-100 pt-4">
-                  <button onClick={() => downloadQR(r.id, r.name)} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-sm" title="Descargar QR en Alta Calidad">
-                    <QrCode className="w-4 h-4" /> Bajar QR
+                <div className="flex gap-2 border-t border-slate-100 pt-4 justify-end">
+                  <button onClick={() => downloadQR(r.id, r.name)} className="p-2.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors" title="Descargar QR en Alta Calidad">
+                    <QrCode className="w-5 h-5" />
                   </button>
-                  <button onClick={() => copyLink(r.id)} className="p-2.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl transition-colors" title="Copiar Link">
+                  <button onClick={() => copyLink(r.id)} className="p-2.5 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors" title="Copiar Link">
                     <LinkIcon className="w-5 h-5" />
                   </button>
-                  <button onClick={() => router.push(`/settings/rifas/${r.id}/compradores`)} className="p-2.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl transition-colors" title="Gestionar Compradores">
+                  <button onClick={() => router.push(`/settings/rifas/${r.id}/compradores`)} className="p-2.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors" title="Gestionar Compradores">
                     <Users className="w-5 h-5" />
                   </button>
                   <button onClick={() => openEditModal(r)} className="p-2.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-colors" title="Editar">
@@ -310,8 +310,8 @@ export default function RifasAdminPage() {
                       <button onClick={() => handleToggleStatus(r)} className="p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-colors" title="Pausar/Activar">
                         <Tag className="w-5 h-5" />
                       </button>
-                      <button onClick={() => openFinishModal(r)} className="p-2.5 text-slate-400 hover:text-purple-500 hover:bg-purple-50 rounded-xl transition-colors font-black text-xs" title="Finalizar Sorteo">
-                        🏆
+                      <button onClick={() => openFinishModal(r)} className="p-2.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-colors" title="Finalizar Sorteo">
+                        <Trophy className="w-5 h-5" />
                       </button>
                     </>
                   )}
