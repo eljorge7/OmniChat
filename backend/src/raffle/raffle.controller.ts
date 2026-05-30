@@ -64,4 +64,12 @@ export class RaffleController {
   ) {
     return this.raffleService.registerTicketPayment(id, ticketNumber, body.amount, body.companyId);
   }
+
+  @Put(':id/finish')
+  async finishRaffle(
+    @Param('id') id: string,
+    @Body() body: { companyId: string; winningNumber: string; evidenceUrl: string }
+  ) {
+    return this.raffleService.finishRaffle(id, body.companyId, body.winningNumber, body.evidenceUrl);
+  }
 }

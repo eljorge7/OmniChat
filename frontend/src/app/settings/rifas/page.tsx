@@ -15,6 +15,13 @@ export default function RifasAdminPage() {
   const router = useRouter();
   const [companyId, setCompanyId] = useState("");
 
+  // Finish Raffle State
+  const [isFinishModalOpen, setIsFinishModalOpen] = useState(false);
+  const [finishingRaffle, setFinishingRaffle] = useState<any>(null);
+  const [winningNumber, setWinningNumber] = useState("");
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [isFinishing, setIsFinishing] = useState(false);
+
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -120,6 +127,56 @@ export default function RifasAdminPage() {
     }
   };
 
+  const openFinishModal = (raffle: any) => {
+    setFinishingRaffle(raffle);
+    setWinningNumber("");
+    setEvidenceFile(null);
+    setIsFinishModalOpen(true);
+  };
+
+  const closeFinishModal = () => {
+    setIsFinishModalOpen(false);
+    setFinishingRaffle(null);
+    setWinningNumber("");
+    setEvidenceFile(null);
+  };
+
+  const handleFinishRaffle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!winningNumber) {
+      alert("Debes ingresar el número ganador.");
+      return;
+    }
+    
+    setIsFinishing(true);
+    let evidenceUrl = "";
+
+    try {
+      if (evidenceFile) {
+        const formData = new FormData();
+        formData.append("file", evidenceFile);
+        const uploadRes = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/companies/upload`, formData, {
+          headers: { "Content-Type": "multipart/form-data" }
+        });
+        evidenceUrl = uploadRes.data.mediaUrl;
+      }
+
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/raffles/${finishingRaffle.id}/finish`, {
+        companyId,
+        winningNumber,
+        evidenceUrl
+      });
+      
+      closeFinishModal();
+      fetchRaffles(companyId);
+    } catch (err) {
+      console.error(err);
+      alert("Error al finalizar la rifa.");
+    } finally {
+      setIsFinishing(false);
+    }
+  };
+
   const copyLink = (id: string) => {
     const url = `${window.location.origin}/rifas/${companyId}/${id}`;
     navigator.clipboard.writeText(url);
@@ -195,9 +252,13 @@ export default function RifasAdminPage() {
                   </div>
                 )}
                 <div className="absolute top-4 right-4 flex gap-2">
-                  <span className={`px-3 py-1 rounded-full text-xs font-black shadow-sm ${r.status === 'ACTIVE' ? 'bg-green-500 text-white' : 'bg-slate-500 text-white'}`}>
-                    {r.status === 'ACTIVE' ? 'ACTIVA' : 'INACTIVA'}
-                  </span>
+                  {r.status === 'FINISHED' ? (
+                    <span className="px-3 py-1 rounded-full text-xs font-black shadow-sm bg-purple-500 text-white">FINALIZADA</span>
+                  ) : (
+                    <span className={`px-3 py-1 rounded-full text-xs font-black shadow-sm ${r.status === 'ACTIVE' ? 'bg-green-500 text-white' : 'bg-slate-500 text-white'}`}>
+                      {r.status === 'ACTIVE' ? 'ACTIVA' : 'INACTIVA'}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="p-6">
@@ -244,9 +305,16 @@ export default function RifasAdminPage() {
                   <button onClick={() => openEditModal(r)} className="p-2.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-colors" title="Editar">
                     <Edit2 className="w-5 h-5" />
                   </button>
-                  <button onClick={() => handleToggleStatus(r)} className="p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-colors" title="Pausar/Activar">
-                    <Tag className="w-5 h-5" />
-                  </button>
+                  {r.status !== 'FINISHED' && (
+                    <>
+                      <button onClick={() => handleToggleStatus(r)} className="p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-colors" title="Pausar/Activar">
+                        <Tag className="w-5 h-5" />
+                      </button>
+                      <button onClick={() => openFinishModal(r)} className="p-2.5 text-slate-400 hover:text-purple-500 hover:bg-purple-50 rounded-xl transition-colors font-black text-xs" title="Finalizar Sorteo">
+                        🏆
+                      </button>
+                    </>
+                  )}
                   <button onClick={() => handleDelete(r.id)} className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors" title="Eliminar">
                     <Trash2 className="w-5 h-5" />
                   </button>
@@ -299,6 +367,63 @@ export default function RifasAdminPage() {
                 </button>
                 <button type="submit" disabled={saving} className="flex-[2] px-6 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2">
                   {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Guardar Sorteo'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Finalizar Rifa */}
+      {isFinishModalOpen && finishingRaffle && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-purple-50">
+              <h2 className="text-xl font-black text-purple-900 flex items-center gap-2">
+                🏆 Finalizar Sorteo
+              </h2>
+              <button onClick={closeFinishModal} className="text-slate-400 hover:text-slate-700 transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleFinishRaffle} className="p-6 space-y-5">
+              <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 mb-4">
+                <p className="text-sm text-purple-800 font-medium">Al finalizar la rifa, dejará de estar disponible para compras y se mostrará en el catálogo público como entregada.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Número Ganador</label>
+                <input 
+                  type="text" 
+                  required
+                  value={winningNumber}
+                  onChange={e => setWinningNumber(e.target.value)}
+                  placeholder="Ej. 045"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 focus:ring-2 focus:ring-purple-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Evidencia de Entrega (Foto)</label>
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={e => {
+                    if (e.target.files && e.target.files[0]) {
+                      setEvidenceFile(e.target.files[0]);
+                    }
+                  }}
+                  className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t border-slate-100">
+                <button type="button" onClick={closeFinishModal} className="flex-1 px-4 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={isFinishing} className="flex-[2] px-4 py-3 rounded-xl font-bold text-white bg-purple-600 hover:bg-purple-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2 shadow-md">
+                  {isFinishing ? <Loader2 className="w-5 h-5 animate-spin" /> : "Publicar Ganador"}
                 </button>
               </div>
             </form>

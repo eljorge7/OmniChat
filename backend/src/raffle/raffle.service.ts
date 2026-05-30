@@ -126,7 +126,8 @@ export class RaffleService {
              
              try {
                 fs.writeFileSync(tmpPath, imageBuffer);
-                await this.whatsapp.sendDirectMessage(companyId, `${updatedTicket.contact.phone}@c.us`, message, tmpPath);
+                await this.whatsapp.sendDirectMediaMessage(companyId, updatedTicket.contact.phone, tmpPath);
+                await this.whatsapp.sendDirectMessage(companyId, updatedTicket.contact.phone, message);
                 fs.unlinkSync(tmpPath);
                 this.logger.log(`Boleto VIP enviado a ${updatedTicket.contact.phone}`);
              } catch(e) {
@@ -188,7 +189,8 @@ export class RaffleService {
               
               try {
                  fs.writeFileSync(tmpPath, imageBuffer);
-                 await this.whatsapp.sendDirectMessage(companyId, `${updatedTicket.contact.phone}@c.us`, message, tmpPath);
+                 await this.whatsapp.sendDirectMediaMessage(companyId, updatedTicket.contact.phone, tmpPath);
+                 await this.whatsapp.sendDirectMessage(companyId, updatedTicket.contact.phone, message);
                  fs.unlinkSync(tmpPath);
                  this.logger.log(`Boleto VIP enviado a ${updatedTicket.contact.phone}`);
               } catch(e) {
@@ -201,13 +203,29 @@ export class RaffleService {
         const remaining = raffle.ticketPrice - newAmountPaid;
         const message = `💳 *¡Abono Recibido!*\n\nHola ${updatedTicket.contact.name}, hemos registrado exitosamente tu abono de *$${amount} MXN* para el boleto *${ticketNumber}*.\n\nLlevas pagado: *$${newAmountPaid} MXN*\nResta por pagar: *$${remaining} MXN*\n\nTu boleto está asegurado (Pagado Parcialmente) y no caducará. Por favor, liquida el saldo pendiente antes de la fecha límite para recibir tu Boleto Digital VIP.`;
         try {
-            await this.whatsapp.sendDirectMessage(companyId, `${updatedTicket.contact.phone}@c.us`, message);
+            await this.whatsapp.sendDirectMessage(companyId, updatedTicket.contact.phone, message);
         } catch(e) {
             this.logger.error("Error enviando notificación de abono", e);
         }
     }
 
     return updatedTicket;
+  }
+
+  async finishRaffle(raffleId: string, companyId: string, winningNumber: string, evidenceUrl: string) {
+    const raffle = await this.prisma.raffle.findUnique({ where: { id: raffleId } });
+    if (!raffle || raffle.companyId !== companyId) {
+      throw new NotFoundException('Rifa no encontrada o sin permisos');
+    }
+
+    return this.prisma.raffle.update({
+      where: { id: raffleId },
+      data: {
+        status: 'FINISHED',
+        winningNumber,
+        evidenceUrl,
+      }
+    });
   }
 
   async reserveTickets(raffleId: string, ticketNumbers: string[], contactPhone: string, contactName: string) {
