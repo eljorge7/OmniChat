@@ -65,6 +65,14 @@ export class RaffleController {
     return this.raffleService.registerTicketPayment(id, ticketNumber, body.amount, body.companyId);
   }
 
+  @Post(':id/tickets/kit-pay')
+  async registerTicketKitPayment(
+    @Param('id') id: string,
+    @Body() body: { companyId: string; ticketNumbers: string[]; amount: number }
+  ) {
+    return this.raffleService.registerTicketKitPayment(id, body.ticketNumbers, body.amount, body.companyId);
+  }
+
   @Put(':id/finish')
   async finishRaffle(
     @Param('id') id: string,

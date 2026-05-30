@@ -24,6 +24,23 @@ export class TicketGeneratorService {
       const page = await browser.newPage();
       await page.setViewport({ width: 800, height: 1200 });
       
+      const numbersCount = data.ticketNumbers.length;
+      let numbersFontSize = '42px';
+      let numbersLetterSpacing = '5px';
+      
+      if (numbersCount === 2) {
+        numbersFontSize = '32px';
+        numbersLetterSpacing = '3px';
+      } else if (numbersCount >= 3 && numbersCount <= 5) {
+        numbersFontSize = '24px';
+        numbersLetterSpacing = '2px';
+      } else if (numbersCount > 5) {
+        numbersFontSize = '18px';
+        numbersLetterSpacing = '1px';
+      }
+
+      const numbersTitle = numbersCount === 1 ? 'Tu Número de la Suerte' : 'Tus Números de la Suerte';
+
       // Construir el diseño HTML
       const htmlContent = `
         <!DOCTYPE html>
@@ -136,11 +153,12 @@ export class TicketGeneratorService {
               letter-spacing: 2px;
             }
             .ticket-numbers {
-              font-size: 42px;
+              font-size: \${numbersFontSize};
               font-weight: 900;
               color: #10B981;
-              letter-spacing: 5px;
+              letter-spacing: \${numbersLetterSpacing};
               word-wrap: break-word;
+              line-height: 1.5;
             }
             .footer-section {
               border-top: 1px solid rgba(255,255,255,0.1);
@@ -212,7 +230,7 @@ export class TicketGeneratorService {
               </div>
               
               <div class="ticket-numbers-container">
-                <div class="ticket-numbers-title">Tus Números de la Suerte</div>
+                <div class="ticket-numbers-title">\${numbersTitle}</div>
                 <div class="ticket-numbers">${data.ticketNumbers.join(', ')}</div>
               </div>
             </div>

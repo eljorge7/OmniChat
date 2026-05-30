@@ -212,10 +212,121 @@ export class RaffleService {
     return updatedTicket;
   }
 
+  async registerTicketKitPayment(raffleId: string, ticketNumbers: string[], amount: number, companyId: string) {
+    const raffle = await this.prisma.raffle.findUnique({ where: { id: raffleId } });
+    if (!raffle) throw new NotFoundException('Rifa no encontrada');
+
+    const tickets = await this.prisma.ticket.findMany({
+      where: { raffleId, ticketNumber: { in: ticketNumbers } },
+      include: { contact: true }
+    });
+
+    if (tickets.length === 0) throw new NotFoundException('Boletos no encontrados');
+
+    let remainingPayment = amount;
+    const updatedTickets = [];
+
+    for (const ticket of tickets) {
+      const debt = raffle.ticketPrice - (ticket.amountPaid || 0);
+      if (debt <= 0) {
+        updatedTickets.push(ticket);
+        continue;
+      }
+
+      const paymentToApply = Math.min(debt, remainingPayment);
+      remainingPayment -= paymentToApply;
+
+      const newAmountPaid = (ticket.amountPaid || 0) + paymentToApply;
+      const isFullyPaid = newAmountPaid >= raffle.ticketPrice;
+
+      const updated = await this.prisma.ticket.update({
+        where: { id: ticket.id },
+        data: {
+          amountPaid: newAmountPaid,
+          status: isFullyPaid ? 'PAID' : 'PARTIALLY_PAID',
+          paidAt: isFullyPaid && ticket.status !== 'PAID' ? new Date() : ticket.paidAt
+        },
+        include: { contact: true }
+      });
+
+      updatedTickets.push(updated);
+    }
+
+    // Calcular estado global del Kit
+    const totalKitPrice = raffle.ticketPrice * tickets.length;
+    const totalKitPaid = updatedTickets.reduce((sum, t) => sum + (t.amountPaid || 0), 0);
+    const isKitFullyPaid = updatedTickets.every(t => t.status === 'PAID');
+    const contact = updatedTickets.find(t => t.contact)?.contact;
+
+    if (!contact) return updatedTickets; // Si son ventas manuales sin contacto, terminamos aquí.
+
+    if (isKitFullyPaid) {
+      // Generar UN SOLO Boleto VIP para todo el Kit
+      const company = await this.prisma.company.findUnique({ where: { id: companyId } });
+      if (company) {
+        const imageBuffer = await this.ticketGenerator.generateTicket({
+          companyName: company.name,
+          raffleName: raffle.name,
+          contactName: contact.name || 'Participante',
+          ticketNumbers: ticketNumbers, // Array completo
+          paymentRef: updatedTickets[0]?.paymentReference || 'N/A',
+          themeColor: company.themeColor || '#3B82F6',
+          logoUrl: company.logoUrl || undefined
+        });
+
+        if (imageBuffer) {
+          const message = `🎟️ *¡Tu Pago ha sido Confirmado!*\n\nHola ${contact.name}, los ${ticketNumbers.length} boletos de tu paquete han sido liquidados exitosamente. Adjunto tu *Boleto Digital VIP* oficial para la rifa "${raffle.name}".\n\nBoletos: ${ticketNumbers.join(', ')}\n\nPor favor guarda esta imagen, es tu comprobante oficial de participación.\n¡Mucha suerte! 🍀`;
+          const fs = require('fs');
+          const path = require('path');
+          const filename = `ticket-kit-${raffleId}-${Date.now()}.png`;
+          const tmpPath = path.join('/tmp', filename);
+          
+          try {
+            fs.writeFileSync(tmpPath, imageBuffer);
+            await this.whatsapp.sendDirectMediaMessage(companyId, contact.phone, tmpPath);
+            await this.whatsapp.sendDirectMessage(companyId, contact.phone, message);
+            fs.unlinkSync(tmpPath);
+            this.logger.log(`Boleto VIP de Kit enviado a ${contact.phone}`);
+          } catch(e) {
+            this.logger.error("Error enviando boleto VIP de Kit por WA", e);
+          }
+        }
+      }
+    } else {
+      // Notificación de abono parcial para el Kit
+      const remaining = totalKitPrice - totalKitPaid;
+      const message = `💳 *¡Abono a Paquete Recibido!*\n\nHola ${contact.name}, hemos registrado exitosamente tu abono de *$${amount} MXN* para tu paquete de ${ticketNumbers.length} boletos (${ticketNumbers.join(', ')}).\n\nLlevas pagado: *$${totalKitPaid} MXN*\nResta por pagar del paquete: *$${remaining} MXN*\n\nTus boletos están asegurados (Pagados Parcialmente). Por favor liquida el saldo restante antes de la fecha límite para recibir tu Boleto Digital VIP.`;
+      
+      try {
+        await this.whatsapp.sendDirectMessage(companyId, contact.phone, message);
+      } catch(e) {
+        this.logger.error("Error enviando notificación de abono de kit", e);
+      }
+    }
+
+    return updatedTickets;
+  }
+
   async finishRaffle(raffleId: string, companyId: string, winningNumber: string, evidenceUrl: string) {
     const raffle = await this.prisma.raffle.findUnique({ where: { id: raffleId } });
     if (!raffle || raffle.companyId !== companyId) {
       throw new NotFoundException('Rifa no encontrada o sin permisos');
+    }
+
+    // Validación estricta del número ganador
+    const winningTicket = await this.prisma.ticket.findFirst({
+      where: {
+        raffleId,
+        ticketNumber: winningNumber,
+      }
+    });
+
+    if (!winningTicket) {
+      throw new BadRequestException(`El boleto ganador #${winningNumber} no fue apartado/comprado por nadie en esta rifa.`);
+    }
+
+    if (winningTicket.status !== 'PAID') {
+      throw new BadRequestException(`No puedes finalizar el sorteo con el boleto #${winningNumber} porque su estado no es PAGADO (Actual: ${winningTicket.status}).`);
     }
 
     return this.prisma.raffle.update({
