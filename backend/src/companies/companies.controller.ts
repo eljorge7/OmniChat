@@ -18,14 +18,15 @@ export class CompaniesController {
       id: company.id,
       name: company.name,
       logoUrl: company.logoUrl,
-      themeColor: company.themeColor
+      themeColor: company.themeColor,
+      whatsappNumber: company.whatsappNumber
     };
   }
 
   @Put('me')
   async updateCompany(
     @Headers('authorization') auth: string,
-    @Body() body: { email: string, logoUrl?: string, themeColor?: string }
+    @Body() body: { email: string, logoUrl?: string, themeColor?: string, whatsappNumber?: string }
   ) {
     if (!body.email) throw new UnauthorizedException('Falta email');
     
@@ -40,7 +41,8 @@ export class CompaniesController {
       where: { id: user.companyId },
       data: {
         logoUrl: body.logoUrl !== undefined ? body.logoUrl : user.company.logoUrl,
-        themeColor: body.themeColor !== undefined ? body.themeColor : user.company.themeColor
+        themeColor: body.themeColor !== undefined ? body.themeColor : user.company.themeColor,
+        whatsappNumber: body.whatsappNumber !== undefined ? body.whatsappNumber : user.company.whatsappNumber
       }
     });
   }

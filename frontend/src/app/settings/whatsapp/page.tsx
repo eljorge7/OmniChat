@@ -8,6 +8,8 @@ import { Smartphone, CheckCircle2, Loader2, RefreshCw, AlertTriangle, PlayCircle
 export default function WhatsappSettingsPage() {
   const [status, setStatus] = useState("INITIALIZING");
   const [qrCode, setQrCode] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const checkStatus = async () => {
     try {
@@ -17,6 +19,44 @@ export default function WhatsappSettingsPage() {
     } catch (e) {
       console.error("Error fetching QR status");
     }
+  };
+
+  const fetchProfile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      // Fetch user profile to get company ID, then company public info, or we can just fetch /me
+      // Actually, we can fetch from /api/v1/auth/me if that exists, or just use session.
+      // But we don't have session imported. We'll fetch it by hitting /api/v1/auth/me.
+      const userRes = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/auth/me`, {
+         headers: { Authorization: `Bearer ${token}` }
+      });
+      const companyId = userRes.data.user?.companyId;
+      if (companyId) {
+         const compRes = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/companies/${companyId}/public`);
+         if (compRes.data.whatsappNumber) setWhatsappNumber(compRes.data.whatsappNumber);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const saveWhatsappNumber = async () => {
+    setIsSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      // Need email for put /me, but wait, auth/me returns email.
+      const userRes = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/auth/me`, {
+         headers: { Authorization: `Bearer ${token}` }
+      });
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/companies/me`, 
+        { email: userRes.data.user.email, whatsappNumber },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      alert('Número oficial guardado correctamente.');
+    } catch (e) {
+      alert('Error guardando el número');
+    }
+    setIsSaving(false);
   };
 
   const handleRestart = async () => {
@@ -31,6 +71,7 @@ export default function WhatsappSettingsPage() {
 
   useEffect(() => {
     checkStatus();
+    fetchProfile();
     const interval = setInterval(checkStatus, 3000);
     return () => clearInterval(interval);
   }, []);
@@ -92,6 +133,28 @@ export default function WhatsappSettingsPage() {
               </button>
             </div>
           )}
+        </div>
+      </div>
+      
+      <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 mt-8">
+        <h2 className="text-2xl font-black text-slate-800 mb-2">Número Oficial de Ventas</h2>
+        <p className="text-slate-500 font-medium mb-6">Ingresa el número de WhatsApp con código de país (ej. 521XXXXXXXXXX) al que tus clientes serán redirigidos cuando hagan clic en "Pagar por WhatsApp".</p>
+        
+        <div className="flex gap-4">
+          <input 
+            type="text" 
+            placeholder="Ej: 5218112345678"
+            value={whatsappNumber}
+            onChange={(e) => setWhatsappNumber(e.target.value)}
+            className="flex-1 border border-slate-300 rounded-xl px-4 py-3 text-lg font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+          />
+          <button 
+            onClick={saveWhatsappNumber}
+            disabled={isSaving}
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold disabled:opacity-50 transition-all"
+          >
+            {isSaving ? "Guardando..." : "Guardar Número"}
+          </button>
         </div>
       </div>
     </div>

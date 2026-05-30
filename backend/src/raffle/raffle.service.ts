@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException, BadRequestException, Inject, for
 import { PrismaService } from '../prisma/prisma.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
+import { TicketGeneratorService } from './ticket-generator.service';
 
 @Injectable()
 export class RaffleService {
@@ -9,7 +10,8 @@ export class RaffleService {
 
   constructor(
       private prisma: PrismaService,
-      @Inject(forwardRef(() => WhatsappService)) private whatsapp: WhatsappService
+      @Inject(forwardRef(() => WhatsappService)) private whatsapp: WhatsappService,
+      private ticketGenerator: TicketGeneratorService
   ) {}
 
   async findAllActive(companyId: string) {
@@ -84,7 +86,7 @@ export class RaffleService {
     }
 
     // Otherwise update or create it if someone manually assigns it
-    return this.prisma.ticket.upsert({
+    const updatedTicket = await this.prisma.ticket.upsert({
       where: {
         raffleId_ticketNumber: {
           raffleId,
@@ -97,8 +99,44 @@ export class RaffleService {
         ticketNumber,
         status,
         paymentReference
-      }
+      },
+      include: { contact: true }
     });
+
+    if (status === 'PAID' && updatedTicket.contactId) {
+       // Generar Boleto Digital VIP
+       const company = await this.prisma.company.findUnique({ where: { id: companyId } });
+       if (company && updatedTicket.contact) {
+          const imageBuffer = await this.ticketGenerator.generateTicket({
+             companyName: company.name,
+             raffleName: raffle.name,
+             contactName: updatedTicket.contact.name || 'Participante',
+             ticketNumbers: [ticketNumber],
+             paymentRef: updatedTicket.paymentReference || 'N/A',
+             themeColor: company.themeColor || '#3B82F6',
+             logoUrl: company.logoUrl || undefined
+          });
+
+          if (imageBuffer) {
+             const message = `🎟️ *¡Tu Pago ha sido Confirmado!*\n\nHola ${updatedTicket.contact.name}, gracias por tu compra. Adjunto tu *Boleto Digital VIP* oficial para la rifa "${raffle.name}".\n\nPor favor guarda esta imagen, es tu comprobante oficial de participación.\n¡Mucha suerte! 🍀`;
+             const fs = require('fs');
+             const path = require('path');
+             const filename = `ticket-${raffleId}-${ticketNumber}.png`;
+             const tmpPath = path.join('/tmp', filename);
+             
+             try {
+                fs.writeFileSync(tmpPath, imageBuffer);
+                await this.whatsapp.sendDirectMessage(companyId, `${updatedTicket.contact.phone}@c.us`, message, tmpPath);
+                fs.unlinkSync(tmpPath);
+                this.logger.log(`Boleto VIP enviado a ${updatedTicket.contact.phone}`);
+             } catch(e) {
+                this.logger.error("Error enviando boleto VIP por WA", e);
+             }
+          }
+       }
+    }
+
+    return updatedTicket;
   }
 
   async reserveTickets(raffleId: string, ticketNumbers: string[], contactPhone: string, contactName: string) {

@@ -8,7 +8,7 @@ export default function RaffleDetail() {
   const { companyId, id } = useParams();
   const router = useRouter();
   const [raffle, setRaffle] = useState<any>(null);
-  const [branding, setBranding] = useState<{ logoUrl?: string, themeColor?: string }>({});
+  const [branding, setBranding] = useState<{ logoUrl?: string, themeColor?: string, whatsappNumber?: string }>({});
   const [loading, setLoading] = useState(true);
   const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
   const [formData, setFormData] = useState({ name: '', phone: '' });
@@ -31,7 +31,8 @@ export default function RaffleDetail() {
         if (brandingRes.data) {
           setBranding({
             logoUrl: brandingRes.data.logoUrl,
-            themeColor: brandingRes.data.themeColor || '#3B82F6'
+            themeColor: brandingRes.data.themeColor || '#3B82F6',
+            whatsappNumber: brandingRes.data.whatsappNumber
           });
         }
         setLoading(false);
@@ -150,7 +151,10 @@ export default function RaffleDetail() {
       
       const encodedMessage = encodeURIComponent(message);
       alert(`¡Boletos reservados! Tu referencia de pago es: ${refCode}.\n\nSerás redirigido a WhatsApp para enviar tu comprobante.`);
-      window.open(`https://api.whatsapp.com/send?text=${encodedMessage}`, '_blank');
+      
+      const phoneParam = branding.whatsappNumber ? `&phone=${branding.whatsappNumber.replace(/[^0-9]/g, '')}` : '';
+      window.open(`https://api.whatsapp.com/send?text=${encodedMessage}${phoneParam}`, '_blank');
+      
       window.location.reload();
       
     } catch (err: any) {

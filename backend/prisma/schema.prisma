@@ -30,6 +30,7 @@ model Company {
   // Branding (Marca Blanca)
   logoUrl      String?
   themeColor   String?    @default("#3B82F6") // Azul por defecto
+  whatsappNumber String?
   
   // WispHub Integration
   wisphubApiKey String?
