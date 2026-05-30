@@ -184,9 +184,9 @@ export default function RaffleDetail() {
             <span className="hidden sm:inline">Catálogo</span>
           </button>
           <div className="flex items-center gap-3">
-             {branding.logoUrl ? (
-               <img src={branding.logoUrl.replace('http://localhost:3002', process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002')} alt="Logo" className="h-10 sm:h-12 object-contain" />
-             ) : (
+              {branding.logoUrl ? (
+               <img src={branding.logoUrl.replace('http://localhost:3002', typeof window !== 'undefined' ? window.location.origin.replace('https://', 'https://api.') : 'https://api.omnichat.radiotecpro.com')} alt="Logo" className="h-10 sm:h-12 object-contain" />
+              ) : (
                <span className="text-xl sm:text-2xl font-black text-white tracking-wider uppercase drop-shadow-md bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${branding.themeColor || '#818cf8'}, #34d399)` }}>
                  SORTEOS HURTADO
                </span>
