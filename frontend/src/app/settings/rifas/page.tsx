@@ -235,6 +235,9 @@ export default function RifasAdminPage() {
                   <button onClick={() => downloadQR(r.id, r.name)} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-sm" title="Descargar QR en Alta Calidad">
                     <QrCode className="w-4 h-4" /> Bajar QR
                   </button>
+                  <button onClick={() => copyLink(r.id)} className="p-2.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl transition-colors" title="Copiar Link">
+                    <LinkIcon className="w-5 h-5" />
+                  </button>
                   <button onClick={() => router.push(`/settings/rifas/${r.id}/compradores`)} className="p-2.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl transition-colors" title="Gestionar Compradores">
                     <Users className="w-5 h-5" />
                   </button>

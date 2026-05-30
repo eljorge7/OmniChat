@@ -23,17 +23,12 @@ export default function CompradoresAdminPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const sessionStr = localStorage.getItem("omnichat_session");
-    if (sessionStr) {
-      try {
-        const session = JSON.parse(sessionStr);
-        setCompanyId(session.companyId);
-        fetchRaffle(session.companyId);
-      } catch (err) {
-        console.error(err);
-      }
+    const cid = localStorage.getItem("activeCompanyId");
+    if (cid) {
+      setCompanyId(cid);
+      fetchRaffle(cid);
     } else {
-      router.push('/login');
+      router.push('/settings/rifas');
     }
   }, [id, router]);
 

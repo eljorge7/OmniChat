@@ -373,7 +373,14 @@ export default function RaffleDetail() {
             
             <div className="bg-slate-950 rounded-2xl p-5 mb-8 border border-slate-800 relative z-10">
               <div className="flex flex-col sm:flex-row justify-between mb-4 pb-4 border-b border-slate-800/50 gap-4">
-                <span className="text-slate-400 font-medium">Boletos Seleccionados <span className="bg-indigo-500 text-white text-xs px-2 py-0.5 rounded-full ml-2">{selectedTickets.length}</span></span>
+                <div className="flex items-center">
+                  <span className="text-slate-400 font-medium">Boletos Seleccionados <span className="bg-indigo-500 text-white text-xs px-2 py-0.5 rounded-full ml-2">{selectedTickets.length}</span></span>
+                  {selectedTickets.length > 0 && (
+                    <button onClick={() => setSelectedTickets([])} className="ml-4 text-xs text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1 transition-colors bg-rose-500/10 hover:bg-rose-500/20 px-2 py-1 rounded-lg" title="Borrar toda la selección">
+                      <X className="w-3 h-3" /> Limpiar
+                    </button>
+                  )}
+                </div>
                 <span className="font-bold text-white flex-wrap max-w-xs text-right leading-relaxed text-sm">
                   {selectedTickets.length > 0 ? selectedTickets.join(', ') : <span className="text-slate-600 font-normal">Ninguno, usa la Máquina arriba</span>}
                 </span>
