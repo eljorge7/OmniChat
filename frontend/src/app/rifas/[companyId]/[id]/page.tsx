@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useParams, useRouter } from 'next/navigation';
-import { Calendar, Ticket, Search, Zap, Clock, ShieldCheck, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
+import { Gift, Calendar, Ticket, ChevronRight, CheckCircle2, ChevronDown, Check, Loader2, PartyPopper, Phone, Search, X, ShieldCheck, Zap, Clock, Sparkles } from "lucide-react";
 
 export default function RaffleDetail() {
   const { companyId, id } = useParams();
