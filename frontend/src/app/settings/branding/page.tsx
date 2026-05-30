@@ -27,16 +27,58 @@ export default function BrandingPage() {
     }
   }, [session]);
 
+  const compressImage = (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error('Canvas to Blob failed'));
+          }, 'image/webp', 0.8); // Convert to highly compressed webp
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("contactId", "branding"); // fake contactId to pass validation if needed
-
     try {
+      const compressedBlob = await compressImage(file);
+      const formData = new FormData();
+      // Enviar como .webp para mayor ligereza
+      formData.append("file", new File([compressedBlob], "logo.webp", { type: "image/webp" }));
+      formData.append("contactId", "branding");
+
       const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/companies/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
