@@ -230,7 +230,7 @@ export class TicketGeneratorService {
               </div>
               
               <div class="ticket-numbers-container">
-                <div class="ticket-numbers-title">\${numbersTitle}</div>
+                <div class="ticket-numbers-title">${numbersTitle}</div>
                 <div class="ticket-numbers">${data.ticketNumbers.join(', ')}</div>
               </div>
             </div>

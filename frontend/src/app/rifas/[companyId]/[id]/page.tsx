@@ -145,19 +145,11 @@ export default function RaffleDetail() {
         contactPhone: formData.phone
       });
 
-      const totalAmount = selectedTickets.length * raffle.ticketPrice;
-      const refCode = res.data.paymentReference || 'N/A';
-      const message = `Hola! Vengo de la página web. Quiero apartar mis boletos: ${selectedTickets.join(', ')} para la rifa "${raffle.name}".\nTotal: $${totalAmount} MXN.\nMi nombre es: ${formData.name}\nMi referencia de pago es: *${refCode}*.`;
+      alert(`¡Boletos reservados con éxito!\nTu referencia de pago es: ${refCode}.\n\nEn breve recibirás un mensaje automático de confirmación por WhatsApp.`);
       
-      const encodedMessage = encodeURIComponent(message);
-      
-      const phoneParam = branding.whatsappNumber ? `&phone=${branding.whatsappNumber.replace(/[^0-9]/g, '')}` : '';
-      const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedMessage}${phoneParam}`;
-      
-      alert(`¡Boletos reservados! Tu referencia de pago es: ${refCode}.\n\nSerás redirigido a WhatsApp para enviar tu comprobante.`);
-      
-      // Use location.href instead of window.open to prevent popup blockers on mobile, and don't reload.
-      window.location.href = whatsappUrl;
+      // Clean form instead of redirecting
+      setSelectedTickets([]);
+      setFormData({ name: '', phone: '' });
       
     } catch (err: any) {
       alert(err.response?.data?.message || 'Error al reservar los boletos.');
