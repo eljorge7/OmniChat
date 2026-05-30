@@ -45,9 +45,9 @@ export default function BrandingPage() {
       } else {
         alert("No se recibió la URL de la imagen");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Error subiendo la imagen");
+      alert(`Error subiendo la imagen: ${err.response?.data?.message || err.message}`);
     } finally {
       setUploading(false);
     }
