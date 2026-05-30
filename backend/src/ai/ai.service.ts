@@ -154,14 +154,11 @@ export class AiService {
           });
           
           if (activeRaffles.length > 0) {
-             raffleContext = `\n\n[CONTEXTO DE RIFAS ACTIVAS Y PAGOS:\nLa empresa tiene rifas activas. Si el cliente pregunta a dónde pagar o depositar por sus boletos, entrégale ESTOS DATOS EXACTOS:\n- Banco: Banorte\n- CLABE: 072762006567799946\n- A nombre de: Jorge Hurtado Cota\n\nTienes las siguientes rifas activas:\n`;
+             raffleContext = `\n\n[CONTEXTO DE RIFAS ACTIVAS Y PAGOS:\nLa empresa tiene rifas activas. Si el cliente pregunta a dónde pagar, o si dice que viene de la página web a reportarse con sus boletos, entrégale ESTOS DATOS EXACTOS Y PÍDELE LA FOTO DEL COMPROBANTE:\n- Banco: Banorte\n- CLABE: 072762006567799946\n- A nombre de: Jorge Hurtado Cota\n\nTienes las siguientes rifas activas:\n`;
              for (const r of activeRaffles) {
                 raffleContext += `- Rifa: ${r.name} (ID de Rifa: ${r.id}). Precio x Boleto: $${r.ticketPrice}.\n`;
-                if (r.tickets.length > 0) {
-                   raffleContext += `  >>> IMPORTANTE: ESTE CLIENTE TIENE ${r.tickets.length} BOLETO(S) RESERVADOS SIN PAGAR (Números: ${r.tickets.map(t=>t.ticketNumber).join(', ')}). Monto total a pagar: $${r.tickets.length * r.ticketPrice}.\n`;
-                }
              }
-             raffleContext += `REGLA DE ORO RIFAS: Si el cliente acaba de mandar un comprobante de pago y el monto cubre los boletos reservados que leíste arriba, DEBES ejecutar INMEDIATAMENTE la función 'verify_raffle_payment' para confirmar su pago en la base de datos y evitar que caduquen.]\n`;
+             raffleContext += `REGLA DE ORO RIFAS:\n1) Si un cliente escribe diciendo que acaba de apartar o reservar boletos desde la página web, dale la bienvenida calurosa a Sorteos Hurtado, confírmale que recibiste su mensaje, dale los datos bancarios de arriba y pídele que envíe su comprobante de transferencia por aquí mismo (y recuérdale que ponga su Referencia en el concepto del banco).\n2) Si el cliente envía un comprobante de pago o foto, agradécele y dile que un administrador verificará su pago y le enviará su BOLETO VIP DIGITAL por este medio en breve. NUNCA digas que su pago ya fue validado automáticamente, tú no tienes ese poder.]\n`;
           }
       } catch(e) {}
 
@@ -213,21 +210,6 @@ export class AiService {
 
       // Definir Herramientas (Function Calling)
       const tools: any[] = [
-        {
-          type: "function",
-          function: {
-            name: "verify_raffle_payment",
-            description: "Verifica y aprueba el pago de boletos de rifa. Ejecútalo ÚNICAMENTE si el cliente ya te mandó una imagen de comprobante y el pago cubre correctamente el monto de los boletos.",
-            parameters: {
-              type: "object",
-              properties: {
-                raffleId: { type: "string", description: "El ID de la rifa que se indicó en el contexto." },
-                ticketNumbers: { type: "array", items: { type: "string" }, description: "Los números de boleto exactos que el cliente está pagando (Ej. ['045', '1024'])." }
-              },
-              required: ["raffleId", "ticketNumbers"]
-            }
-          }
-        },
         {
           type: "function",
           function: {
@@ -442,21 +424,6 @@ export class AiService {
                return `✅ ¡Entendido! Acabo de levantar el *Ticket #${rcRes.data.ticketId}* de Mantenimiento oficial en el sistema para tu departamento. Hemos notificado al propietario/gestor y un especialista revisará esto a la brevedad. ¿Hay algo más en lo que te pueda ayudar?`;
             } catch (err) {
                return "Lo siento, intenté registrar tu reporte de mantenimiento pero hubo un problema técnico en la nube. Un humano revisará este chat en breve.";
-            }
-         } else if (toolCall.function.name === "verify_raffle_payment") {
-            this.logger.log(`[AI-AGENT] Ejecutando 'verify_raffle_payment' para rifa ${args.raffleId}`);
-            try {
-               const updated = await this.prisma.ticket.updateMany({
-                   where: { raffleId: args.raffleId, ticketNumber: { in: args.ticketNumbers }, status: 'RESERVED' },
-                   data: { status: 'PAID', paidAt: new Date() }
-               });
-               if (updated.count > 0) {
-                   return `🎉 ¡Excelente noticia! Acabo de validar tu comprobante de pago en el sistema. Tus boletos (${args.ticketNumbers.join(', ')}) ya están oficialmente pagados y asegurados a tu nombre. ¡Muchísima suerte en el sorteo! Te avisaremos por este medio de los resultados.`;
-               } else {
-                   return `Mmm, intenté confirmar el pago de los boletos ${args.ticketNumbers.join(', ')} pero parece que ya estaban pagados o el tiempo de reserva expiró. Un asesor humano revisará esto en breve para ayudarte.`;
-               }
-            } catch(err) {
-               return `Hubo un error técnico al registrar tu pago en el sistema de rifas. Un agente humano lo revisará manualmente. ¡Tu pago está a salvo!`;
             }
          } else if (toolCall.function.name === "search_store_catalog") {
             this.logger.log(`[AI-AGENT] Ejecutando 'search_store_catalog' con query: ${args.query}`);

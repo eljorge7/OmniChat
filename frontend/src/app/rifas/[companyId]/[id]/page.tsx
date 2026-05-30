@@ -147,7 +147,7 @@ export default function RaffleDetail() {
 
       const totalAmount = selectedTickets.length * raffle.ticketPrice;
       const refCode = res.data.paymentReference || 'N/A';
-      const message = `Hola! Vengo de la página web. Quiero confirmar el apartado de mis boletos: ${selectedTickets.join(', ')} para la rifa "${raffle.name}".\nTotal: $${totalAmount} MXN.\nMi referencia de pago es: *${refCode}*.\nAquí tengo mi comprobante listo.`;
+      const message = `Hola! Vengo de la página web. Quiero apartar mis boletos: ${selectedTickets.join(', ')} para la rifa "${raffle.name}".\nTotal: $${totalAmount} MXN.\nMi nombre es: ${formData.name}\nMi referencia de pago es: *${refCode}*.`;
       
       const encodedMessage = encodeURIComponent(message);
       
