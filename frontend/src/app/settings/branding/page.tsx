@@ -58,8 +58,8 @@ export default function BrandingPage() {
           ctx?.drawImage(img, 0, 0, width, height);
           canvas.toBlob((blob) => {
             if (blob) resolve(blob);
-            else reject(new Error('Canvas to Blob failed'));
-          }, 'image/webp', 0.8); // Convert to highly compressed webp
+            else reject(new Error('Error comprimiendo la imagen'));
+          }, 'image/webp', 0.8);
         };
         img.onerror = (err) => reject(err);
       };
