@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import axios from "axios";
-import { Smartphone, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
+import { Smartphone, CheckCircle2, Loader2, RefreshCw, AlertTriangle, PlayCircle } from "lucide-react";
 
 export default function WhatsappSettingsPage() {
   const [status, setStatus] = useState("INITIALIZING");
@@ -16,6 +16,16 @@ export default function WhatsappSettingsPage() {
       setQrCode(res.data.qr);
     } catch (e) {
       console.error("Error fetching QR status");
+    }
+  };
+
+  const handleRestart = async () => {
+    if (!confirm("¿Seguro que deseas forzar el reinicio? Esto borrará la sesión actual de WhatsApp y tendrás que volver a escanear el QR.")) return;
+    setStatus("INITIALIZING");
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/qr/reset`);
+    } catch (e) {
+      alert("Error reiniciando sesión");
     }
   };
 
@@ -61,10 +71,25 @@ export default function WhatsappSettingsPage() {
               </div>
               <p className="text-slate-600 font-bold text-lg">Abre WhatsApp en tu celular empresarial &gt; Dispositivos vinculados &gt; Vincular dispositivo</p>
             </div>
+          ) : status === 'ERROR' ? (
+            <div className="text-center flex flex-col items-center animate-in zoom-in duration-500">
+              <div className="mx-auto w-24 h-24 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-6 shadow-inner ring-4 ring-red-50">
+                <AlertTriangle className="h-12 w-12" />
+              </div>
+              <h2 className="text-2xl font-black text-slate-800 mb-4">Error de Sincronización</h2>
+              <p className="text-slate-600 font-medium text-lg mb-8 max-w-md mx-auto">Hubo un problema al iniciar el motor de WhatsApp. La carpeta temporal puede estar bloqueada o corrompida.</p>
+              <button onClick={handleRestart} className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold flex items-center gap-2 transition-all shadow-md">
+                <PlayCircle className="w-5 h-5" /> Forzar Reinicio Criptográfico
+              </button>
+            </div>
           ) : (
             <div className="text-center flex flex-col items-center">
               <Loader2 className="h-12 w-12 text-indigo-500 animate-spin mb-6" />
-              <p className="text-slate-600 font-bold text-lg">Solicitando lienzo criptográfico al servidor matriz...</p>
+              <p className="text-slate-600 font-bold text-lg mb-8">Solicitando lienzo criptográfico al servidor matriz...</p>
+              <p className="text-sm text-slate-500 mb-4 max-w-sm text-center">Si esto tarda más de 30 segundos, es probable que la sesión se haya quedado trabada en el servidor.</p>
+              <button onClick={handleRestart} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-bold flex items-center gap-2 transition-all text-sm">
+                <RefreshCw className="w-4 h-4" /> Resetear Sesión Forzosamente
+              </button>
             </div>
           )}
         </div>

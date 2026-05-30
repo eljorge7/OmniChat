@@ -200,7 +200,33 @@ export class WhatsappService implements OnModuleInit {
       if (sd) sd.client = client;
     } catch (e) {
       this.logger.error(`Error inicializando Client para ${companyId}`, e);
+      const sd = this.clients.get(companyId);
+      if (sd) sd.status = 'ERROR';
     }
+  }
+
+  async restartSession(companyId: string) {
+    this.logger.warn(`Forzando reinicio de sesión WA para ${companyId}`);
+    const data = this.clients.get(companyId);
+    if (data && data.client) {
+      try {
+        await data.client.destroy();
+      } catch (e) {}
+    }
+    this.clients.delete(companyId);
+
+    const fs = require('fs');
+    const sessionPath = `./.wwebjs_auth/session-${companyId}`;
+    try {
+      fs.rmSync(sessionPath, { recursive: true, force: true });
+      this.logger.log(`Carpeta de sesión ${sessionPath} eliminada por completo.`);
+    } catch (e) {
+      this.logger.error(`No se pudo eliminar ${sessionPath}`, e);
+    }
+
+    // Reiniciar
+    this.startSession(companyId);
+    return { success: true, message: 'Reinicio lanzado' };
   }
 
   async handleOutgoingPhoneMessage(companyId: string, message: any) {

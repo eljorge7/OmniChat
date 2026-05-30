@@ -51,6 +51,15 @@ export class WhatsappController {
     return data;
   }
 
+  @Post('qr/reset')
+  async resetQrSession() {
+    const company = await this.prisma.company.findFirst({
+        where: { name: { contains: 'hurtado', mode: 'insensitive' } }
+    });
+    if (!company) throw new BadRequestException("No company found");
+    return this.whatsapp.restartSession(company.id);
+  }
+
   @Post(':id/read')
   async markAsRead(@Param('id') contactId: string) {
       await this.prisma.contact.update({
