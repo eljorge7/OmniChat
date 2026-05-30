@@ -145,6 +145,7 @@ export default function RaffleDetail() {
         contactPhone: formData.phone
       });
 
+      const refCode = res.data.paymentReference || 'N/A';
       alert(`¡Boletos reservados con éxito!\nTu referencia de pago es: ${refCode}.\n\nEn breve recibirás un mensaje automático de confirmación por WhatsApp.`);
       
       // Clean form instead of redirecting
