@@ -14,7 +14,7 @@ export default function LayoutClientWrapper({ children }: { children: React.Reac
 
   if (isPublicRoute) {
     return (
-      <main className="flex-1 min-w-0 flex flex-col h-screen overflow-y-auto">
+      <main className="flex-1 min-w-0 flex flex-col h-screen overflow-y-auto bg-[#0B1120]">
         {children}
       </main>
     );

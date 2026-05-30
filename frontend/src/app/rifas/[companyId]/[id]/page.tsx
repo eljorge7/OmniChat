@@ -222,7 +222,7 @@ export default function RaffleDetail() {
                   <span className="text-sm font-bold text-indigo-300 uppercase tracking-wider">Fecha del Sorteo</span>
                 </div>
                 <div className="text-lg font-black text-white mb-5 capitalize">
-                  {new Date(raffle.drawDate).toLocaleString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
+                  {new Date(raffle.drawDate).toLocaleString('es-MX', { timeZone: 'UTC', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
                 </div>
                 
                 {/* Countdown */}
