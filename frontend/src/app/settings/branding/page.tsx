@@ -37,7 +37,7 @@ export default function BrandingPage() {
     formData.append("contactId", "branding"); // fake contactId to pass validation if needed
 
     try {
-      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/whatsapp/upload`, formData, {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/companies/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
       if (res.data && res.data.mediaUrl) {
