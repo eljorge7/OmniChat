@@ -772,7 +772,8 @@ export class WhatsappService implements OnModuleInit {
     }
     const { MessageMedia } = require('whatsapp-web.js');
     const media = MessageMedia.fromFilePath(filePath);
-    await data.client.sendMessage(targetPhone, media);
+    const finalTarget = targetPhone.includes('@') ? targetPhone : `${targetPhone}@c.us`;
+    await data.client.sendMessage(finalTarget, media);
   }
 
   public async launchBroadcast(campaignId: string, companyId: string, messageText: string, audience: string, tag?: string, mediaFilePath?: string) {

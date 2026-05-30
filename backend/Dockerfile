@@ -31,5 +31,5 @@ RUN npm run build
 # Expose port (Internal)
 EXPOSE 3002
 
-# Start the server
-CMD ["npm", "run", "start:prod"]
+# Start the server (and push DB schema automatically to prevent missing columns)
+CMD ["sh", "-c", "npx prisma db push && npm run start:prod"]
