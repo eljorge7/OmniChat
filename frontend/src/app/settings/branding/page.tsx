@@ -15,7 +15,7 @@ export default function BrandingPage() {
 
   useEffect(() => {
     if ((session?.user as any)?.companyId) {
-      axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/companies/${(session.user as any).companyId}/public`)
+      axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/companies/${(session!.user as any).companyId}/public`)
         .then(res => {
           if (res.data) {
             setLogoUrl(res.data.logoUrl || "");
