@@ -76,7 +76,7 @@ export default function RafflesCatalog() {
                     <div className="flex items-center gap-2 text-indigo-400 bg-indigo-900/30 w-fit px-3 py-1.5 rounded-lg mb-3">
                       <Calendar className="w-4 h-4" />
                       <span className="text-xs font-bold uppercase tracking-wider">
-                        {new Date(raffle.drawDate).toLocaleDateString('es-MX', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {new Date(raffle.drawDate).toLocaleDateString('es-MX', { timeZone: 'America/Hermosillo', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
                   )}

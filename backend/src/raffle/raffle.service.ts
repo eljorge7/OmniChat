@@ -72,7 +72,7 @@ export class RaffleService {
     return this.prisma.raffle.delete({ where: { id } });
   }
 
-  async updateTicketStatus(raffleId: string, ticketNumber: string, status: string, companyId: string) {
+  async updateTicketStatus(raffleId: string, ticketNumber: string, status: string, companyId: string, paymentReference?: string) {
     const raffle = await this.prisma.raffle.findUnique({ where: { id: raffleId } });
     if (!raffle || raffle.companyId !== companyId) throw new NotFoundException('Rifa no encontrada');
 
@@ -91,11 +91,12 @@ export class RaffleService {
           ticketNumber
         }
       },
-      update: { status },
+      update: { status, paymentReference },
       create: {
         raffleId,
         ticketNumber,
-        status
+        status,
+        paymentReference
       }
     });
   }
@@ -136,6 +137,10 @@ export class RaffleService {
       throw new BadRequestException(`Algunos boletos ya no están disponibles: ${unavailable.map(t => t.ticketNumber).join(', ')}`);
     }
 
+    // Generate Payment Reference
+    const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
+    const paymentReference = `REF-${randomSuffix}`;
+
     // Process reservations (Upsert to handle new creations or updates of AVAILABLE ones)
     const reservations = [];
     for (const num of ticketNumbers) {
@@ -150,6 +155,7 @@ export class RaffleService {
           status: 'RESERVED',
           contactId: contact.id,
           reservedAt: new Date(),
+          paymentReference
         },
         create: {
           raffleId,
@@ -157,6 +163,7 @@ export class RaffleService {
           status: 'RESERVED',
           contactId: contact.id,
           reservedAt: new Date(),
+          paymentReference
         }
       });
       reservations.push(ticket);
@@ -164,7 +171,7 @@ export class RaffleService {
 
     // Send automatic WhatsApp notification
     const totalAmount = ticketNumbers.length * raffle.ticketPrice;
-    const notificationMessage = `🎟️ *¡Boletos Reservados!*\nHola ${contactName}, apartamos exitosamente tus boletos: *${ticketNumbers.join(', ')}* para la rifa "${raffle.name}".\n\n💰 *Total a pagar:* $${totalAmount.toFixed(2)} MXN.\n\n🏦 *DATOS DE PAGO:*\n- Banco: *Banorte*\n- CLABE: *072762006567799946*\n- A nombre de: *Jorge Hurtado Cota*\n\n⚠️ *IMPORTANTE:* Cuentas con 12 horas para liquidar, de lo contrario se liberarán automáticamente.\n\nPor favor, responde a este mensaje enviando la FOTO de tu comprobante de pago para que te confirme.\n\nLink de la Rifa: https://omnichat.radiotecpro.com/rifas/${raffle.companyId}/${raffle.id}`;
+    const notificationMessage = `🎟️ *¡Boletos Reservados!*\nHola ${contactName}, apartamos exitosamente tus boletos: *${ticketNumbers.join(', ')}* para la rifa "${raffle.name}".\n\n💰 *Total a pagar:* $${totalAmount.toFixed(2)} MXN.\n\n🏦 *DATOS DE PAGO:*\n- Banco: *Banorte*\n- CLABE: *072762006567799946*\n- A nombre de: *Jorge Hurtado Cota*\n- Concepto / Referencia: *${paymentReference}*\n\n⚠️ *IMPORTANTE:* Cuentas con 12 horas para liquidar, de lo contrario se liberarán automáticamente.\n\nPor favor, responde a este mensaje enviando la FOTO de tu comprobante de pago para que te confirme.\n\nLink de la Rifa: https://omnichat.radiotecpro.com/rifas/${raffle.companyId}/${raffle.id}`;
     
     try {
         await this.whatsapp.sendDirectMessage(raffle.companyId, `${phone}@c.us`, notificationMessage);
@@ -176,7 +183,8 @@ export class RaffleService {
       message: 'Boletos reservados con éxito',
       reservedTickets: ticketNumbers,
       totalAmount: ticketNumbers.length * raffle.ticketPrice,
-      contact
+      contact,
+      paymentReference
     };
   }
 

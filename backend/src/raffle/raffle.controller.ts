@@ -51,8 +51,8 @@ export class RaffleController {
   async updateTicketStatus(
     @Param('id') id: string,
     @Param('ticketNumber') ticketNumber: string,
-    @Body() body: { companyId: string; status: string }
+    @Body() body: { companyId: string; status: string; paymentReference?: string }
   ) {
-    return this.raffleService.updateTicketStatus(id, ticketNumber, body.status, body.companyId);
+    return this.raffleService.updateTicketStatus(id, ticketNumber, body.status, body.companyId, body.paymentReference);
   }
 }

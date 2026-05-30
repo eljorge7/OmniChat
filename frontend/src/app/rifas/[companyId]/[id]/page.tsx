@@ -130,17 +130,18 @@ export default function RaffleDetail() {
 
     setReserving(true);
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/v1/raffles/${id}/reserve`, {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/v1/raffles/${id}/reserve`, {
         ticketNumbers: selectedTickets,
         contactName: formData.name,
         contactPhone: formData.phone
       });
 
       const totalAmount = selectedTickets.length * raffle.ticketPrice;
-      const message = `Hola! Vengo de la página web. Quiero confirmar el apartado de mis boletos: ${selectedTickets.join(', ')} para la rifa "${raffle.name}". El total es de $${totalAmount} MXN. Aquí tengo mi comprobante de pago listo.`;
+      const refCode = res.data.paymentReference || 'N/A';
+      const message = `Hola! Vengo de la página web. Quiero confirmar el apartado de mis boletos: ${selectedTickets.join(', ')} para la rifa "${raffle.name}".\nTotal: $${totalAmount} MXN.\nMi referencia de pago es: *${refCode}*.\nAquí tengo mi comprobante listo.`;
       
       const encodedMessage = encodeURIComponent(message);
-      alert('¡Tus boletos han sido reservados por 12 horas! Serás redirigido a WhatsApp para enviar tu comprobante de pago.');
+      alert(`¡Boletos reservados! Tu referencia de pago es: ${refCode}.\n\nSerás redirigido a WhatsApp para enviar tu comprobante.`);
       window.open(`https://api.whatsapp.com/send?text=${encodedMessage}`, '_blank');
       window.location.reload();
       
@@ -222,7 +223,7 @@ export default function RaffleDetail() {
                   <span className="text-sm font-bold text-indigo-300 uppercase tracking-wider">Fecha del Sorteo</span>
                 </div>
                 <div className="text-lg font-black text-white mb-5">
-                  {new Date(raffle.drawDate).toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  {new Date(raffle.drawDate).toLocaleDateString('es-MX', { timeZone: 'America/Hermosillo', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </div>
                 
                 {/* Countdown */}
@@ -363,7 +364,7 @@ export default function RaffleDetail() {
           </div>
 
           {/* Checkout Resumen */}
-          <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 lg:p-8 shadow-2xl relative overflow-hidden">
+          <div className="bg-slate-900 rounded-3xl border border-slate-800 p-4 sm:p-6 lg:p-8 shadow-2xl relative overflow-hidden w-full box-border">
             <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl"></div>
             
             <h2 className="text-2xl font-black mb-6 flex items-center gap-3 relative z-10">
