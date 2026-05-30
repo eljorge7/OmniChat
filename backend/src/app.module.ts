@@ -13,6 +13,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { CryptoModule } from './crypto/crypto.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { RaffleModule } from './raffle/raffle.module';
+import { CompaniesModule } from './companies/companies.module';
 
 @Module({
   imports: [
@@ -27,7 +28,8 @@ import { RaffleModule } from './raffle/raffle.module';
     CalendarModule,
     GoogleModule,
     CryptoModule,
-    RaffleModule
+    RaffleModule,
+    CompaniesModule
   ],
   controllers: [AppController, AdminController, UsersController],
   providers: [AppService],

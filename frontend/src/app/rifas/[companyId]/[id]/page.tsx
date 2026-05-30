@@ -8,6 +8,7 @@ export default function RaffleDetail() {
   const { companyId, id } = useParams();
   const router = useRouter();
   const [raffle, setRaffle] = useState<any>(null);
+  const [branding, setBranding] = useState<{ logoUrl?: string, themeColor?: string }>({});
   const [loading, setLoading] = useState(true);
   const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
   const [formData, setFormData] = useState({ name: '', phone: '' });
@@ -21,18 +22,25 @@ export default function RaffleDetail() {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   useEffect(() => {
-    if (id) {
-      axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/v1/raffles/${id}`)
-        .then(res => {
-          setRaffle(res.data);
-          setLoading(false);
-        })
-        .catch(err => {
-          console.error(err);
-          setLoading(false);
-        });
+    if (id && companyId) {
+      Promise.all([
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/v1/raffles/${id}`),
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/v1/companies/${companyId}/public`).catch(() => ({ data: {} }))
+      ]).then(([raffleRes, brandingRes]) => {
+        setRaffle(raffleRes.data);
+        if (brandingRes.data) {
+          setBranding({
+            logoUrl: brandingRes.data.logoUrl,
+            themeColor: brandingRes.data.themeColor || '#3B82F6'
+          });
+        }
+        setLoading(false);
+      }).catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
     }
-  }, [id]);
+  }, [id, companyId]);
 
   useEffect(() => {
     if (raffle?.drawDate) {
@@ -176,7 +184,13 @@ export default function RaffleDetail() {
             <span className="hidden sm:inline">Catálogo</span>
           </button>
           <div className="flex items-center gap-3">
-             <span className="text-2xl font-black text-white tracking-wider uppercase drop-shadow-md bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">SORTEOS HURTADO</span>
+             {branding.logoUrl ? (
+               <img src={branding.logoUrl} alt="Logo" className="h-10 sm:h-12 object-contain" />
+             ) : (
+               <span className="text-xl sm:text-2xl font-black text-white tracking-wider uppercase drop-shadow-md bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${branding.themeColor || '#818cf8'}, #34d399)` }}>
+                 SORTEOS HURTADO
+               </span>
+             )}
           </div>
         </div>
       </header>
@@ -295,8 +309,10 @@ export default function RaffleDetail() {
                   <button 
                     onClick={spinRoulette}
                     disabled={isSpinning}
-                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-black text-lg py-4 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="w-full text-white font-black text-lg py-4 rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 relative overflow-hidden group"
+                    style={{ backgroundColor: branding.themeColor || '#10B981' }}
                   >
+                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                     {isSpinning ? 'Girando Ruleta...' : '¡Probar Suerte!'}
                   </button>
                 </div>
@@ -424,8 +440,10 @@ export default function RaffleDetail() {
               <button 
                 type="submit" 
                 disabled={selectedTickets.length === 0 || reserving}
-                className={`w-full py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all mt-4 ${selectedTickets.length === 0 ? 'bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-700/50' : 'bg-gradient-to-r from-emerald-500 to-indigo-500 hover:from-emerald-400 hover:to-indigo-400 text-white shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:shadow-[0_0_40px_rgba(16,185,129,0.5)] border border-emerald-400/30'}`}
+                className="w-full text-white font-black text-lg py-4 rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 relative overflow-hidden group"
+                style={{ backgroundColor: branding.themeColor || '#3B82F6' }}
               >
+                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                 {reserving ? <><Loader2 className="w-5 h-5 animate-spin" /> Procesando...</> : (
                   <>
                     <span>Pagar por WhatsApp</span>

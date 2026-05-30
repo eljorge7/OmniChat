@@ -8,19 +8,27 @@ export default function RafflesCatalog() {
   const { companyId } = useParams();
   const router = useRouter();
   const [raffles, setRaffles] = useState<any[]>([]);
+  const [branding, setBranding] = useState<{ logoUrl?: string, themeColor?: string }>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (companyId) {
-      axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/v1/raffles/company/${companyId}`)
-        .then(res => {
-          setRaffles(res.data);
-          setLoading(false);
-        })
-        .catch(err => {
-          console.error(err);
-          setLoading(false);
-        });
+      Promise.all([
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/v1/raffles/company/${companyId}`),
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/v1/companies/${companyId}/public`).catch(() => ({ data: {} }))
+      ]).then(([rafflesRes, brandingRes]) => {
+        setRaffles(rafflesRes.data);
+        if (brandingRes.data) {
+           setBranding({
+              logoUrl: brandingRes.data.logoUrl,
+              themeColor: brandingRes.data.themeColor || '#3B82F6' // default blue
+           });
+        }
+        setLoading(false);
+      }).catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
     }
   }, [companyId]);
 
@@ -32,10 +40,16 @@ export default function RafflesCatalog() {
       <header className="bg-gray-800/50 backdrop-blur-md border-b border-gray-700 p-6 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center">
-             <span className="text-2xl font-black text-white tracking-wider uppercase drop-shadow-md bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">SORTEOS HURTADO</span>
+             {branding.logoUrl ? (
+               <img src={branding.logoUrl} alt="Logo" className="h-12 object-contain" />
+             ) : (
+               <span className="text-2xl font-black text-white tracking-wider uppercase drop-shadow-md bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${branding.themeColor || '#3B82F6'}, #10B981)` }}>
+                 SORTEOS HURTADO
+               </span>
+             )}
           </div>
           <div className="text-sm text-gray-400 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: branding.themeColor || '#10B981' }}></span>
             Plataforma Segura
           </div>
         </div>
@@ -44,7 +58,7 @@ export default function RafflesCatalog() {
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-6 py-16">
         <div className="text-center space-y-6 mb-16">
-          <h2 className="text-5xl font-extrabold tracking-tight">Participa y <span className="text-blue-500">Gana</span></h2>
+          <h2 className="text-5xl font-extrabold tracking-tight">Participa y <span style={{ color: branding.themeColor || '#3B82F6' }}>Gana</span></h2>
           <p className="text-xl text-gray-400 max-w-2xl mx-auto">Selecciona tu boleto de la suerte en nuestros sorteos activos y paga de forma 100% segura a través de nuestro sistema automatizado de WhatsApp.</p>
         </div>
 
