@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useParams, useRouter } from "next/navigation";
-import { Users, Search, ChevronLeft, Save, Loader2, X, Ticket, User, Phone, CheckCircle, Hash } from "lucide-react";
+import { Users, Search, ChevronLeft, Save, Loader2, X, Ticket, User, Phone, CheckCircle, Hash, AlertTriangle } from "lucide-react";
 
 export default function CompradoresAdminPage() {
   const { id } = useParams();
@@ -21,6 +21,10 @@ export default function CompradoresAdminPage() {
     paymentReference: ""
   });
   const [saving, setSaving] = useState(false);
+  
+  // Abonos State
+  const [abonoAmount, setAbonoAmount] = useState("");
+  const [isRegisteringAbono, setIsRegisteringAbono] = useState(false);
 
   useEffect(() => {
     const cid = localStorage.getItem("activeCompanyId");
@@ -61,6 +65,39 @@ export default function CompradoresAdminPage() {
   const closeEdit = () => {
     setEditingTicket(null);
     setEditForm({ status: "AVAILABLE", paymentReference: "" });
+    setAbonoAmount("");
+  };
+
+  const handleRegisterAbono = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!abonoAmount || isNaN(Number(abonoAmount)) || Number(abonoAmount) <= 0) {
+      alert("Ingresa un monto válido");
+      return;
+    }
+    
+    setIsRegisteringAbono(true);
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/raffles/${id}/tickets/${editingTicket.ticketNumber}/pay`, {
+        companyId,
+        amount: Number(abonoAmount)
+      });
+      
+      setAbonoAmount("");
+      await fetchRaffle(companyId);
+      
+      // Update editingTicket state locally to reflect changes in modal immediately
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/raffles/admin/company/${companyId}`);
+      const foundRaffle = res.data.find((r: any) => r.id === id);
+      if (foundRaffle) {
+         const updatedTicket = foundRaffle.tickets.find((t: any) => t.ticketNumber === editingTicket.ticketNumber);
+         if (updatedTicket) setEditingTicket(updatedTicket);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error al registrar abono.");
+    } finally {
+      setIsRegisteringAbono(false);
+    }
   };
 
   const handleSaveTicket = async (e: React.FormEvent) => {
@@ -168,15 +205,15 @@ export default function CompradoresAdminPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredTickets.map((t: any) => (
               <div key={t.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-                <div className={`absolute top-0 left-0 w-1 h-full ${t.status === 'PAID' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
+                <div className={`absolute top-0 left-0 w-1 h-full ${t.status === 'PAID' ? 'bg-emerald-500' : t.status === 'PARTIALLY_PAID' ? 'bg-sky-500' : 'bg-amber-500'}`}></div>
                 
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-2">
                     <Ticket className="w-5 h-5 text-slate-400" />
                     <span className="text-xl font-black text-slate-800">#{t.ticketNumber}</span>
                   </div>
-                  <span className={`px-2.5 py-1 text-[10px] font-black rounded-full uppercase tracking-wider ${t.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {t.status === 'PAID' ? 'PAGADO' : 'APARTADO'}
+                  <span className={`px-2.5 py-1 text-[10px] font-black rounded-full uppercase tracking-wider ${t.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : t.status === 'PARTIALLY_PAID' ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {t.status === 'PAID' ? 'PAGADO' : t.status === 'PARTIALLY_PAID' ? 'ABONADO' : 'APARTADO'}
                   </span>
                 </div>
 
@@ -193,6 +230,16 @@ export default function CompradoresAdminPage() {
                     <div className="flex items-center gap-2 text-sm bg-slate-50 p-2 rounded-lg border border-slate-100">
                       <Hash className="w-4 h-4 text-indigo-400" />
                       <span className="font-bold text-indigo-600 truncate">{t.paymentReference}</span>
+                    </div>
+                  )}
+                  {t.amountPaid > 0 && (
+                    <div className="mt-2 w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                      <div className="bg-sky-500 h-2.5 rounded-full" style={{ width: `${Math.min(100, (t.amountPaid / raffle.ticketPrice) * 100)}%` }}></div>
+                    </div>
+                  )}
+                  {t.amountPaid > 0 && (
+                    <div className="text-xs font-bold text-slate-500 text-right mt-1">
+                      Pagado: ${t.amountPaid} / ${raffle.ticketPrice}
                     </div>
                   )}
                 </div>
@@ -231,19 +278,66 @@ export default function CompradoresAdminPage() {
               </button>
             </div>
             
-            <form onSubmit={handleSaveTicket} className="p-6 space-y-5">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Estado del Boleto</label>
-                <select 
-                  value={editForm.status}
-                  onChange={(e) => setEditForm({...editForm, status: e.target.value})}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none"
-                >
-                  <option value="RESERVED">Apartado (Esperando Pago)</option>
-                  <option value="PAID">Pagado (Completado)</option>
-                  <option value="AVAILABLE">Liberar Boleto</option>
-                </select>
+            <div className="p-6 overflow-y-auto max-h-[80vh]">
+              {/* Progreso de Pago */}
+              <div className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                <div className="flex justify-between items-end mb-2">
+                  <span className="text-sm font-bold text-slate-700">Progreso de Pago</span>
+                  <span className="text-xl font-black text-indigo-600">${editingTicket.amountPaid || 0} <span className="text-sm text-slate-400">/ ${raffle.ticketPrice}</span></span>
+                </div>
+                <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden mb-2">
+                  <div className={`h-3 rounded-full transition-all ${editingTicket.status === 'PAID' ? 'bg-emerald-500' : 'bg-sky-500'}`} style={{ width: `${Math.min(100, ((editingTicket.amountPaid || 0) / raffle.ticketPrice) * 100)}%` }}></div>
+                </div>
+                {editingTicket.status === 'PAID' ? (
+                  <p className="text-xs font-bold text-emerald-600 flex items-center gap-1"><CheckCircle className="w-3 h-3"/> Boleto Liquidado</p>
+                ) : (
+                  <p className="text-xs font-medium text-slate-500 flex items-center gap-1">Faltan ${raffle.ticketPrice - (editingTicket.amountPaid || 0)} MXN para liquidar</p>
+                )}
               </div>
+
+              {/* Registrar Abono Form */}
+              {editingTicket.status !== 'PAID' && (
+                <form onSubmit={handleRegisterAbono} className="mb-8 p-4 border border-indigo-100 bg-indigo-50/50 rounded-2xl space-y-3">
+                  <label className="block text-sm font-bold text-indigo-900">Registrar Nuevo Abono</label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-3 text-slate-400 font-bold">$</span>
+                      <input 
+                        type="number" 
+                        value={abonoAmount}
+                        onChange={(e) => setAbonoAmount(e.target.value)}
+                        placeholder="Ej. 100"
+                        className="w-full bg-white border border-indigo-200 rounded-xl pl-8 pr-4 py-3 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none"
+                      />
+                    </div>
+                    <button type="submit" disabled={isRegisteringAbono} className="px-4 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-70 whitespace-nowrap">
+                      {isRegisteringAbono ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Abonar"}
+                    </button>
+                  </div>
+                  <p className="text-xs text-indigo-600 font-medium">Esto sumará saldo y notificará por WhatsApp al cliente.</p>
+                </form>
+              )}
+
+              <hr className="border-slate-100 my-6" />
+
+              <form onSubmit={handleSaveTicket} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Estado Manual del Boleto</label>
+                  <select 
+                    value={editForm.status}
+                    onChange={(e) => setEditForm({...editForm, status: e.target.value})}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  >
+                    <option value="RESERVED">Apartado (Esperando Pago)</option>
+                    <option value="PARTIALLY_PAID">Abonado (Pagado Parcialmente)</option>
+                    <option value="PAID">Pagado (Completado)</option>
+                    <option value="AVAILABLE">Liberar Boleto (Cancelar)</option>
+                  </select>
+                  <p className="text-xs text-amber-600 mt-2 font-medium bg-amber-50 p-2 rounded-lg border border-amber-100">
+                    <AlertTriangle className="w-3 h-3 inline mr-1" />
+                    Si cambias esto manualmente a Pagado, el sistema enviará el VIP Digital aunque el abono no esté completo.
+                  </p>
+                </div>
 
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">Referencia de Pago</label>
@@ -259,13 +353,14 @@ export default function CompradoresAdminPage() {
 
               <div className="flex gap-3 pt-4 border-t border-slate-100">
                 <button type="button" onClick={closeEdit} className="flex-1 px-4 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
-                  Cancelar
+                  Cerrar
                 </button>
-                <button type="submit" disabled={saving} className="flex-[2] px-4 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2">
-                  {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-4 h-4" /> Guardar</>}
+                <button type="submit" disabled={saving} className="flex-[2] px-4 py-3 rounded-xl font-bold text-white bg-slate-800 hover:bg-slate-900 transition-colors disabled:opacity-70 flex items-center justify-center gap-2">
+                  {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-4 h-4" /> Forzar Cambios</>}
                 </button>
               </div>
             </form>
+            </div>
           </div>
         </div>
       )}

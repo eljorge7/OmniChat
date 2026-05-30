@@ -139,6 +139,77 @@ export class RaffleService {
     return updatedTicket;
   }
 
+  async registerTicketPayment(raffleId: string, ticketNumber: string, amount: number, companyId: string) {
+    const raffle = await this.prisma.raffle.findUnique({ where: { id: raffleId } });
+    if (!raffle) throw new NotFoundException('Rifa no encontrada');
+
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { raffleId_ticketNumber: { raffleId, ticketNumber } },
+      include: { contact: true }
+    });
+
+    if (!ticket) throw new NotFoundException('Boleto no encontrado');
+
+    const newAmountPaid = (ticket.amountPaid || 0) + amount;
+    const isFullyPaid = newAmountPaid >= raffle.ticketPrice;
+    
+    const newStatus = isFullyPaid ? 'PAID' : 'PARTIALLY_PAID';
+
+    const updatedTicket = await this.prisma.ticket.update({
+      where: { id: ticket.id },
+      data: {
+        amountPaid: newAmountPaid,
+        status: newStatus,
+        paidAt: isFullyPaid ? new Date() : ticket.paidAt
+      },
+      include: { contact: true }
+    });
+
+    if (isFullyPaid && updatedTicket.contact) {
+        // Generar Boleto Digital VIP
+        const company = await this.prisma.company.findUnique({ where: { id: companyId } });
+        if (company) {
+           const imageBuffer = await this.ticketGenerator.generateTicket({
+              companyName: company.name,
+              raffleName: raffle.name,
+              contactName: updatedTicket.contact.name || 'Participante',
+              ticketNumbers: [ticketNumber],
+              paymentRef: updatedTicket.paymentReference || 'N/A',
+              themeColor: company.themeColor || '#3B82F6',
+              logoUrl: company.logoUrl || undefined
+           });
+
+           if (imageBuffer) {
+              const message = `🎟️ *¡Tu Pago ha sido Confirmado!*\n\nHola ${updatedTicket.contact.name}, tu boleto ha sido liquidado exitosamente. Adjunto tu *Boleto Digital VIP* oficial para la rifa "${raffle.name}".\n\nPor favor guarda esta imagen, es tu comprobante oficial de participación.\n¡Mucha suerte! 🍀`;
+              const fs = require('fs');
+              const path = require('path');
+              const filename = `ticket-${raffleId}-${ticketNumber}.png`;
+              const tmpPath = path.join('/tmp', filename);
+              
+              try {
+                 fs.writeFileSync(tmpPath, imageBuffer);
+                 await this.whatsapp.sendDirectMessage(companyId, `${updatedTicket.contact.phone}@c.us`, message, tmpPath);
+                 fs.unlinkSync(tmpPath);
+                 this.logger.log(`Boleto VIP enviado a ${updatedTicket.contact.phone}`);
+              } catch(e) {
+                 this.logger.error("Error enviando boleto VIP por WA", e);
+              }
+           }
+        }
+    } else if (!isFullyPaid && updatedTicket.contact) {
+        // Enviar notificación de pago parcial
+        const remaining = raffle.ticketPrice - newAmountPaid;
+        const message = `💳 *¡Abono Recibido!*\n\nHola ${updatedTicket.contact.name}, hemos registrado exitosamente tu abono de *$${amount} MXN* para el boleto *${ticketNumber}*.\n\nLlevas pagado: *$${newAmountPaid} MXN*\nResta por pagar: *$${remaining} MXN*\n\nTu boleto está asegurado (Pagado Parcialmente) y no caducará. Por favor, liquida el saldo pendiente antes de la fecha límite para recibir tu Boleto Digital VIP.`;
+        try {
+            await this.whatsapp.sendDirectMessage(companyId, `${updatedTicket.contact.phone}@c.us`, message);
+        } catch(e) {
+            this.logger.error("Error enviando notificación de abono", e);
+        }
+    }
+
+    return updatedTicket;
+  }
+
   async reserveTickets(raffleId: string, ticketNumbers: string[], contactPhone: string, contactName: string) {
     const raffle = await this.prisma.raffle.findUnique({ where: { id: raffleId } });
     if (!raffle) throw new NotFoundException('Rifa no encontrada');

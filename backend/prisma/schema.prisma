@@ -260,7 +260,8 @@ model Raffle {
 model Ticket {
   id          String   @id @default(uuid())
   ticketNumber String  // "000" to "199"
-  status      String   @default("AVAILABLE") // AVAILABLE, RESERVED, PAID
+  status      String   @default("AVAILABLE") // AVAILABLE, RESERVED, PARTIALLY_PAID, PAID
+  amountPaid  Float    @default(0)
   paymentReference String? // Auto-generated or manual reference for transfer match
   raffleId    String
   raffle      Raffle   @relation(fields: [raffleId], references: [id], onDelete: Cascade)

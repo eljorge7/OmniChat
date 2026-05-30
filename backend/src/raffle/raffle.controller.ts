@@ -55,4 +55,13 @@ export class RaffleController {
   ) {
     return this.raffleService.updateTicketStatus(id, ticketNumber, body.status, body.companyId, body.paymentReference);
   }
+
+  @Post(':id/tickets/:ticketNumber/pay')
+  async registerTicketPayment(
+    @Param('id') id: string,
+    @Param('ticketNumber') ticketNumber: string,
+    @Body() body: { companyId: string; amount: number }
+  ) {
+    return this.raffleService.registerTicketPayment(id, ticketNumber, body.amount, body.companyId);
+  }
 }
