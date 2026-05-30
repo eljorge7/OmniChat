@@ -150,12 +150,14 @@ export default function RaffleDetail() {
       const message = `Hola! Vengo de la página web. Quiero confirmar el apartado de mis boletos: ${selectedTickets.join(', ')} para la rifa "${raffle.name}".\nTotal: $${totalAmount} MXN.\nMi referencia de pago es: *${refCode}*.\nAquí tengo mi comprobante listo.`;
       
       const encodedMessage = encodeURIComponent(message);
-      alert(`¡Boletos reservados! Tu referencia de pago es: ${refCode}.\n\nSerás redirigido a WhatsApp para enviar tu comprobante.`);
       
       const phoneParam = branding.whatsappNumber ? `&phone=${branding.whatsappNumber.replace(/[^0-9]/g, '')}` : '';
-      window.open(`https://api.whatsapp.com/send?text=${encodedMessage}${phoneParam}`, '_blank');
+      const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedMessage}${phoneParam}`;
       
-      window.location.reload();
+      alert(`¡Boletos reservados! Tu referencia de pago es: ${refCode}.\n\nSerás redirigido a WhatsApp para enviar tu comprobante.`);
+      
+      // Use location.href instead of window.open to prevent popup blockers on mobile, and don't reload.
+      window.location.href = whatsappUrl;
       
     } catch (err: any) {
       alert(err.response?.data?.message || 'Error al reservar los boletos.');
