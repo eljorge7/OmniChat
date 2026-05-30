@@ -10,14 +10,16 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  const isPublicRoute = pathname === "/login" || pathname.startsWith("/rifas/");
+
   useEffect(() => {
-    if (status === "unauthenticated" && pathname !== "/login") {
+    if (status === "unauthenticated" && !isPublicRoute) {
       router.push("/login");
     }
     if (status === "authenticated" && pathname === "/login") {
       router.push("/");
     }
-  }, [status, pathname, router]);
+  }, [status, pathname, router, isPublicRoute]);
 
   if (status === "loading") {
     return (
@@ -27,7 +29,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (status === "unauthenticated" && pathname !== "/login") {
+  if (status === "unauthenticated" && !isPublicRoute) {
     return (
       <div className="flex-1 h-screen w-full flex items-center justify-center bg-slate-50">
         <Loader2 className="h-10 w-10 animate-spin text-indigo-500" />
@@ -35,8 +37,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Si estamos en /login y estamos unauthenticated, SI debemos renderizar a los hijos (el formulario)
-  if (status === "unauthenticated" && pathname === "/login") {
+  if (status === "unauthenticated" && isPublicRoute) {
     return <>{children}</>;
   }
 
