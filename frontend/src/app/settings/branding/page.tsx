@@ -84,7 +84,7 @@ export default function BrandingPage() {
       });
       if (res.data && res.data.mediaUrl) {
         const dynamicApiUrl = typeof window !== 'undefined' ? window.location.origin.replace('https://', 'https://api.') : 'https://api.omnichat.radiotecpro.com';
-        const finalUrl = res.data.mediaUrl.replace('http://localhost:3002', dynamicApiUrl);
+        const finalUrl = res.data.mediaUrl.replace('http://localhost:3002/uploads', dynamicApiUrl + '/api/uploads');
         setLogoUrl(finalUrl);
       } else {
         alert("No se recibió la URL de la imagen");
@@ -140,7 +140,7 @@ export default function BrandingPage() {
             <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl border border-slate-700/50 p-6 flex items-center justify-between">
               <div className="flex items-center">
                 {logoUrl ? (
-                  <img src={logoUrl.replace('http://localhost:3002', typeof window !== 'undefined' ? window.location.origin.replace('https://', 'https://api.') : 'https://api.omnichat.radiotecpro.com')} alt="Logo" className="h-12 object-contain" />
+                  <img src={logoUrl.replace('http://localhost:3002/uploads', typeof window !== 'undefined' ? window.location.origin.replace('https://', 'https://api.') + '/api/uploads' : 'https://api.omnichat.radiotecpro.com/api/uploads')} alt="Logo" className="h-12 object-contain" />
                 ) : (
                   <span className="text-2xl font-black text-white tracking-wider uppercase drop-shadow-md bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${themeColor}, #10B981)` }}>
                     TU EMPRESA
@@ -172,7 +172,7 @@ export default function BrandingPage() {
                 <div className="flex items-center gap-4">
                   <div className="h-16 w-16 bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden flex-shrink-0">
                     {logoUrl ? (
-                      <img src={logoUrl.replace('http://localhost:3002', typeof window !== 'undefined' ? window.location.origin.replace('https://', 'https://api.') : 'https://api.omnichat.radiotecpro.com')} alt="Logo" className="w-full h-full object-contain p-2" />
+                      <img src={logoUrl.replace('http://localhost:3002/uploads', typeof window !== 'undefined' ? window.location.origin.replace('https://', 'https://api.') + '/api/uploads' : 'https://api.omnichat.radiotecpro.com/api/uploads')} alt="Logo" className="w-full h-full object-contain p-2" />
                     ) : (
                       <ImageIcon className="text-slate-400 w-6 h-6" />
                     )}

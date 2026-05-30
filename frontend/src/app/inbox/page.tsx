@@ -672,7 +672,7 @@ export default function InboxPage() {
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
 
                  {currentChat?.messages?.map((msg: any) => {
-                    const safeMediaUrl = msg.mediaUrl ? msg.mediaUrl.replace('http://localhost:3002', process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002') : null;
+                    const safeMediaUrl = msg.mediaUrl ? msg.mediaUrl.replace('http://localhost:3002/uploads', (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002') + '/api/uploads') : null;
                     return (
                         <div key={msg.id} className={`flex max-w-[75%] items-end gap-2 ${msg.fromMe ? 'ml-auto flex-row-reverse' : ''}`}>
                           <div className={`p-4 rounded-2xl shadow-sm relative group border ${msg.fromMe ? 'bg-indigo-600 text-white border-indigo-700 rounded-br-sm' : 'bg-white border-slate-200 rounded-bl-sm'}`}>
