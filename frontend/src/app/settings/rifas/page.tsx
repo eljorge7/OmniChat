@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { Plus, Gift, Edit2, Trash2, Tag, Loader2, Link as LinkIcon, Ticket, CircleDollarSign, QrCode, Users, X, Search, CheckCircle2, XCircle } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
