@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import axios from "axios";
+import { useSession } from "next-auth/react";
 import { Smartphone, CheckCircle2, Loader2, RefreshCw, AlertTriangle, PlayCircle } from "lucide-react";
 
 export default function WhatsappSettingsPage() {
+  const { data: session } = useSession();
   const [status, setStatus] = useState("INITIALIZING");
   const [qrCode, setQrCode] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
@@ -23,37 +25,28 @@ export default function WhatsappSettingsPage() {
 
   const fetchProfile = async () => {
     try {
-      const token = localStorage.getItem('token');
-      // Fetch user profile to get company ID, then company public info, or we can just fetch /me
-      // Actually, we can fetch from /api/v1/auth/me if that exists, or just use session.
-      // But we don't have session imported. We'll fetch it by hitting /api/v1/auth/me.
-      const userRes = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/auth/me`, {
-         headers: { Authorization: `Bearer ${token}` }
-      });
-      const companyId = userRes.data.user?.companyId;
+      const companyId = (session?.user as any)?.companyId;
       if (companyId) {
          const compRes = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/companies/${companyId}/public`);
          if (compRes.data.whatsappNumber) setWhatsappNumber(compRes.data.whatsappNumber);
       }
     } catch (e) {
-      console.error(e);
+      console.error("Error fetching profile", e);
     }
   };
 
   const saveWhatsappNumber = async () => {
     setIsSaving(true);
     try {
-      const token = localStorage.getItem('token');
-      // Need email for put /me, but wait, auth/me returns email.
-      const userRes = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/auth/me`, {
-         headers: { Authorization: `Bearer ${token}` }
-      });
+      const email = session?.user?.email;
+      if (!email) throw new Error("No email found in session");
+      
       await axios.put(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/companies/me`, 
-        { email: userRes.data.user.email, whatsappNumber },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { email, whatsappNumber }
       );
       alert('Número oficial guardado correctamente.');
     } catch (e) {
+      console.error(e);
       alert('Error guardando el número');
     }
     setIsSaving(false);
@@ -71,10 +64,15 @@ export default function WhatsappSettingsPage() {
 
   useEffect(() => {
     checkStatus();
-    fetchProfile();
     const interval = setInterval(checkStatus, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (session?.user) {
+      fetchProfile();
+    }
+  }, [session]);
 
   return (
     <div className="p-8 max-w-4xl mx-auto w-full space-y-8 animate-in fade-in duration-500">
