@@ -314,15 +314,17 @@ export class RaffleService {
     }
 
     // Validación estricta del número ganador
+    const paddedWinningNumber = String(winningNumber).padStart(String(raffle.totalTickets).length, '0');
+
     const winningTicket = await this.prisma.ticket.findFirst({
       where: {
         raffleId,
-        ticketNumber: winningNumber,
+        ticketNumber: paddedWinningNumber,
       }
     });
 
     if (!winningTicket) {
-      throw new BadRequestException(`El boleto ganador #${winningNumber} no fue apartado/comprado por nadie en esta rifa.`);
+      throw new BadRequestException(`El boleto ganador #${paddedWinningNumber} no fue apartado/comprado por nadie en esta rifa.`);
     }
 
     if (winningTicket.status !== 'PAID') {

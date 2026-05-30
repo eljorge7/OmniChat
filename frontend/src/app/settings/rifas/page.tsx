@@ -169,9 +169,9 @@ export default function RifasAdminPage() {
       
       closeFinishModal();
       fetchRaffles(companyId);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Error al finalizar la rifa.");
+      alert(err.response?.data?.message || "Error al finalizar la rifa.");
     } finally {
       setIsFinishing(false);
     }

@@ -706,7 +706,13 @@ export class WhatsappService implements OnModuleInit {
     }
     
     if (targetPhone.endsWith('@c.us')) {
-        const rawNumber = targetPhone.replace('@c.us', '');
+        let rawNumber = targetPhone.replace('@c.us', '');
+        
+        // Normalización si el número es de 10 dígitos (MX por defecto)
+        if (rawNumber.length === 10) {
+            rawNumber = '521' + rawNumber;
+        }
+
         let idObj = null;
         try {
             idObj = await data.client.getNumberId(rawNumber);
@@ -772,7 +778,11 @@ export class WhatsappService implements OnModuleInit {
     }
     const { MessageMedia } = require('whatsapp-web.js');
     const media = MessageMedia.fromFilePath(filePath);
-    const finalTarget = targetPhone.includes('@') ? targetPhone : `${targetPhone}@c.us`;
+    let rawNumber = targetPhone.includes('@') ? targetPhone.replace('@c.us', '') : targetPhone;
+    if (rawNumber.length === 10) {
+        rawNumber = '521' + rawNumber;
+    }
+    const finalTarget = `${rawNumber}@c.us`;
     await data.client.sendMessage(finalTarget, media);
   }
 
