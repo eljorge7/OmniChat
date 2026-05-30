@@ -140,7 +140,7 @@ export default function BrandingPage() {
             <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl border border-slate-700/50 p-6 flex items-center justify-between">
               <div className="flex items-center">
                 {logoUrl ? (
-                  <img src={logoUrl.replace('http://localhost:3002/uploads', typeof window !== 'undefined' ? window.location.origin.replace('https://', 'https://api.') + '/api/uploads' : 'https://api.omnichat.radiotecpro.com/api/uploads')} alt="Logo" className="h-12 object-contain" />
+                  <img src={logoUrl.replace('http://localhost:3002/uploads', typeof window !== 'undefined' ? window.location.origin.replace('https://', 'https://api.') + '/api/uploads' : 'https://api.omnichat.radiotecpro.com/api/uploads')} alt="Logo" className="h-16 sm:h-24 max-w-[200px] sm:max-w-[300px] object-contain drop-shadow-md" />
                 ) : (
                   <span className="text-2xl font-black text-white tracking-wider uppercase drop-shadow-md bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${themeColor}, #10B981)` }}>
                     TU EMPRESA
