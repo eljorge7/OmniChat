@@ -24,7 +24,11 @@ export class RaffleService {
     return this.prisma.raffle.findMany({
       where: { companyId },
       orderBy: { createdAt: 'desc' },
-      include: { tickets: true }
+      include: { 
+        tickets: {
+          include: { contact: true }
+        }
+      }
     });
   }
 
@@ -66,6 +70,34 @@ export class RaffleService {
     if (!raffle || raffle.companyId !== companyId) throw new NotFoundException('Rifa no encontrada');
 
     return this.prisma.raffle.delete({ where: { id } });
+  }
+
+  async updateTicketStatus(raffleId: string, ticketNumber: string, status: string, companyId: string) {
+    const raffle = await this.prisma.raffle.findUnique({ where: { id: raffleId } });
+    if (!raffle || raffle.companyId !== companyId) throw new NotFoundException('Rifa no encontrada');
+
+    // If status is AVAILABLE, we might want to delete the ticket record entirely to free it up
+    if (status === 'AVAILABLE') {
+      return this.prisma.ticket.deleteMany({
+        where: { raffleId, ticketNumber }
+      });
+    }
+
+    // Otherwise update or create it if someone manually assigns it
+    return this.prisma.ticket.upsert({
+      where: {
+        raffleId_ticketNumber: {
+          raffleId,
+          ticketNumber
+        }
+      },
+      update: { status },
+      create: {
+        raffleId,
+        ticketNumber,
+        status
+      }
+    });
   }
 
   async reserveTickets(raffleId: string, ticketNumbers: string[], contactPhone: string, contactName: string) {

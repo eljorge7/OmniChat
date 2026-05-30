@@ -46,4 +46,13 @@ export class RaffleController {
   async deleteRaffle(@Param('id') id: string, @Body() body: { companyId: string }) {
     return this.raffleService.remove(id, body.companyId);
   }
+
+  @Put(':id/tickets/:ticketNumber')
+  async updateTicketStatus(
+    @Param('id') id: string,
+    @Param('ticketNumber') ticketNumber: string,
+    @Body() body: { companyId: string; status: string }
+  ) {
+    return this.raffleService.updateTicketStatus(id, ticketNumber, body.status, body.companyId);
+  }
 }

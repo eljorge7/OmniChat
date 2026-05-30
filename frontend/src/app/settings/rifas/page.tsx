@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import axios from "axios";
-import { Plus, Gift, Edit2, Trash2, Tag, Loader2, Link as LinkIcon, Ticket, CircleDollarSign, QrCode } from "lucide-react";
+import { Plus, Gift, Edit2, Trash2, Tag, Loader2, Link as LinkIcon, Ticket, CircleDollarSign, QrCode, Users, X, Search, CheckCircle2, XCircle } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 
 export default function RifasAdminPage() {
   const [raffles, setRaffles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [viewingBuyersForRaffle, setViewingBuyersForRaffle] = useState<any>(null);
+  const [buyerSearchTerm, setBuyerSearchTerm] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [companyId, setCompanyId] = useState("");
@@ -139,6 +140,39 @@ export default function RifasAdminPage() {
     }
   };
 
+  const handleTicketStatusChange = async (raffleId: string, ticketNumber: string, currentStatus: string) => {
+    // Determine next status: RESERVED -> PAID -> AVAILABLE -> RESERVED
+    let nextStatus = 'PAID';
+    if (currentStatus === 'PAID') nextStatus = 'AVAILABLE';
+    if (currentStatus === 'AVAILABLE') nextStatus = 'RESERVED';
+    if (currentStatus === 'RESERVED') nextStatus = 'PAID';
+
+    try {
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/raffles/${raffleId}/tickets/${ticketNumber}`, {
+        companyId,
+        status: nextStatus
+      });
+      // Refresh raffles
+      fetchRaffles(companyId);
+      // Also update local state for the modal
+      if (viewingBuyersForRaffle && viewingBuyersForRaffle.id === raffleId) {
+        const updatedTickets = viewingBuyersForRaffle.tickets.map((t: any) => 
+          t.ticketNumber === ticketNumber ? { ...t, status: nextStatus } : t
+        );
+        // If it was AVAILABLE and changed to RESERVED, and wasn't in array, we need to handle that, 
+        // but for simplicity it's better to just close/reopen or wait for fetchRaffles. 
+        // To be completely robust, we fetch and update the single object.
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/raffles/admin/company/${companyId}`);
+        setRaffles(res.data);
+        const updatedRaffle = res.data.find((r: any) => r.id === raffleId);
+        if (updatedRaffle) setViewingBuyersForRaffle(updatedRaffle);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error actualizando boleto");
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-8 flex justify-center items-center h-full">
@@ -233,6 +267,9 @@ export default function RifasAdminPage() {
                   <button onClick={() => downloadQR(r.id, r.name)} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-sm" title="Descargar QR en Alta Calidad">
                     <QrCode className="w-4 h-4" /> Bajar QR
                   </button>
+                  <button onClick={() => setViewingBuyersForRaffle(r)} className="p-2.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl transition-colors" title="Ver Compradores">
+                    <Users className="w-5 h-5" />
+                  </button>
                   <button onClick={() => openEditModal(r)} className="p-2.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-colors" title="Editar">
                     <Edit2 className="w-5 h-5" />
                   </button>
@@ -294,6 +331,83 @@ export default function RifasAdminPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {viewingBuyersForRaffle && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <div>
+                <h2 className="text-xl font-black text-slate-900">Lista de Compradores</h2>
+                <p className="text-sm text-slate-500 font-medium">{viewingBuyersForRaffle.name}</p>
+              </div>
+              <button onClick={() => setViewingBuyersForRaffle(null)} className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-xl transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-4 border-b border-slate-100 bg-white">
+              <div className="relative">
+                <Search className="w-5 h-5 absolute left-4 top-3 text-slate-400" />
+                <input 
+                  type="text" 
+                  placeholder="Buscar por nombre, teléfono o número de boleto..." 
+                  value={buyerSearchTerm}
+                  onChange={(e) => setBuyerSearchTerm(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-y-auto p-4 flex-1 bg-slate-50">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr>
+                    <th className="p-3 text-sm font-bold text-slate-500 border-b border-slate-200">Boleto</th>
+                    <th className="p-3 text-sm font-bold text-slate-500 border-b border-slate-200">Cliente</th>
+                    <th className="p-3 text-sm font-bold text-slate-500 border-b border-slate-200">WhatsApp</th>
+                    <th className="p-3 text-sm font-bold text-slate-500 border-b border-slate-200 text-center">Estado</th>
+                    <th className="p-3 text-sm font-bold text-slate-500 border-b border-slate-200 text-right">Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {viewingBuyersForRaffle.tickets
+                    .filter((t: any) => 
+                      t.ticketNumber.includes(buyerSearchTerm) || 
+                      t.contact?.name?.toLowerCase().includes(buyerSearchTerm.toLowerCase()) ||
+                      t.contact?.phone?.includes(buyerSearchTerm)
+                    )
+                    .sort((a: any, b: any) => parseInt(a.ticketNumber) - parseInt(b.ticketNumber))
+                    .map((t: any) => (
+                      <tr key={t.id} className="border-b border-slate-100 hover:bg-white transition-colors">
+                        <td className="p-3 font-black text-slate-700">#{t.ticketNumber}</td>
+                        <td className="p-3 font-medium text-slate-600">{t.contact?.name || 'Manual'}</td>
+                        <td className="p-3 font-medium text-slate-600">{t.contact?.phone || '-'}</td>
+                        <td className="p-3 text-center">
+                          <span className={`px-3 py-1 text-xs font-bold rounded-full ${t.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {t.status === 'PAID' ? 'PAGADO' : 'APARTADO'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right">
+                          <button 
+                            onClick={() => handleTicketStatusChange(viewingBuyersForRaffle.id, t.ticketNumber, t.status)}
+                            className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors"
+                          >
+                            Cambiar Estado
+                          </button>
+                        </td>
+                      </tr>
+                  ))}
+                  {viewingBuyersForRaffle.tickets.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-slate-500 font-medium">No hay boletos vendidos o apartados aún.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

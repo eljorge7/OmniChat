@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useParams, useRouter } from 'next/navigation';
+import { Calendar } from 'lucide-react';
 
 export default function RafflesCatalog() {
   const { companyId } = useParams();
@@ -70,6 +71,16 @@ export default function RafflesCatalog() {
                 </div>
                 <div className="p-6 flex flex-col flex-grow">
                   <h3 className="text-2xl font-bold mb-2">{raffle.name}</h3>
+                  
+                  {raffle.drawDate && (
+                    <div className="flex items-center gap-2 text-indigo-400 bg-indigo-900/30 w-fit px-3 py-1.5 rounded-lg mb-3">
+                      <Calendar className="w-4 h-4" />
+                      <span className="text-xs font-bold uppercase tracking-wider">
+                        {new Date(raffle.drawDate).toLocaleDateString('es-MX', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  )}
+
                   <p className="text-gray-400 text-sm mb-6 line-clamp-2">{raffle.description || 'Participa en este gran sorteo.'}</p>
                   
                   <div className="mt-auto flex items-center justify-between">
@@ -87,6 +98,19 @@ export default function RafflesCatalog() {
           </div>
         )}
       </section>
+
+      {/* Footer Branding MAGIA OS */}
+      <div className="fixed bottom-0 left-0 w-full bg-gray-900/80 backdrop-blur-md border-t border-gray-800 p-3 z-40">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-center items-center gap-2 text-center">
+          <p className="text-[10px] sm:text-xs text-gray-500 font-medium">
+            🚀 Desarrollo Tecnológico por <span className="font-bold text-gray-300">Grupo Hurtado</span>
+          </p>
+          <span className="hidden sm:inline text-gray-700">|</span>
+          <p className="text-[10px] sm:text-xs text-blue-400 font-bold uppercase tracking-widest">
+            Ecosistema MAGIA OS
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
