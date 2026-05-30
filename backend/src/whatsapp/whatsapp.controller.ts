@@ -509,7 +509,7 @@ export class WhatsappController {
     const contact = await this.prisma.contact.findUnique({ where: { id: contactId } });
     if (!contact) return { error: 'Not found' };
 
-    const mediaUrl = `http://localhost:3002/api/uploads/${file.filename}`;
+    const mediaUrl = `http://localhost:3002/uploads/${file.filename}`;
     const mediaType = file.mimetype;
 
     const savedMessage = await this.prisma.message.create({

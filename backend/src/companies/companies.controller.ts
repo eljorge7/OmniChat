@@ -59,7 +59,7 @@ export class CompaniesController {
     if (!file) throw new BadRequestException("Archivo no encontrado");
     
     // Asumimos API URL configurada, o fallback a localhost:3002
-    const mediaUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/uploads/${file.filename}`;
+    const mediaUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/uploads/${file.filename}`;
     
     return { mediaUrl };
   }

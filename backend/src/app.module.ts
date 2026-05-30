@@ -21,7 +21,7 @@ import { CompaniesModule } from './companies/companies.module';
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'uploads'),
-      serveRoot: '/api/uploads',
+      serveRoot: '/uploads',
     }),
     PrismaModule, 
     WhatsappModule,
