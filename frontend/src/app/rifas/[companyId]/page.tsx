@@ -32,7 +32,7 @@ export default function RafflesCatalog() {
       <header className="bg-gray-800/50 backdrop-blur-md border-b border-gray-700 p-6 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center">
-            <img src="/sorteos-oficiales-logo.png" alt="Sorteos Oficiales" className="h-12 md:h-14 object-contain" />
+             <span className="text-2xl font-black text-white tracking-wider uppercase drop-shadow-md bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">SORTEOS HURTADO</span>
           </div>
           <div className="text-sm text-gray-400 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -76,7 +76,7 @@ export default function RafflesCatalog() {
                     <div className="flex items-center gap-2 text-indigo-400 bg-indigo-900/30 w-fit px-3 py-1.5 rounded-lg mb-3">
                       <Calendar className="w-4 h-4" />
                       <span className="text-xs font-bold uppercase tracking-wider">
-                        {new Date(raffle.drawDate).toLocaleDateString('es-MX', { timeZone: 'America/Hermosillo', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {new Date(raffle.drawDate).toLocaleString('es-MX', { timeZone: 'UTC', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
                       </span>
                     </div>
                   )}
