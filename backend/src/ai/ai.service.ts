@@ -154,11 +154,25 @@ export class AiService {
           });
           
           if (activeRaffles.length > 0) {
-             raffleContext = `\n\n[CONTEXTO DE RIFAS ACTIVAS Y PAGOS:\nLa empresa tiene rifas activas. Si el cliente pregunta a dónde pagar, o si dice que viene de la página web a reportarse con sus boletos, entrégale ESTOS DATOS EXACTOS Y PÍDELE LA FOTO DEL COMPROBANTE:\n- Banco: Banorte\n- CLABE: 072762006567799946\n- A nombre de: Jorge Hurtado Cota\n\nTienes las siguientes rifas activas:\n`;
+             let pendingTicketsContext = "";
              for (const r of activeRaffles) {
-                raffleContext += `- Rifa: ${r.name} (ID de Rifa: ${r.id}). Precio x Boleto: $${r.ticketPrice}.\n`;
+                if (r.tickets && r.tickets.length > 0) {
+                   pendingTicketsContext += `- Rifa "${r.name}": Boletos apartados [${r.tickets.map(t => t.ticketNumber).join(', ')}]. Total a pagar: $${r.tickets.length * r.ticketPrice}.\n`;
+                }
              }
-             raffleContext += `REGLA DE ORO RIFAS:\n1) Si un cliente escribe diciendo que acaba de apartar o reservar boletos desde la página web, dale la bienvenida calurosa a Sorteos Hurtado, confírmale que recibiste su mensaje, dale los datos bancarios de arriba y pídele que envíe su comprobante de transferencia por aquí mismo (y recuérdale que ponga su Referencia en el concepto del banco).\n2) Si el cliente envía un comprobante de pago o foto, agradécele y dile que un administrador verificará su pago y le enviará su BOLETO VIP DIGITAL por este medio en breve. NUNCA digas que su pago ya fue validado automáticamente, tú no tienes ese poder.]\n`;
+
+             raffleContext = `\n\n[CONTEXTO DE RIFAS ACTIVAS Y PAGOS:\nLa empresa tiene rifas activas. Si el cliente pregunta a dónde pagar, entrégale ESTOS DATOS EXACTOS Y PÍDELE LA FOTO DEL COMPROBANTE:\n- Banco: Banorte\n- CLABE: 072762006567799946\n- A nombre de: Jorge Hurtado Cota\n\n`;
+             
+             if (pendingTicketsContext) {
+                 raffleContext += `⚠️ ¡IMPORTANTE! EL CLIENTE ACTUAL TIENE BOLETOS APARTADOS PENDIENTES DE PAGO:\n${pendingTicketsContext}\n`;
+                 raffleContext += `REGLA DE ORO VIP PARA PAGOS DE BOLETOS:\n1) Si el cliente envía una imagen o foto, ASUME INMEDIATAMENTE que es el comprobante de pago de estos boletos. NO uses la herramienta 'verify_wisphub_receipt'.\n2) Responde con tono Premium, agradécele muchísimo su compra, dile que su comprobante se está procesando y que en unos breves minutos nuestro sistema le liberará automáticamente sus Boletos Digitales VIP.\n3) INMEDIATAMENTE ejecuta la herramienta 'route_user_to_pipeline' con pipelineKeyword: 'Validar' y reason: 'Envió comprobante de pago de Sorteo'. ¡Hazlo sentir muy especial!]\n`;
+             } else {
+                 raffleContext += `Tienes las siguientes rifas activas:\n`;
+                 for (const r of activeRaffles) {
+                    raffleContext += `- Rifa: ${r.name} (ID de Rifa: ${r.id}). Precio x Boleto: $${r.ticketPrice}.\n`;
+                 }
+                 raffleContext += `REGLA DE ORO RIFAS:\n1) Si un cliente escribe diciendo que acaba de apartar o reservar boletos desde la página web, dale la bienvenida calurosa a Sorteos Hurtado, dale los datos bancarios y pídele que envíe su comprobante.\n2) Si el cliente envía un comprobante de pago o foto, agradécele, dile que un administrador lo verificará y USA la herramienta 'route_user_to_pipeline' con pipelineKeyword 'Validar'. NUNCA digas que su pago ya fue validado automáticamente ni uses verify_wisphub_receipt.]\n`;
+             }
           }
       } catch(e) {}
 
