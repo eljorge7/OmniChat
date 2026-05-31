@@ -170,8 +170,10 @@ export default function RifasAdminPage() {
       closeFinishModal();
       fetchRaffles(companyId);
     } catch (err: any) {
-      console.error(err);
-      alert(err.response?.data?.message || "Error al finalizar la rifa.");
+      console.error("Full finishRaffle Error:", err);
+      console.log("Response data:", err.response?.data);
+      const msg = err.response?.data?.message || err.response?.data || err.message || "Error al finalizar la rifa.";
+      alert(typeof msg === 'string' ? msg : JSON.stringify(msg));
     } finally {
       setIsFinishing(false);
     }

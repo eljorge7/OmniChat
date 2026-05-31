@@ -545,8 +545,8 @@ export class AiService {
                facturas.forEach((f: any) => totalDeuda += parseFloat(f.total));
 
                if (facturas.length === 0) {
-                  await moveToValidationAndAlert("Cliente envió comprobante pero no tiene facturas pendientes (Posible nueva instalación o promesa)", false, args.amount, 0);
-                  return `✅ He recibido tu comprobante por $${args.amount}, sin embargo en este momento tu servicio aparece AL CORRIENTE y sin adeudos. Un asesor de finanzas revisará tu ticket manualmente para aplicarlo a tu cuenta en breve.`;
+                  await moveToValidationAndAlert("Cliente envió comprobante pero no tiene facturas pendientes (Posible pago de Sorteo o nueva instalación)", false, args.amount, 0);
+                  return `✅ He recibido tu comprobante por $${args.amount}. Nuestro sistema detecta que actualmente no tienes facturas pendientes de Internet. Si este pago es para apartar boletos de un Sorteo o para una nueva instalación, no te preocupes: un asesor revisará tu comprobante manualmente en breve para registrar tu pago.`;
                }
 
                // 4. Validar Fecha

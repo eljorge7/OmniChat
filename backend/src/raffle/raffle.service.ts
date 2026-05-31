@@ -189,8 +189,8 @@ export class RaffleService {
               
               try {
                  fs.writeFileSync(tmpPath, imageBuffer);
-                 await this.whatsapp.sendDirectMediaMessage(companyId, updatedTicket.contact.phone, tmpPath);
-                 await this.whatsapp.sendDirectMessage(companyId, updatedTicket.contact.phone, message);
+                 await this.whatsapp.sendDirectMediaMessage(companyId, updatedTicket.contact.phone, tmpPath, updatedTicket.contact.id);
+                 await this.whatsapp.sendDirectMessage(companyId, updatedTicket.contact.phone, message, updatedTicket.contact.id);
                  fs.unlinkSync(tmpPath);
                  this.logger.log(`Boleto VIP enviado a ${updatedTicket.contact.phone}`);
               } catch(e) {
@@ -203,7 +203,7 @@ export class RaffleService {
         const remaining = raffle.ticketPrice - newAmountPaid;
         const message = `💳 *¡Abono Recibido!*\n\nHola ${updatedTicket.contact.name}, hemos registrado exitosamente tu abono de *$${amount} MXN* para el boleto *${ticketNumber}*.\n\nLlevas pagado: *$${newAmountPaid} MXN*\nResta por pagar: *$${remaining} MXN*\n\nTu boleto está asegurado (Pagado Parcialmente) y no caducará. Por favor, liquida el saldo pendiente antes de la fecha límite para recibir tu Boleto Digital VIP.`;
         try {
-            await this.whatsapp.sendDirectMessage(companyId, updatedTicket.contact.phone, message);
+            await this.whatsapp.sendDirectMessage(companyId, updatedTicket.contact.phone, message, updatedTicket.contact.id);
         } catch(e) {
             this.logger.error("Error enviando notificación de abono", e);
         }
@@ -283,8 +283,8 @@ export class RaffleService {
           
           try {
             fs.writeFileSync(tmpPath, imageBuffer);
-            await this.whatsapp.sendDirectMediaMessage(companyId, contact.phone, tmpPath);
-            await this.whatsapp.sendDirectMessage(companyId, contact.phone, message);
+            await this.whatsapp.sendDirectMediaMessage(companyId, contact.phone, tmpPath, contact.id);
+            await this.whatsapp.sendDirectMessage(companyId, contact.phone, message, contact.id);
             fs.unlinkSync(tmpPath);
             this.logger.log(`Boleto VIP de Kit enviado a ${contact.phone}`);
           } catch(e) {
@@ -298,7 +298,7 @@ export class RaffleService {
       const message = `💳 *¡Abono a Paquete Recibido!*\n\nHola ${contact.name}, hemos registrado exitosamente tu abono de *$${amount} MXN* para tu paquete de ${ticketNumbers.length} boletos (${ticketNumbers.join(', ')}).\n\nLlevas pagado: *$${totalKitPaid} MXN*\nResta por pagar del paquete: *$${remaining} MXN*\n\nTus boletos están asegurados (Pagados Parcialmente). Por favor liquida el saldo restante antes de la fecha límite para recibir tu Boleto Digital VIP.`;
       
       try {
-        await this.whatsapp.sendDirectMessage(companyId, contact.phone, message);
+        await this.whatsapp.sendDirectMessage(companyId, contact.phone, message, contact.id);
       } catch(e) {
         this.logger.error("Error enviando notificación de abono de kit", e);
       }

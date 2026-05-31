@@ -771,7 +771,7 @@ export class WhatsappService implements OnModuleInit {
     return finalTarget;
   }
 
-  async sendDirectMediaMessage(companyId: string, targetPhone: string, filePath: string) {
+  async sendDirectMediaMessage(companyId: string, targetPhone: string, filePath: string, contactIdToSave?: string) {
     const data = this.clients.get(companyId);
     if (!data || data.status !== 'READY' || !data.client) {
       throw new Error(`[OmniChat] La sesión de WhatsApp de la empresa no está inicializada o conectada.`);
@@ -783,6 +783,25 @@ export class WhatsappService implements OnModuleInit {
         rawNumber = '521' + rawNumber;
     }
     const finalTarget = `${rawNumber}@c.us`;
+
+    if (contactIdToSave) {
+        try {
+           const savedMsg = await this.prisma.message.create({
+               data: { body: "📷 [Imagen/Archivo Enviado (Boleto)]", fromMe: true, contactId: contactIdToSave }
+           });
+           
+           const contact = await this.prisma.contact.findUnique({ where: { id: contactIdToSave } });
+           
+           this.gateway.emitNewMessage({
+               contactId: contactIdToSave,
+               message: savedMsg,
+               pipeId: contact?.pipelineId || null
+           });
+        } catch(e) {
+           this.logger.error('Error guardando mensaje directo de media localmente', e);
+        }
+    }
+
     await data.client.sendMessage(finalTarget, media);
   }
 
