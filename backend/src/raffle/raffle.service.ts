@@ -359,9 +359,17 @@ export class RaffleService {
           phone,
           name: contactName,
           companyId: raffle.companyId,
-          botStatus: 'ACTIVE'
+          botStatus: 'ACTIVE',
+          tags: ['SORTEO']
         }
       });
+    } else {
+      if (!contact.tags.includes('SORTEO')) {
+        contact = await this.prisma.contact.update({
+          where: { id: contact.id },
+          data: { tags: { push: 'SORTEO' } }
+        });
+      }
     }
 
     // Check availability
