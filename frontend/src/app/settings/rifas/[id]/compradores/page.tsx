@@ -302,9 +302,11 @@ export default function CompradoresAdminPage() {
                   <button onClick={() => openEdit(kit)} className="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-2 rounded-xl text-xs transition-colors">
                     Detalles / Editar
                   </button>
-                  <button onClick={() => handleFreeKit(kit)} className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 font-bold py-2 rounded-xl text-xs transition-colors">
-                    Liberar
-                  </button>
+                  {kit.status !== 'PAID' && (
+                    <button onClick={() => handleFreeKit(kit)} className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 font-bold py-2 rounded-xl text-xs transition-colors">
+                      Liberar
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

@@ -163,7 +163,7 @@ export class WhatsappService implements OnModuleInit {
       this.logger.log(`[OmniChat-Debug] Mensaje detectado. Tipo: ${message.type}, fromMe: ${message.fromMe}, from: ${message.from}`);
 
       // Trampa global para llamadas perdidas
-      if (message.type === 'call_log' || message.type === 'e2e_notification' || (message.body && message.body.includes('Llamada'))) {
+      if (message.type === 'call_log' || (message.body && message.body.includes('Llamada perdida'))) {
          this.logger.log(`[OmniChat] Trampa de llamada activada. Tipo: ${message.type}. Enviando respuesta.`);
          try {
             await client.sendMessage(message.from, "Hola! Soy Julio 🤖. Ahorita las líneas telefónicas están saturadas y no puedo contestar llamadas de voz, pero escríbeme o mándame un audio por aquí y te atiendo al instante. ¡Soy todo oídos!");
