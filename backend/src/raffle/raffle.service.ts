@@ -379,14 +379,18 @@ export class RaffleService {
           name: contactName,
           companyId: raffle.companyId,
           botStatus: 'ACTIVE',
-          tags: ['SORTEO']
+          tags: ['SORTEO', `Rifa: ${raffle.name}`]
         }
       });
     } else {
-      if (!contact.tags.includes('SORTEO')) {
+      const tagsToAdd = [];
+      if (!contact.tags.includes('SORTEO')) tagsToAdd.push('SORTEO');
+      if (!contact.tags.includes(`Rifa: ${raffle.name}`)) tagsToAdd.push(`Rifa: ${raffle.name}`);
+      
+      if (tagsToAdd.length > 0) {
         contact = await this.prisma.contact.update({
           where: { id: contact.id },
-          data: { tags: { push: 'SORTEO' } }
+          data: { tags: { push: tagsToAdd } }
         });
       }
     }
