@@ -360,7 +360,12 @@ export class RaffleService {
     if (!raffle) throw new NotFoundException('Rifa no encontrada');
 
     // Clean phone number
-    const phone = contactPhone.replace(/\D/g, '');
+    let phone = contactPhone.replace(/\D/g, '');
+    if (phone.length === 10) {
+        phone = `521${phone}`;
+    } else if (phone.length === 12 && phone.startsWith('52')) {
+        phone = `521${phone.slice(2)}`;
+    }
 
     // Get or Create Contact
     let contact = await this.prisma.contact.findFirst({
