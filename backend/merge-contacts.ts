@@ -31,14 +31,7 @@ async function run() {
           data: { contactId: targetContact.id }
         });
 
-        // 3. Move/Merge Chats
-        // Chat uses contactId as unique usually
-        try {
-            // we ignore chat merging logic errors just in case
-            await prisma.chat.deleteMany({ where: { contactId: contact.id }});
-        } catch(e) {}
-        
-        // Update tags
+        // 3. (No Chat model exists, moving messages is enough)
         const tagsToAdd = contact.tags.filter(t => !targetContact.tags.includes(t));
         if (tagsToAdd.length > 0) {
             await prisma.contact.update({
