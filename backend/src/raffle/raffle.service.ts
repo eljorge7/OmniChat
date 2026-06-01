@@ -387,10 +387,14 @@ export class RaffleService {
       if (!contact.tags.includes('SORTEO')) tagsToAdd.push('SORTEO');
       if (!contact.tags.includes(`Rifa: ${raffle.name}`)) tagsToAdd.push(`Rifa: ${raffle.name}`);
       
-      if (tagsToAdd.length > 0) {
+      const updateData: any = {};
+      if (tagsToAdd.length > 0) updateData.tags = { push: tagsToAdd };
+      if (!contact.name || contact.name === 'Nuevo Lead' || contact.name === 'Contacto Sincronizado') updateData.name = contactName;
+      
+      if (Object.keys(updateData).length > 0) {
         contact = await this.prisma.contact.update({
           where: { id: contact.id },
-          data: { tags: { push: tagsToAdd } }
+          data: updateData
         });
       }
     }
