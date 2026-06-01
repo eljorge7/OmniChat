@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useParams, useRouter } from "next/navigation";
-import { Users, Search, ChevronLeft, Save, Loader2, X, Ticket, User, Phone, CheckCircle, Hash, AlertTriangle } from "lucide-react";
+import { Users, Search, ChevronLeft, Save, Loader2, X, Ticket, User, Phone, CheckCircle, Hash, AlertTriangle, LayoutGrid, List } from "lucide-react";
 
 export default function CompradoresAdminPage() {
   const { id } = useParams();
@@ -21,6 +21,7 @@ export default function CompradoresAdminPage() {
   // Abonos State
   const [abonoAmount, setAbonoAmount] = useState("");
   const [isRegisteringAbono, setIsRegisteringAbono] = useState(false);
+  const [isSecuring, setIsSecuring] = useState(false);
 
   // Manual Sale State
   const [showManualModal, setShowManualModal] = useState(false);
@@ -28,6 +29,7 @@ export default function CompradoresAdminPage() {
   const [isReservingManual, setIsReservingManual] = useState(false);
 
   const [isGeneratingFlyer, setIsGeneratingFlyer] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "compact">("grid");
 
   const handleDownloadFlyer = async () => {
     setIsGeneratingFlyer(true);
@@ -157,6 +159,29 @@ export default function CompradoresAdminPage() {
     }
   };
 
+  const handleSecureApartado = async () => {
+    if (!confirm("¿Deseas fijar este apartado? El sistema ya no lo cancelará automáticamente a las 12 horas, aunque tenga $0 abonados.")) return;
+    setIsSecuring(true);
+    try {
+      const ticketNumbers = editingKit.tickets.map((t: any) => t.ticketNumber);
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/raffles/${id}/tickets/kit-secure`, {
+        companyId,
+        ticketNumbers
+      });
+      await fetchRaffle(companyId);
+      
+      // Update local state so it shows as ABONADO and the button disappears
+      setEditingKit({
+        ...editingKit,
+        status: 'PARTIALLY_PAID'
+      });
+    } catch (err) {
+      console.error(err);
+      alert("Error al fijar el apartado.");
+    } finally {
+      setIsSecuring(false);
+    }
+  };
 
   // Helper function to free kit
   const handleFreeKit = async (kit: any) => {
@@ -274,72 +299,126 @@ export default function CompradoresAdminPage() {
             <div className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-xl border border-emerald-100 flex items-center">
               Vendidos: {raffle.tickets.length}
             </div>
+            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+               <button onClick={() => setViewMode("grid")} className={`p-1.5 rounded-lg transition-colors ${viewMode === 'grid' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} title="Vista de Tarjetas">
+                  <LayoutGrid className="w-4 h-4" />
+               </button>
+               <button onClick={() => setViewMode("compact")} className={`p-1.5 rounded-lg transition-colors ${viewMode === 'compact' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} title="Vista Compacta">
+                  <List className="w-4 h-4" />
+               </button>
+            </div>
           </div>
         </div>
 
-               <div className="flex-1 overflow-y-auto bg-slate-50 p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="flex-1 overflow-y-auto bg-slate-50 p-6">
+          <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" : "flex flex-col gap-2"}>
             {kits.map((kit: any) => (
-              <div key={kit.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group flex flex-col">
-                <div className={`absolute top-0 left-0 w-1 h-full ${kit.status === 'PAID' ? 'bg-emerald-500' : kit.status === 'PARTIALLY_PAID' ? 'bg-sky-500' : 'bg-amber-500'}`}></div>
-                
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <Ticket className="w-5 h-5 text-slate-400" />
-                      <span className="text-xl font-black text-slate-800">
-                        {kit.tickets.length === 1 
-                          ? `#${kit.tickets[0].ticketNumber}` 
-                          : kit.tickets.length <= 3 
-                            ? kit.tickets.map((t:any) => `#${t.ticketNumber}`).join(', ')
-                            : `#${kit.tickets[0].ticketNumber} y ${kit.tickets.length - 1} más`}
-                      </span>
+              viewMode === 'grid' ? (
+                <div key={kit.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group flex flex-col">
+                  <div className={`absolute top-0 left-0 w-1 h-full ${kit.status === 'PAID' ? 'bg-emerald-500' : kit.status === 'PARTIALLY_PAID' ? 'bg-sky-500' : 'bg-amber-500'}`}></div>
+                  
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <Ticket className="w-5 h-5 text-slate-400" />
+                        <span className="text-xl font-black text-slate-800">
+                          {kit.tickets.length === 1 
+                            ? `#${kit.tickets[0].ticketNumber}` 
+                            : kit.tickets.length <= 3 
+                              ? kit.tickets.map((t:any) => `#${t.ticketNumber}`).join(', ')
+                              : `#${kit.tickets[0].ticketNumber} y ${kit.tickets.length - 1} más`}
+                        </span>
+                      </div>
+                      {kit.tickets.length > 1 && (
+                        <span className="text-xs font-bold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-md w-fit">Paquete de {kit.tickets.length}</span>
+                      )}
                     </div>
-                    {kit.tickets.length > 1 && (
-                      <span className="text-xs font-bold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-md w-fit">Paquete de {kit.tickets.length}</span>
+                    <span className={`px-2.5 py-1 text-[10px] font-black rounded-full uppercase tracking-wider ${kit.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : kit.status === 'PARTIALLY_PAID' ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {kit.status === 'PAID' ? 'PAGADO' : kit.status === 'PARTIALLY_PAID' ? 'ABONADO' : 'APARTADO'}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3 mb-6 flex-1">
+                    <div className="flex items-center gap-2 text-sm">
+                      <User className="w-4 h-4 text-slate-400" />
+                      <span className="font-medium text-slate-700 truncate">{kit.contact?.name || 'Venta Manual'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Phone className="w-4 h-4 text-slate-400" />
+                      <span className="font-medium text-slate-700">{kit.contact?.phone || 'Sin número'}</span>
+                    </div>
+                    {kit.paymentReference && (
+                      <div className="flex items-center gap-2 text-sm bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        <Hash className="w-4 h-4 text-indigo-400" />
+                        <span className="font-bold text-indigo-600 truncate">{kit.paymentReference}</span>
+                      </div>
+                    )}
+                    {kit.amountPaid > 0 && (
+                      <div className="mt-2 w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                        <div className="bg-sky-500 h-2.5 rounded-full" style={{ width: `${Math.min(100, (kit.amountPaid / kit.totalPrice) * 100)}%` }}></div>
+                      </div>
+                    )}
+                    <div className="text-xs font-bold text-slate-500 text-right mt-1">
+                      Pagado: ${kit.amountPaid} / ${kit.totalPrice}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 border-t border-slate-100 pt-4 mt-auto">
+                    <button onClick={() => openEdit(kit)} className="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-2 rounded-xl text-xs transition-colors">
+                      Detalles / Editar
+                    </button>
+                    {kit.status !== 'PAID' && (
+                      <button onClick={() => handleFreeKit(kit)} className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 font-bold py-2 rounded-xl text-xs transition-colors">
+                        Liberar
+                      </button>
                     )}
                   </div>
-                  <span className={`px-2.5 py-1 text-[10px] font-black rounded-full uppercase tracking-wider ${kit.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : kit.status === 'PARTIALLY_PAID' ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {kit.status === 'PAID' ? 'PAGADO' : kit.status === 'PARTIALLY_PAID' ? 'ABONADO' : 'APARTADO'}
-                  </span>
                 </div>
-
-                <div className="space-y-3 mb-6 flex-1">
-                  <div className="flex items-center gap-2 text-sm">
-                    <User className="w-4 h-4 text-slate-400" />
-                    <span className="font-medium text-slate-700 truncate">{kit.contact?.name || 'Venta Manual'}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Phone className="w-4 h-4 text-slate-400" />
-                    <span className="font-medium text-slate-700">{kit.contact?.phone || 'Sin número'}</span>
-                  </div>
-                  {kit.paymentReference && (
-                    <div className="flex items-center gap-2 text-sm bg-slate-50 p-2 rounded-lg border border-slate-100">
-                      <Hash className="w-4 h-4 text-indigo-400" />
-                      <span className="font-bold text-indigo-600 truncate">{kit.paymentReference}</span>
-                    </div>
-                  )}
-                  {kit.amountPaid > 0 && (
-                    <div className="mt-2 w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                      <div className="bg-sky-500 h-2.5 rounded-full" style={{ width: `${Math.min(100, (kit.amountPaid / kit.totalPrice) * 100)}%` }}></div>
-                    </div>
-                  )}
-                  <div className="text-xs font-bold text-slate-500 text-right mt-1">
-                    Pagado: ${kit.amountPaid} / ${kit.totalPrice}
-                  </div>
+              ) : (
+                <div key={kit.id} className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow flex items-center justify-between group">
+                   <div className="flex items-center gap-4">
+                      <div className={`w-2 h-12 rounded-full ${kit.status === 'PAID' ? 'bg-emerald-500' : kit.status === 'PARTIALLY_PAID' ? 'bg-sky-500' : 'bg-amber-500'}`}></div>
+                      <div>
+                         <div className="flex items-center gap-2">
+                           <span className="font-black text-slate-800">
+                             {kit.tickets.length === 1 
+                               ? `#${kit.tickets[0].ticketNumber}` 
+                               : kit.tickets.length <= 3 
+                                 ? kit.tickets.map((t:any) => `#${t.ticketNumber}`).join(', ')
+                                 : `#${kit.tickets[0].ticketNumber} y ${kit.tickets.length - 1} más`}
+                           </span>
+                           <span className={`px-2 py-0.5 text-[9px] font-black rounded-full uppercase tracking-wider ${kit.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : kit.status === 'PARTIALLY_PAID' ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-700'}`}>
+                             {kit.status === 'PAID' ? 'PAGADO' : kit.status === 'PARTIALLY_PAID' ? 'ABONADO' : 'APARTADO'}
+                           </span>
+                         </div>
+                         <div className="text-xs text-slate-500 mt-0.5 flex gap-3">
+                            <span className="flex items-center gap-1"><User className="w-3 h-3"/> {kit.contact?.name || 'Venta Manual'}</span>
+                            <span className="flex items-center gap-1"><Phone className="w-3 h-3"/> {kit.contact?.phone || 'Sin número'}</span>
+                         </div>
+                      </div>
+                   </div>
+                   <div className="flex items-center gap-4">
+                      <div className="text-right hidden md:block">
+                         <div className="text-xs font-bold text-slate-700">${kit.amountPaid} / ${kit.totalPrice}</div>
+                         {kit.amountPaid > 0 && (
+                            <div className="w-24 bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden ml-auto">
+                              <div className="bg-sky-500 h-1.5 rounded-full" style={{ width: `${Math.min(100, (kit.amountPaid / kit.totalPrice) * 100)}%` }}></div>
+                            </div>
+                         )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => openEdit(kit)} className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg text-xs transition-colors">
+                          Editar
+                        </button>
+                        {kit.status !== 'PAID' && (
+                          <button onClick={() => handleFreeKit(kit)} className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded-lg text-xs transition-colors hidden sm:block">
+                            Liberar
+                          </button>
+                        )}
+                      </div>
+                   </div>
                 </div>
-
-                <div className="flex gap-2 border-t border-slate-100 pt-4 mt-auto">
-                  <button onClick={() => openEdit(kit)} className="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-2 rounded-xl text-xs transition-colors">
-                    Detalles / Editar
-                  </button>
-                  {kit.status !== 'PAID' && (
-                    <button onClick={() => handleFreeKit(kit)} className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 font-bold py-2 rounded-xl text-xs transition-colors">
-                      Liberar
-                    </button>
-                  )}
-                </div>
-              </div>
+              )
             ))}
           </div>
         </div>            
@@ -432,6 +511,21 @@ export default function CompradoresAdminPage() {
                   <p className="text-xs text-emerald-600 font-bold mt-3 text-center">Este paquete ya está totalmente pagado.</p>
                 )}
               </div>
+
+              {editingKit.status === 'APARTADO' && editingKit.amountPaid === 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6 relative overflow-hidden flex flex-col items-center text-center">
+                  <AlertTriangle className="w-6 h-6 text-amber-500 mb-2" />
+                  <h4 className="text-sm font-bold text-amber-800 mb-1">Evitar Cancelación Automática</h4>
+                  <p className="text-xs text-amber-700/80 mb-4">Si confías en que el cliente pagará después, fija el apartado para que el sistema no libere los boletos a las 12 horas.</p>
+                  <button 
+                    onClick={handleSecureApartado}
+                    disabled={isSecuring}
+                    className="bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 text-white font-bold py-2 px-6 rounded-xl transition-colors flex items-center justify-center w-full"
+                  >
+                    {isSecuring ? <Loader2 className="w-5 h-5 animate-spin" /> : "Fijar Apartado (Sin Abono)"}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

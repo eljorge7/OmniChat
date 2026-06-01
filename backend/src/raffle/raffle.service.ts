@@ -307,6 +307,20 @@ export class RaffleService {
     return updatedTickets;
   }
 
+  async secureTicketKit(raffleId: string, ticketNumbers: string[], companyId: string) {
+    const raffle = await this.prisma.raffle.findUnique({ where: { id: raffleId } });
+    if (!raffle) throw new NotFoundException('Rifa no encontrada');
+
+    await this.prisma.ticket.updateMany({
+      where: { raffleId, ticketNumber: { in: ticketNumbers } },
+      data: {
+        status: 'PARTIALLY_PAID'
+      }
+    });
+
+    return { message: 'Apartado asegurado exitosamente' };
+  }
+
   async finishRaffle(raffleId: string, companyId: string, winningNumber: string, evidenceUrl: string) {
     const raffle = await this.prisma.raffle.findUnique({ where: { id: raffleId } });
     if (!raffle || raffle.companyId !== companyId) {
