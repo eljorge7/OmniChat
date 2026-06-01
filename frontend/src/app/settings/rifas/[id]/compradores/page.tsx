@@ -27,6 +27,29 @@ export default function CompradoresAdminPage() {
   const [manualData, setManualData] = useState({ name: "", phone: "", tickets: "" });
   const [isReservingManual, setIsReservingManual] = useState(false);
 
+  const [isGeneratingFlyer, setIsGeneratingFlyer] = useState(false);
+
+  const handleDownloadFlyer = async () => {
+    setIsGeneratingFlyer(true);
+    try {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/raffles/${id}/flyer`, {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `numeros_disponibles_rifa.png`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error(error);
+      alert('Hubo un error al generar el flyer de números disponibles.');
+    } finally {
+      setIsGeneratingFlyer(false);
+    }
+  };
+
   const handleManualReserve = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualData.tickets) return alert("Ingresa al menos un boleto");
@@ -231,6 +254,14 @@ export default function CompradoresAdminPage() {
             />
           </div>
           <div className="flex gap-4 text-sm font-bold flex-wrap">
+            <button 
+              onClick={handleDownloadFlyer}
+              disabled={isGeneratingFlyer}
+              className="bg-fuchsia-600 hover:bg-fuchsia-700 disabled:bg-slate-300 text-white px-4 py-2 rounded-xl transition-colors shadow-sm flex items-center gap-2"
+            >
+              {isGeneratingFlyer ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              Generar Flyer
+            </button>
             <button 
               onClick={() => setShowManualModal(true)} 
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl transition-colors shadow-sm flex items-center gap-2"

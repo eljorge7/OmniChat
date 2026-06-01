@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Res } from '@nestjs/common';
 import { RaffleService } from './raffle.service';
 
 @Controller('api/v1/raffles')
@@ -13,6 +13,17 @@ export class RaffleController {
   @Get(':id')
   async getRaffleDetail(@Param('id') id: string) {
     return this.raffleService.findOne(id);
+  }
+
+  @Get(':id/flyer')
+  async generateFlyer(@Param('id') id: string, @Res() res: any) {
+    const buffer = await this.raffleService.generateAvailableNumbersFlyer(id);
+    if (!buffer) {
+      return res.status(500).json({ error: 'No se pudo generar el flyer' });
+    }
+    res.set('Content-Type', 'image/png');
+    res.set('Content-Disposition', `inline; filename="numeros_disponibles_${id}.png"`);
+    return res.send(buffer);
   }
 
   @Post(':id/reserve')

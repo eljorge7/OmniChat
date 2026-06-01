@@ -436,6 +436,28 @@ export class RaffleService {
     };
   }
 
+  async generateAvailableNumbersFlyer(raffleId: string): Promise<Buffer | null> {
+    const raffle = await this.prisma.raffle.findUnique({
+      where: { id: raffleId },
+      include: { company: true, tickets: true }
+    });
+
+    if (!raffle) throw new NotFoundException('Rifa no encontrada');
+
+    // Identificar números disponibles
+    const allNumbers = Array.from({ length: raffle.totalTickets }, (_, i) => i.toString().padStart(raffle.totalTickets.toString().length, '0'));
+    const reservedOrPaid = new Set(raffle.tickets.filter(t => t.status !== 'AVAILABLE').map(t => t.ticketNumber));
+    const availableNumbers = allNumbers.filter(n => !reservedOrPaid.has(n));
+
+    return this.ticketGenerator.generateAvailableNumbersFlyer({
+      companyName: raffle.company.name,
+      raffleName: raffle.name,
+      availableNumbers,
+      themeColor: raffle.company.themeColor || '#3B82F6',
+      logoUrl: raffle.company.logoUrl || undefined
+    });
+  }
+
   // Cronjob to release tickets unpaid after 12 hours
   @Cron(CronExpression.EVERY_HOUR)
   async releaseExpiredTickets() {
