@@ -52,17 +52,42 @@ export function Sidebar() {
     { name: 'Difusión de Marketing', href: '/broadcast', icon: Megaphone, adminOnly: true },
   ];
 
-  const secondaryNav = [
-    { name: 'Cerebro IA', href: '/settings/ai', icon: BrainCircuit, adminOnly: true },
-    { name: 'Gestor de Rifas', href: '/settings/rifas', icon: Gift, adminOnly: true },
-    { name: 'Diseño y Marca', href: '/settings/branding', icon: Palette, adminOnly: true },
-    { name: 'Pasarelas de Pago', href: '/settings/payments', icon: CreditCard, adminOnly: true },
-    { name: 'Atajos (Hooks)', href: '/settings/quick-replies', icon: Zap, adminOnly: true },
-    { name: 'Ajustes del Bot', href: '/bot', icon: Bot, adminOnly: true },
-    { name: 'Gestión de Equipo', href: '/settings/team', icon: UserPlus, adminOnly: true },
-    { name: 'Bypass WispHub', href: '/settings/wisphub', icon: Server, adminOnly: true },
-    { name: 'Dispositivo Base', href: '/settings/whatsapp', icon: Settings, adminOnly: true },
-    { name: 'Ayuda', href: '/help', icon: HelpCircle, adminOnly: false },
+  const settingsGroups = [
+    {
+      title: "OmniChat (Bot & IA)",
+      items: [
+        { name: 'Cerebro IA', href: '/settings/ai', icon: BrainCircuit, adminOnly: true },
+        { name: 'Atajos (Hooks)', href: '/settings/quick-replies', icon: Zap, adminOnly: true },
+        { name: 'Ajustes del Bot', href: '/bot', icon: Bot, adminOnly: true },
+        { name: 'Dispositivo Base', href: '/settings/whatsapp', icon: Settings, adminOnly: true },
+      ]
+    },
+    {
+      title: "Rifas y Sorteos",
+      items: [
+        { name: 'Gestor de Rifas', href: '/settings/rifas', icon: Gift, adminOnly: true },
+        { name: 'Pasarelas de Pago', href: '/settings/payments', icon: CreditCard, adminOnly: true },
+      ]
+    },
+    {
+      title: "Configuración del Negocio",
+      items: [
+        { name: 'Diseño y Marca', href: '/settings/branding', icon: Palette, adminOnly: true },
+        { name: 'Gestión de Equipo', href: '/settings/team', icon: UserPlus, adminOnly: true },
+      ]
+    },
+    {
+      title: "Integraciones Externas",
+      items: [
+        { name: 'Bypass WispHub', href: '/settings/wisphub', icon: Server, adminOnly: true },
+      ]
+    },
+    {
+      title: "Soporte",
+      items: [
+        { name: 'Ayuda', href: '/help', icon: HelpCircle, adminOnly: false },
+      ]
+    }
   ];
 
   const initials = session?.user?.name ? session.user.name.substring(0, 2).toUpperCase() : 'AG';
@@ -168,30 +193,38 @@ export function Sidebar() {
           </ul>
         </div>
         
-        <div>
-          {!isCollapsed && <p className="px-3 text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 transition-opacity duration-200">Sistema</p>}
-          <ul className="space-y-1">
-            {secondaryNav.map((item) => {
-              if (item.adminOnly && !isAdmin) return null;
-              const isActive = pathname === item.href;
-              return (
-                <li key={item.name}>
-                  <Link
-                    href={item.href}
-                    title={isCollapsed ? item.name : ""}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-semibold ${isCollapsed ? 'justify-center' : ''} ${
-                      isActive
-                        ? 'bg-indigo-50 text-indigo-700'
-                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                    }`}
-                  >
-                    <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    {!isCollapsed && <span className="truncate">{item.name}</span>}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+        <div className="space-y-6 mt-4">
+          {settingsGroups.map((group) => {
+            const hasVisibleItems = group.items.some(item => !item.adminOnly || isAdmin);
+            if (!hasVisibleItems) return null;
+            return (
+              <div key={group.title}>
+                {!isCollapsed && <p className="px-3 text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">{group.title}</p>}
+                <ul className="space-y-1">
+                  {group.items.map((item) => {
+                    if (item.adminOnly && !isAdmin) return null;
+                    const isActive = pathname === item.href;
+                    return (
+                      <li key={item.name}>
+                        <Link
+                          href={item.href}
+                          title={isCollapsed ? item.name : ""}
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-semibold ${isCollapsed ? 'justify-center' : ''} ${
+                            isActive
+                              ? 'bg-indigo-50 text-indigo-700'
+                              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                          }`}
+                        >
+                          <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
+                          {!isCollapsed && <span className="truncate">{item.name}</span>}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })}
         </div>
 
       </nav>
