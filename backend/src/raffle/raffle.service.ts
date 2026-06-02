@@ -463,7 +463,7 @@ export class RaffleService {
       
       const updateData: any = {};
       if (tagsToAdd.length > 0) updateData.tags = { push: tagsToAdd };
-      if (!contact.name || contact.name === 'Nuevo Lead' || contact.name === 'Contacto Sincronizado') updateData.name = contactName;
+      if (contact.name !== contactName) updateData.name = contactName;
       
       if (Object.keys(updateData).length > 0) {
         contact = await this.prisma.contact.update({
