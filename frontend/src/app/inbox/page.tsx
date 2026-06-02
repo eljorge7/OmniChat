@@ -304,7 +304,7 @@ export default function InboxPage() {
      setIsSyncing(true);
      try {
        const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/sync-history`, { companyId: activeCid });
-       alert(`Sincronización Completa. Se guardaron ${res.data.syncedMessages} mensajes y se crearon ${res.data.newContacts} contactos nuevos.`);
+       alert(res.data.message || `Sincronización iniciada en segundo plano.`);
        // Refresh chats
        const qParams = `?companyId=${activeCid}`;
        const refreshRes = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox${qParams}`);

@@ -924,6 +924,23 @@ export class WhatsappService implements OnModuleInit {
               const messages = await chat.fetchMessages({ limit: 500 });
               if (!messages || messages.length === 0) continue;
 
+              // Prevent duplicates: If Whatsapp provides 521 (Mexico), check if the user already created a 10-digit contact manually
+              if (phone.startsWith('521') && phone.length === 13) {
+                  const raw10 = phone.substring(3);
+                  const existingRaw = await this.prisma.contact.findFirst({ where: { phone: raw10, companyId } });
+                  if (existingRaw) {
+                      // Upgrade the 10-digit contact to 13-digit standard
+                      await this.prisma.contact.update({ where: { id: existingRaw.id }, data: { phone } });
+                  }
+              } else if (phone.startsWith('52') && phone.length === 12) {
+                  // Fallback for Meta standard '52' prefix
+                  const raw10 = phone.substring(2);
+                  const existingRaw = await this.prisma.contact.findFirst({ where: { phone: raw10, companyId } });
+                  if (existingRaw) {
+                      await this.prisma.contact.update({ where: { id: existingRaw.id }, data: { phone } });
+                  }
+              }
+
               let contact = await this.prisma.contact.findFirst({ where: { phone, companyId } });
               if (!contact) {
                   contact = await this.prisma.contact.create({
