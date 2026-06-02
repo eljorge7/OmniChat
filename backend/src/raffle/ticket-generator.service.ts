@@ -466,4 +466,206 @@ export class TicketGeneratorService {
       return null;
     }
   }
+
+  async generateWinnerFlyer(data: {
+    companyName: string;
+    raffleName: string;
+    winningNumber: string;
+    winnerName: string;
+    evidenceUrl: string;
+    themeColor: string;
+    logoUrl?: string;
+  }): Promise<Buffer | null> {
+    this.logger.log(`Iniciando generación de flyer de GANADOR para ${data.raffleName}`);
+    try {
+      const browser = await puppeteer.launch({
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        headless: true
+      });
+      
+      const page = await browser.newPage();
+      await page.setViewport({ width: 800, height: 1600 });
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+            body {
+              font-family: 'Inter', sans-serif;
+              margin: 0;
+              padding: 0;
+              background-color: #0B1120;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              min-height: 100vh;
+              color: white;
+            }
+            .flyer-container {
+              width: 750px;
+              background: linear-gradient(to bottom right, #1E293B, #0F172A);
+              border-radius: 30px;
+              overflow: hidden;
+              box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+              position: relative;
+              border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            .flyer-header {
+              background: linear-gradient(90deg, #F59E0B, #EF4444); /* Gold/Red gradient for celebration */
+              padding: 40px;
+              text-align: center;
+              position: relative;
+            }
+            .flyer-header img {
+              max-height: 120px;
+              max-width: 400px;
+              object-fit: contain;
+              filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+            }
+            .company-name {
+              font-size: 42px;
+              font-weight: 900;
+              text-transform: uppercase;
+              letter-spacing: 2px;
+              text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            }
+            .flyer-body {
+              padding: 40px;
+              text-align: center;
+            }
+            .raffle-title {
+              font-size: 26px;
+              font-weight: 700;
+              color: #94A3B8;
+              margin-bottom: 15px;
+            }
+            .winner-title {
+              font-size: 50px;
+              font-weight: 900;
+              color: #FBBF24;
+              text-transform: uppercase;
+              letter-spacing: 3px;
+              margin-bottom: 10px;
+              text-shadow: 0 0 20px rgba(251, 191, 36, 0.3);
+            }
+            .winner-name {
+              font-size: 38px;
+              font-weight: 900;
+              color: #FFFFFF;
+              margin-bottom: 30px;
+            }
+            .winning-number-box {
+              background: rgba(251, 191, 36, 0.1);
+              border: 2px dashed #FBBF24;
+              border-radius: 20px;
+              padding: 20px;
+              margin-bottom: 40px;
+              display: inline-block;
+            }
+            .winning-number-label {
+              font-size: 16px;
+              color: #FBBF24;
+              text-transform: uppercase;
+              font-weight: 900;
+              letter-spacing: 2px;
+              margin-bottom: 5px;
+            }
+            .winning-number {
+              font-size: 48px;
+              font-weight: 900;
+              color: #FFFFFF;
+              letter-spacing: 5px;
+            }
+            .evidence-container {
+              background: #000;
+              border-radius: 15px;
+              padding: 10px;
+              border: 1px solid rgba(255,255,255,0.1);
+              margin-bottom: 20px;
+            }
+            .evidence-img {
+              max-width: 100%;
+              max-height: 400px;
+              border-radius: 10px;
+              object-fit: cover;
+            }
+            .footer-section {
+              background: rgba(0,0,0,0.4);
+              padding: 30px;
+              text-align: center;
+              border-top: 1px solid rgba(255,255,255,0.05);
+            }
+            .footer-text {
+              font-size: 20px;
+              font-weight: 700;
+              color: #F8FAFC;
+            }
+            .footer-subtext {
+              font-size: 14px;
+              color: #94A3B8;
+              margin-top: 10px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="flyer-container">
+            <div class="flyer-header">
+              ${data.logoUrl 
+                ? `<img src="${data.logoUrl}" alt="Logo">` 
+                : `<div class="company-name">${data.companyName}</div>`}
+            </div>
+            
+            <div class="flyer-body">
+              <div class="raffle-title">${data.raffleName}</div>
+              <div class="winner-title">¡TENEMOS GANADOR!</div>
+              <div class="winner-name">${data.winnerName}</div>
+              
+              <div class="winning-number-box">
+                <div class="winning-number-label">Boleto Ganador</div>
+                <div class="winning-number">${data.winningNumber}</div>
+              </div>
+              
+              <div class="evidence-container">
+                <img class="evidence-img" src="${data.evidenceUrl}" alt="Evidencia del Sorteo">
+              </div>
+            </div>
+            
+            <div class="footer-section">
+              <div class="footer-text">¡Gracias a todos por participar!</div>
+              <div class="footer-subtext">Generado y auditado por OmniChat System</div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+      
+      const element = await page.$('.flyer-container');
+      if (!element) throw new Error("No se pudo encontrar el contenedor del flyer");
+      
+      const boundingBox = await element.boundingBox();
+      if (!boundingBox) throw new Error("No se pudo calcular el bounding box");
+
+      const imageBuffer = await page.screenshot({
+        type: 'png',
+        clip: {
+          x: boundingBox.x,
+          y: boundingBox.y,
+          width: boundingBox.width,
+          height: boundingBox.height
+        }
+      });
+
+      await browser.close();
+      this.logger.log(`Flyer de ganador generado exitosamente: ${imageBuffer.length} bytes`);
+      return Buffer.from(imageBuffer);
+      
+    } catch (e) {
+      this.logger.error("Error generando flyer de ganador", e);
+      return null;
+    }
+  }
 }

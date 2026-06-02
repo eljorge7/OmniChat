@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { TicketGeneratorService } from './ticket-generator.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class RaffleService {
@@ -334,7 +336,8 @@ export class RaffleService {
       where: {
         raffleId,
         ticketNumber: paddedWinningNumber,
-      }
+      },
+      include: { contact: true }
     });
 
     if (!winningTicket) {
@@ -345,7 +348,7 @@ export class RaffleService {
       throw new BadRequestException(`No puedes finalizar el sorteo con el boleto #${winningNumber} porque su estado no es PAGADO (Actual: ${winningTicket.status}).`);
     }
 
-    return this.prisma.raffle.update({
+    const updatedRaffle = await this.prisma.raffle.update({
       where: { id: raffleId },
       data: {
         status: 'FINISHED',
@@ -353,6 +356,59 @@ export class RaffleService {
         evidenceUrl,
       }
     });
+
+    // Enviar flyer masivo asíncronamente
+    this.broadcastWinnerFlyer(raffleId, companyId, updatedRaffle, winningTicket).catch(e => {
+        this.logger.error("Error en broadcast de flyer ganador", e);
+    });
+
+    return updatedRaffle;
+  }
+
+  private async broadcastWinnerFlyer(raffleId: string, companyId: string, raffle: any, winningTicket: any) {
+    try {
+      const company = await this.prisma.company.findUnique({ where: { id: companyId } });
+      if (!company) return;
+
+      const flyerBuffer = await this.ticketGenerator.generateWinnerFlyer({
+        companyName: company.name,
+        raffleName: raffle.name,
+        winningNumber: winningTicket.ticketNumber,
+        winnerName: winningTicket.contact?.name || 'Un afortunado ganador',
+        evidenceUrl: raffle.evidenceUrl,
+        themeColor: company.themeColor || '#3B82F6',
+        logoUrl: company.logoUrl || undefined
+      });
+
+      if (!flyerBuffer) return;
+
+      const tmpPath = path.join(process.cwd(), `tmp-flyer-winner-${Date.now()}.png`);
+      fs.writeFileSync(tmpPath, flyerBuffer);
+
+      const tickets = await this.prisma.ticket.findMany({
+        where: { raffleId, contactId: { not: null } },
+        select: { contact: true }
+      });
+      
+      const uniqueContacts = Array.from(new Map(tickets.map((t: any) => [t.contact.id, t.contact])).values()) as any[];
+
+      const message = `🎉 *¡Tenemos Ganador!*\n\nLa rifa *${raffle.name}* ha finalizado.\n\nEl boleto ganador es el *#${winningTicket.ticketNumber}*.\n\nTe adjuntamos el Flyer Oficial y la evidencia del sorteo. ¡Muchas gracias por participar y mucha suerte para la próxima!`;
+
+      for (const contact of uniqueContacts) {
+        if (!contact.phone) continue;
+        try {
+          await this.whatsapp.sendDirectMediaMessage(companyId, contact.phone, tmpPath, contact.id);
+          await this.whatsapp.sendDirectMessage(companyId, contact.phone, message, contact.id);
+          await new Promise(res => setTimeout(res, 2000)); // Rate limiting
+        } catch (err) {
+          this.logger.error(`Error enviando flyer a ${contact.phone}`, err);
+        }
+      }
+
+      fs.unlinkSync(tmpPath);
+    } catch(err) {
+      this.logger.error("Broadcast flyer catch block", err);
+    }
   }
 
   async reserveTickets(raffleId: string, ticketNumbers: string[], contactPhone: string, contactName: string) {
