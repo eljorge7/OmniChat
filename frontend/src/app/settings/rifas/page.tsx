@@ -239,8 +239,9 @@ export default function RifasAdminPage() {
 
         {raffles.map(r => {
           const ticketsVendidos = r.tickets?.filter((t: any) => t.status === 'PAID').length || 0;
-          const ticketsApartados = r.tickets?.filter((t: any) => t.status === 'RESERVED').length || 0;
+          const ticketsApartados = r.tickets?.filter((t: any) => t.status === 'RESERVED' || t.status === 'PARTIALLY_PAID').length || 0;
           const recaudado = ticketsVendidos * r.ticketPrice;
+          const hasMovement = ticketsVendidos > 0 || ticketsApartados > 0 || r.status === 'FINISHED';
           const url = `${typeof window !== 'undefined' ? window.location.origin : 'https://omnichat.radiotecpro.com'}/rifas/${companyId}/${r.id}`;
           
           return (
@@ -317,9 +318,11 @@ export default function RifasAdminPage() {
                       </button>
                     </>
                   )}
-                  <button onClick={() => handleDelete(r.id)} className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors" title="Eliminar">
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+                  {!hasMovement && (
+                    <button onClick={() => handleDelete(r.id)} className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors" title="Eliminar">
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
