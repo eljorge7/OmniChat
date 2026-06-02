@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useParams, useRouter } from "next/navigation";
-import { Users, Search, ChevronLeft, Save, Loader2, X, Ticket, User, Phone, CheckCircle, Hash, AlertTriangle, LayoutGrid, List } from "lucide-react";
+import { Users, Search, ChevronLeft, Save, Loader2, X, Ticket, User, Phone, CheckCircle, Hash, AlertTriangle, LayoutGrid, List, Calendar } from "lucide-react";
 
 export default function CompradoresAdminPage() {
   const { id } = useParams();
@@ -278,6 +278,7 @@ export default function CompradoresAdminPage() {
     const anyPaidOrPartial = kit.amountPaid > 0;
     kit.status = allPaid ? 'PAID' : (anyPaidOrPartial ? 'PARTIALLY_PAID' : 'APARTADO');
     kit.tickets.sort((a: any, b: any) => parseInt(a.ticketNumber) - parseInt(b.ticketNumber));
+    kit.reservedAt = kit.tickets[0]?.reservedAt;
     return kit;
   });
 
@@ -380,6 +381,12 @@ export default function CompradoresAdminPage() {
                       <Phone className="w-4 h-4 text-slate-400" />
                       <span className="font-medium text-slate-700">{kit.contact?.phone || 'Sin número'}</span>
                     </div>
+                    {kit.reservedAt && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Calendar className="w-4 h-4 text-slate-400" />
+                        <span className="font-medium text-slate-700">{new Date(kit.reservedAt).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                      </div>
+                    )}
                     {kit.paymentReference && (
                       <div className="flex items-center gap-2 text-sm bg-slate-50 p-2 rounded-lg border border-slate-100">
                         <Hash className="w-4 h-4 text-indigo-400" />
@@ -427,6 +434,9 @@ export default function CompradoresAdminPage() {
                          <div className="text-xs text-slate-500 mt-0.5 flex gap-3">
                             <span className="flex items-center gap-1"><User className="w-3 h-3"/> {kit.contact?.name || 'Venta Manual'}</span>
                             <span className="flex items-center gap-1"><Phone className="w-3 h-3"/> {kit.contact?.phone || 'Sin número'}</span>
+                            {kit.reservedAt && (
+                              <span className="flex items-center gap-1"><Calendar className="w-3 h-3"/> {new Date(kit.reservedAt).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                            )}
                          </div>
                       </div>
                    </div>
@@ -484,9 +494,17 @@ export default function CompradoresAdminPage() {
                      ? `#${editingKit.tickets[0].ticketNumber}` 
                      : `${editingKit.tickets.length} Boletos`}
                 </span>
-                <span className={`px-3 py-1.5 text-xs font-black rounded-full uppercase tracking-wider ${editingKit.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : editingKit.status === 'PARTIALLY_PAID' ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-700'}`}>
-                  {editingKit.status === 'PAID' ? 'PAGADO' : editingKit.status === 'PARTIALLY_PAID' ? 'ABONADO' : 'APARTADO'}
-                </span>
+                <div className="flex flex-col items-end gap-2">
+                  <span className={`px-3 py-1.5 text-xs font-black rounded-full uppercase tracking-wider ${editingKit.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : editingKit.status === 'PARTIALLY_PAID' ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {editingKit.status === 'PAID' ? 'PAGADO' : editingKit.status === 'PARTIALLY_PAID' ? 'ABONADO' : 'APARTADO'}
+                  </span>
+                  {editingKit.reservedAt && (
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase">
+                      <Calendar className="w-3 h-3" />
+                      {new Date(editingKit.reservedAt).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {editingKit.contact && (
