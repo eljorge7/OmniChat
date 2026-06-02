@@ -370,12 +370,30 @@ export class RaffleService {
       const company = await this.prisma.company.findUnique({ where: { id: companyId } });
       if (!company) return;
 
+      let evidenceToRender = raffle.evidenceUrl;
+      try {
+        // Parse filename and attempt local read to avoid Docker network/CORS issues for Puppeteer
+        const urlParts = raffle.evidenceUrl.split('/');
+        const filename = urlParts[urlParts.length - 1];
+        const localPath = path.join(process.cwd(), 'uploads', filename);
+        
+        if (fs.existsSync(localPath)) {
+            let ext = path.extname(filename).replace('.', '').toLowerCase();
+            if (ext === 'jpg') ext = 'jpeg';
+            if (!ext) ext = 'png';
+            const base64 = fs.readFileSync(localPath).toString('base64');
+            evidenceToRender = `data:image/${ext};base64,${base64}`;
+        }
+      } catch (err) {
+        this.logger.error("Could not read evidence locally, falling back to URL", err);
+      }
+
       const flyerBuffer = await this.ticketGenerator.generateWinnerFlyer({
         companyName: company.name,
         raffleName: raffle.name,
         winningNumber: winningTicket.ticketNumber,
         winnerName: winningTicket.contact?.name || 'Un afortunado ganador',
-        evidenceUrl: raffle.evidenceUrl,
+        evidenceUrl: evidenceToRender,
         themeColor: company.themeColor || '#3B82F6',
         logoUrl: company.logoUrl || undefined
       });
