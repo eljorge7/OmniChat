@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Post, Body, Param, Headers, UnauthorizedException, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Put, Post, Body, Param, Headers, UnauthorizedException, UseInterceptors, UploadedFile, BadRequestException, Query } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -22,11 +22,21 @@ export class CompaniesController {
       whatsappNumber: company.whatsappNumber
     };
   }
+  @Get('me')
+  async getPrivateProfile(@Headers('authorization') auth: string, @Query('email') email: string) {
+    if (!email) throw new UnauthorizedException('Falta email');
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      include: { company: true }
+    });
+    if (!user) throw new UnauthorizedException('Usuario no encontrado');
+    return user.company;
+  }
 
   @Put('me')
   async updateCompany(
     @Headers('authorization') auth: string,
-    @Body() body: { email: string, logoUrl?: string, themeColor?: string, whatsappNumber?: string }
+    @Body() body: { email: string, logoUrl?: string, themeColor?: string, whatsappNumber?: string, stripeSecretKey?: string, stripePublicKey?: string }
   ) {
     if (!body.email) throw new UnauthorizedException('Falta email');
     
@@ -42,7 +52,9 @@ export class CompaniesController {
       data: {
         logoUrl: body.logoUrl !== undefined ? body.logoUrl : user.company.logoUrl,
         themeColor: body.themeColor !== undefined ? body.themeColor : user.company.themeColor,
-        whatsappNumber: body.whatsappNumber !== undefined ? body.whatsappNumber : user.company.whatsappNumber
+        whatsappNumber: body.whatsappNumber !== undefined ? body.whatsappNumber : user.company.whatsappNumber,
+        stripeSecretKey: body.stripeSecretKey !== undefined ? body.stripeSecretKey : user.company.stripeSecretKey,
+        stripePublicKey: body.stripePublicKey !== undefined ? body.stripePublicKey : user.company.stripePublicKey
       }
     });
   }

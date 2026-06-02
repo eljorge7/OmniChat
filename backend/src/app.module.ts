@@ -12,8 +12,9 @@ import { GoogleModule } from './google/google.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { CryptoModule } from './crypto/crypto.module';
 import { ScheduleModule } from '@nestjs/schedule';
-import { RaffleModule } from './raffle/raffle.module';
 import { CompaniesModule } from './companies/companies.module';
+import { PaymentsModule } from './payments/payments.module';
+import { RaffleModule } from './raffle/raffle.module';
 
 @Module({
   imports: [
@@ -29,7 +30,8 @@ import { CompaniesModule } from './companies/companies.module';
     GoogleModule,
     CryptoModule,
     RaffleModule,
-    CompaniesModule
+    CompaniesModule,
+    PaymentsModule
   ],
   controllers: [AppController, AdminController, UsersController],
   providers: [AppService],

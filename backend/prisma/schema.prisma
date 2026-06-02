@@ -12,6 +12,8 @@ model Company {
   name      String
   apiKey    String?  @unique // Llave maestra para Integración B2B (RentControl)
   facturaproTenantId String? // ID del Tenant en FacturaPro para sincronización de inventario
+  stripeSecretKey String? // Para procesar pagos de rifas
+  stripePublicKey String?
   users     User[]
   contacts  Contact[]
   pipelines Pipeline[]
