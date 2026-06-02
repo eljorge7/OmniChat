@@ -528,7 +528,7 @@ export class RaffleService {
     let paymentMessage = `\n💰 *Total a pagar:* $${totalAmount.toFixed(2)} MXN.\n\n🏦 *DATOS DE PAGO:*\n- Banco: *Banorte*\n- CLABE: *072762006567799946*\n- A nombre de: *Jorge Hurtado Cota*\n- Concepto / Referencia: *${paymentReference}*\n\nPor favor, responde a este mensaje enviando la FOTO de tu comprobante de pago para que te confirme.`;
     
     if (raffle.company.stripeSecretKey) {
-        const checkoutUrl = `https://omnichat.radiotecpro.com/api/v1/payments/pay/${paymentReference}`;
+        const checkoutUrl = `https://api.omnichat.radiotecpro.com/api/v1/payments/pay/${paymentReference}`;
         paymentMessage = `\n💰 *Total a pagar:* $${totalAmount.toFixed(2)} MXN.\n\n💳 *PAGA EN LÍNEA (Tarjeta u Oxxo):*\n👉 Da clic aquí para pagar automáticamente y asegurar tus boletos:\n${checkoutUrl}`;
     }
 
