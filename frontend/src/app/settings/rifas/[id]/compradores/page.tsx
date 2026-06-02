@@ -22,6 +22,11 @@ export default function CompradoresAdminPage() {
   const [abonoAmount, setAbonoAmount] = useState("");
   const [isRegisteringAbono, setIsRegisteringAbono] = useState(false);
   const [isSecuring, setIsSecuring] = useState(false);
+  
+  // Contact Edit State
+  const [isEditingContact, setIsEditingContact] = useState(false);
+  const [editedContactName, setEditedContactName] = useState("");
+  const [isSavingContact, setIsSavingContact] = useState(false);
 
   // Manual Sale State
   const [showManualModal, setShowManualModal] = useState(false);
@@ -180,6 +185,34 @@ export default function CompradoresAdminPage() {
       alert("Error al fijar el apartado.");
     } finally {
       setIsSecuring(false);
+    }
+  };
+
+  const handleUpdateContactName = async () => {
+    if (!editingKit || !editingKit.contact) return;
+    if (editedContactName.trim() === "" || editedContactName === editingKit.contact.name) {
+       setIsEditingContact(false);
+       return;
+    }
+    
+    setIsSavingContact(true);
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/contacts/rename`, {
+         contactId: editingKit.contact.id,
+         newName: editedContactName
+      });
+      // Update local state so it reflects immediately
+      setEditingKit({
+         ...editingKit,
+         contact: { ...editingKit.contact, name: editedContactName }
+      });
+      fetchRaffle(companyId); // Refresh table
+    } catch (e) {
+      console.error(e);
+      alert("Error al actualizar el nombre del contacto.");
+    } finally {
+      setIsSavingContact(false);
+      setIsEditingContact(false);
     }
   };
 
@@ -455,6 +488,40 @@ export default function CompradoresAdminPage() {
                   {editingKit.status === 'PAID' ? 'PAGADO' : editingKit.status === 'PARTIALLY_PAID' ? 'ABONADO' : 'APARTADO'}
                 </span>
               </div>
+
+              {editingKit.contact && (
+                <div className="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center justify-between group">
+                   <div>
+                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Nombre del Cliente</p>
+                     {isEditingContact ? (
+                        <input 
+                           autoFocus
+                           value={editedContactName}
+                           onChange={e => setEditedContactName(e.target.value)}
+                           onBlur={handleUpdateContactName}
+                           onKeyDown={e => e.key === 'Enter' && handleUpdateContactName()}
+                           className="font-bold text-slate-800 bg-white px-2 py-1 rounded outline-none border border-indigo-200 w-full text-sm shadow-inner"
+                           placeholder="Ej. Juan Pérez"
+                           disabled={isSavingContact}
+                        />
+                     ) : (
+                        <div className="flex items-center gap-2">
+                           <span className="font-bold text-slate-800">{editingKit.contact.name}</span>
+                           <span className="text-xs text-slate-400">({editingKit.contact.phone.replace('@c.us', '')})</span>
+                        </div>
+                     )}
+                   </div>
+                   {!isEditingContact && (
+                     <button 
+                       onClick={() => { setIsEditingContact(true); setEditedContactName(editingKit.contact.name || ""); }}
+                       className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                       title="Editar Nombre"
+                     >
+                        <User className="w-4 h-4" />
+                     </button>
+                   )}
+                </div>
+              )}
 
               {editingKit.tickets.length > 1 && (
                 <div className="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
