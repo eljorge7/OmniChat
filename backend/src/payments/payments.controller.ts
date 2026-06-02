@@ -1,4 +1,4 @@
-import { Controller, Post, Req, Res, Headers, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Param, Req, Res, Headers, Logger } from '@nestjs/common';
 import Stripe from 'stripe';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
@@ -11,6 +11,67 @@ export class PaymentsController {
     private prisma: PrismaService,
     private whatsapp: WhatsappService
   ) {}
+
+  @Get('pay/:ref')
+  async generatePaymentLink(@Param('ref') ref: string, @Res() res: any) {
+    const tickets = await this.prisma.ticket.findMany({
+      where: { paymentReference: ref },
+      include: {
+        raffle: { include: { company: true } },
+        contact: true
+      }
+    });
+
+    if (!tickets || tickets.length === 0) {
+      return res.redirect('https://omnichat.radiotecpro.com/');
+    }
+
+    const raffle = tickets[0].raffle;
+    const contact = tickets[0].contact;
+
+    if (!raffle.company.stripeSecretKey) {
+      return res.redirect('https://omnichat.radiotecpro.com/');
+    }
+
+    const isPaid = tickets.some(t => t.status === 'PAID');
+    if (isPaid) {
+      return res.redirect(`https://omnichat.radiotecpro.com/rifas/${raffle.companyId}/${raffle.id}?success=true`);
+    }
+
+    const ticketNumbers = tickets.map(t => t.ticketNumber);
+    
+    const stripe = new Stripe(raffle.company.stripeSecretKey);
+    try {
+      const session = await stripe.checkout.sessions.create({
+          payment_method_types: ['card', 'oxxo'],
+          line_items: [{
+              price_data: {
+                  currency: 'mxn',
+                  product_data: {
+                      name: `Rifa: ${raffle.name}`,
+                      description: `Boletos: ${ticketNumbers.join(', ')}`,
+                  },
+                  unit_amount: Math.round(raffle.ticketPrice * 100),
+              },
+              quantity: ticketNumbers.length,
+          }],
+          mode: 'payment',
+          success_url: `https://omnichat.radiotecpro.com/rifas/${raffle.companyId}/${raffle.id}?success=true`,
+          cancel_url: `https://omnichat.radiotecpro.com/rifas/${raffle.companyId}/${raffle.id}?canceled=true`,
+          metadata: {
+              raffleId: raffle.id,
+              contactId: contact?.id || '',
+              ticketNumbers: ticketNumbers.join(','),
+              paymentReference: ref
+          }
+      });
+      
+      return res.redirect(303, session.url as string);
+    } catch (err) {
+      this.logger.error('Error creating Stripe session dynamically', err);
+      return res.redirect(`https://omnichat.radiotecpro.com/rifas/${raffle.companyId}/${raffle.id}?error=stripe`);
+    }
+  }
 
   @Post('stripe-webhook')
   async handleStripeWebhook(

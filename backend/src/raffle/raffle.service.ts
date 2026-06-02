@@ -526,40 +526,10 @@ export class RaffleService {
     const totalAmount = ticketNumbers.length * raffle.ticketPrice;
     
     let paymentMessage = `\n💰 *Total a pagar:* $${totalAmount.toFixed(2)} MXN.\n\n🏦 *DATOS DE PAGO:*\n- Banco: *Banorte*\n- CLABE: *072762006567799946*\n- A nombre de: *Jorge Hurtado Cota*\n- Concepto / Referencia: *${paymentReference}*\n\nPor favor, responde a este mensaje enviando la FOTO de tu comprobante de pago para que te confirme.`;
-    let checkoutUrl = null;
-
+    
     if (raffle.company.stripeSecretKey) {
-        const stripe = new Stripe(raffle.company.stripeSecretKey);
-        try {
-            const session = await stripe.checkout.sessions.create({
-                payment_method_types: ['card', 'oxxo'],
-                line_items: [{
-                    price_data: {
-                        currency: 'mxn',
-                        product_data: {
-                            name: `Rifa: ${raffle.name}`,
-                            description: `Boletos: ${ticketNumbers.join(', ')}`,
-                        },
-                        unit_amount: Math.round(raffle.ticketPrice * 100),
-                    },
-                    quantity: ticketNumbers.length,
-                }],
-                mode: 'payment',
-                success_url: `https://omnichat.radiotecpro.com/rifas/${raffle.companyId}/${raffle.id}?success=true`,
-                cancel_url: `https://omnichat.radiotecpro.com/rifas/${raffle.companyId}/${raffle.id}?canceled=true`,
-                metadata: {
-                    raffleId: raffle.id,
-                    contactId: contact.id,
-                    ticketNumbers: ticketNumbers.join(','),
-                    paymentReference
-                }
-            });
-            checkoutUrl = session.url;
-            paymentMessage = `\n💰 *Total a pagar:* $${totalAmount.toFixed(2)} MXN.\n\n💳 *PAGA EN LÍNEA (Tarjeta u Oxxo):*\n👉 Da clic aquí para pagar automáticamente y asegurar tus boletos:\n${checkoutUrl}`;
-        } catch (err) {
-            this.logger.error("Error creando sesion de Stripe", err);
-            // Fallback to manual message if Stripe fails
-        }
+        const checkoutUrl = `https://omnichat.radiotecpro.com/api/v1/payments/pay/${paymentReference}`;
+        paymentMessage = `\n💰 *Total a pagar:* $${totalAmount.toFixed(2)} MXN.\n\n💳 *PAGA EN LÍNEA (Tarjeta u Oxxo):*\n👉 Da clic aquí para pagar automáticamente y asegurar tus boletos:\n${checkoutUrl}`;
     }
 
     const notificationMessage = `🎟️ *¡Boletos Reservados!*\nHola ${contactName}, apartamos exitosamente tus boletos: *${ticketNumbers.join(', ')}* para la rifa "${raffle.name}".${paymentMessage}\n\n⚠️ *IMPORTANTE:* Cuentas con 12 horas para liquidar, de lo contrario se liberarán automáticamente.\n\nLink de la Rifa: https://omnichat.radiotecpro.com/rifas/${raffle.companyId}/${raffle.id}`;
