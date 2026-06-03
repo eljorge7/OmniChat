@@ -2,6 +2,7 @@ import { Controller, Post, Get, Param, Req, Res, Headers, Logger } from '@nestjs
 import Stripe from 'stripe';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
+import { RaffleService } from '../raffle/raffle.service';
 
 @Controller('api/v1/payments')
 export class PaymentsController {
@@ -9,7 +10,8 @@ export class PaymentsController {
 
   constructor(
     private prisma: PrismaService,
-    private whatsapp: WhatsappService
+    private whatsapp: WhatsappService,
+    private raffleService: RaffleService
   ) {}
 
   @Get('pay/:ref')
@@ -115,28 +117,10 @@ export class PaymentsController {
             const verifiedSession = await stripe.checkout.sessions.retrieve(session.id);
             
             if (verifiedSession.payment_status === 'paid') {
-               // Mark tickets as PAID
-               await this.prisma.ticket.updateMany({
-                 where: {
-                   raffleId,
-                   ticketNumber: { in: ticketNumbers }
-                 },
-                 data: {
-                   status: 'PAID',
-                   amountPaid: Math.round((verifiedSession.amount_total || 0) / 100) / ticketNumbers.length,
-                   paidAt: new Date()
-                 }
-               });
-
-               // Fetch contact to send WhatsApp
-               const contact = await this.prisma.contact.findUnique({ where: { id: contactId } });
-               if (contact) {
-                 const phone = contact.phone.replace('@c.us', '');
-                 const receiptMessage = `🎉 *¡Pago Confirmado!*\nHola ${contact.name}, hemos recibido tu pago exitosamente.\n\nTus boletos *${ticketNumbers.join(', ')}* para la rifa "${raffle.name}" ya están *PAGADOS* y 100% asegurados.\n\nRef: ${paymentReference}\n\n¡Mucha suerte en el sorteo! 🍀`;
-                 
-                 await this.whatsapp.sendDirectMessage(raffle.companyId, `${phone}@c.us`, receiptMessage);
-               }
-               this.logger.log(`Payment successful for raffle ${raffleId} tickets ${ticketNumbers.join(',')}`);
+               // Use RaffleService to register payment and automatically send VIP tickets and notifications
+               const amountPaid = Math.round((verifiedSession.amount_total || 0) / 100);
+               await this.raffleService.registerTicketKitPayment(raffleId, ticketNumbers, amountPaid, raffle.companyId);
+               this.logger.log(`Payment successful via Stripe for raffle ${raffleId} tickets ${ticketNumbers.join(',')}`);
             }
           }
         } catch (e) {
