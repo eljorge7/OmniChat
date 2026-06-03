@@ -165,6 +165,10 @@ export default function RaffleDetail() {
   const ticketMap = new Map();
   raffle.tickets.forEach((t: any) => ticketMap.set(t.ticketNumber, t.status));
 
+  const soldTickets = raffle.tickets.filter((t: any) => t.status === 'PAID' || t.status === 'PARTIALLY_PAID').length;
+  const reservedTickets = raffle.tickets.filter((t: any) => t.status === 'RESERVED').length;
+  const progressPercentage = Math.min(100, Math.round(((soldTickets + reservedTickets) / raffle.totalTickets) * 100));
+
   // Build grid if active tab is GRID
   const grid = [];
   if (activeTab === 'GRID') {
@@ -223,6 +227,34 @@ export default function RaffleDetail() {
           </div>
 
           <div className="bg-slate-900/50 rounded-3xl border border-slate-800 p-6">
+            
+            {/* Barra de Progreso */}
+            <div className="mb-8 bg-slate-950/60 p-5 rounded-2xl border border-slate-800/80 shadow-inner relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl"></div>
+              <div className="flex justify-between items-end mb-3 relative z-10">
+                <span className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  Boletos Ocupados
+                </span>
+                <span className="text-2xl font-black text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.3)]">{progressPercentage}%</span>
+              </div>
+              <div className="w-full bg-slate-800/80 rounded-full h-3 overflow-hidden border border-slate-700/50 relative z-10">
+                <div 
+                  className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-400 h-full rounded-full relative" 
+                  style={{ width: `${progressPercentage}%` }}
+                >
+                  <div className="absolute inset-0 bg-white/20 w-full h-full animate-[shimmer_2s_infinite]"></div>
+                </div>
+              </div>
+              <div className="flex justify-between items-center mt-3 relative z-10">
+                <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">{soldTickets + reservedTickets} de {raffle.totalTickets}</p>
+                <div className="flex gap-3">
+                  <p className="text-[11px] text-emerald-500/80 font-bold flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> {soldTickets} Pagados</p>
+                  <p className="text-[11px] text-amber-500/80 font-bold flex items-center gap-1"><Clock className="w-3 h-3" /> {reservedTickets} Apartados</p>
+                </div>
+              </div>
+            </div>
+
             <h3 className="text-lg font-bold text-white mb-4">Acerca del Sorteo</h3>
             <p className="text-slate-400 leading-relaxed mb-6">
               {raffle.description || "Participa en este gran sorteo y gana increíbles premios."}
@@ -475,12 +507,16 @@ export default function RaffleDetail() {
         </div>
       </div>
       
-      {/* Estilos para scrollbar custom */}
+      {/* Estilos para scrollbar custom y animaciones */}
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(71, 85, 105, 0.5); border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.5); }
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
       `}} />
     </div>
   );
