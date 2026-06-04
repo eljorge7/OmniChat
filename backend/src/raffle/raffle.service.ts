@@ -614,7 +614,7 @@ export class RaffleService {
 
     const kitsMap = new Map();
     for (const t of tickets) {
-      const kitKey = t.paymentReference || t.contact.id || t.ticketNumber;
+      const kitKey = t.paymentReference || t.contact?.id || t.ticketNumber;
       if (!kitsMap.has(kitKey)) {
         kitsMap.set(kitKey, {
           contact: t.contact,
