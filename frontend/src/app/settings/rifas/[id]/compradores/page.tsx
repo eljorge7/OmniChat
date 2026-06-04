@@ -34,6 +34,7 @@ export default function CompradoresAdminPage() {
   const [isReservingManual, setIsReservingManual] = useState(false);
 
   const [isGeneratingFlyer, setIsGeneratingFlyer] = useState(false);
+  const [showRemindersModal, setShowRemindersModal] = useState(false);
   const [isSendingReminders, setIsSendingReminders] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "compact">("grid");
 
@@ -86,15 +87,18 @@ export default function CompradoresAdminPage() {
     }
   };
 
-  const handleSendReminders = async () => {
-    if (!confirm("¿Deseas enviar un recordatorio de pago por WhatsApp a TODOS los clientes con saldo pendiente en esta rifa? Esto puede tomar unos minutos dependiendo de la cantidad de mensajes.")) return;
-    
+  const handleSendRemindersClick = () => {
+    setShowRemindersModal(true);
+  };
+
+  const confirmSendReminders = async () => {
     setIsSendingReminders(true);
     try {
       const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/v1/raffles/${id}/reminders`, {
         companyId
       });
       alert(res.data.message || "Recordatorios enviados exitosamente");
+      setShowRemindersModal(false);
     } catch (err: any) {
       console.error(err);
       alert(err.response?.data?.message || 'Error al enviar recordatorios');
@@ -301,6 +305,8 @@ export default function CompradoresAdminPage() {
     return kit;
   });
 
+  const pendingKits = kits.filter((kit: any) => kit.status !== 'PAID' && kit.contact?.phone);
+
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto h-full flex flex-col font-sans">
       <div className="flex items-center gap-4 mb-8">
@@ -341,7 +347,7 @@ export default function CompradoresAdminPage() {
               Generar Flyer
             </button>
             <button 
-              onClick={handleSendReminders}
+              onClick={handleSendRemindersClick}
               disabled={isSendingReminders}
               className="bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 text-white px-4 py-2 rounded-xl transition-colors shadow-sm flex items-center gap-2"
             >
@@ -711,6 +717,58 @@ export default function CompradoresAdminPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reminders Modal */}
+      {showRemindersModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-xl animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                <Bell className="w-5 h-5 text-amber-500" />
+                Enviar Recordatorios
+              </h3>
+              <button onClick={() => setShowRemindersModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                 <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                 <div>
+                    <h4 className="text-sm font-bold text-amber-800">Se enviarán a {pendingKits.length} clientes</h4>
+                    <p className="text-xs text-amber-700 mt-1">
+                      El sistema mandará un mensaje individual por WhatsApp a todos los clientes que tienen boletos en estado "Apartado" o "Abonado" y tienen un número de celular registrado.
+                    </p>
+                 </div>
+              </div>
+
+              <div>
+                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Ejemplo del Mensaje que se enviará:</p>
+                 <div className="bg-slate-100 p-4 rounded-xl text-sm text-slate-700 whitespace-pre-wrap font-medium">
+                   {`👋 ¡Hola [Nombre del Cliente]!\n\nTe escribimos de parte de ${raffle.company?.name || 'la empresa'} para saludarte y recordarte sobre tu paquete de boletos apartados para la rifa "${raffle.name}".\n\n🎟️ Tus boletos: [Boletos]\n✅ Abonado: $[Abono] MXN\n⏳ Restante por pagar: $[Deuda] MXN\n\n💳 PAGA EN LÍNEA (Tarjeta u Oxxo):\n👉 Da clic aquí para pagar y asegurar tus boletos:\n[Link de Pago]\n\nQueremos recordarte que somos una empresa 100% seria y fiable en la generación de sorteos. Tu participación es muy importante para nosotros.\n\nSi tienes alguna duda o deseas reportar tu pago, ¡estamos a tus órdenes!`}
+                 </div>
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button 
+                  onClick={() => setShowRemindersModal(false)}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={confirmSendReminders} 
+                  disabled={isSendingReminders || pendingKits.length === 0}
+                  className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 text-white font-bold py-3 rounded-xl transition-colors flex justify-center items-center gap-2"
+                >
+                  {isSendingReminders ? <Loader2 className="w-5 h-5 animate-spin" /> : "Confirmar y Enviar"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
