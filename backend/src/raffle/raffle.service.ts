@@ -585,14 +585,9 @@ export class RaffleService {
     });
 
     if (expiredTickets.length > 0) {
-      await this.prisma.ticket.updateMany({
+      await this.prisma.ticket.deleteMany({
         where: {
           id: { in: expiredTickets.map(t => t.id) }
-        },
-        data: {
-          status: 'AVAILABLE',
-          contactId: null,
-          reservedAt: null
         }
       });
       this.logger.log(`Se liberaron ${expiredTickets.length} boletos expirados.`);

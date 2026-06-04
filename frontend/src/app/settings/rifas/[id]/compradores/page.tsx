@@ -245,6 +245,7 @@ export default function CompradoresAdminPage() {
   if (!raffle) return null;
 
   const filteredTickets = raffle.tickets
+    .filter((t: any) => t.status !== 'AVAILABLE')
     .filter((t: any) => 
       t.ticketNumber.includes(searchTerm) || 
       t.contact?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
