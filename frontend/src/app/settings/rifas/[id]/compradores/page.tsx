@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useParams, useRouter } from "next/navigation";
-import { Users, Search, ChevronLeft, Save, Loader2, X, Ticket, User, Phone, CheckCircle, Hash, AlertTriangle, LayoutGrid, List, Calendar } from "lucide-react";
+import { Users, Search, ChevronLeft, Save, Loader2, X, Ticket, User, Phone, CheckCircle, Hash, AlertTriangle, LayoutGrid, List, Calendar, Bell } from "lucide-react";
 
 export default function CompradoresAdminPage() {
   const { id } = useParams();
@@ -34,6 +34,7 @@ export default function CompradoresAdminPage() {
   const [isReservingManual, setIsReservingManual] = useState(false);
 
   const [isGeneratingFlyer, setIsGeneratingFlyer] = useState(false);
+  const [isSendingReminders, setIsSendingReminders] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "compact">("grid");
 
   const handleDownloadFlyer = async () => {
@@ -82,6 +83,23 @@ export default function CompradoresAdminPage() {
       alert(err.response?.data?.message || 'Error al apartar boletos');
     } finally {
       setIsReservingManual(false);
+    }
+  };
+
+  const handleSendReminders = async () => {
+    if (!confirm("¿Deseas enviar un recordatorio de pago por WhatsApp a TODOS los clientes con saldo pendiente en esta rifa? Esto puede tomar unos minutos dependiendo de la cantidad de mensajes.")) return;
+    
+    setIsSendingReminders(true);
+    try {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/v1/raffles/${id}/reminders`, {
+        companyId
+      });
+      alert(res.data.message || "Recordatorios enviados exitosamente");
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || 'Error al enviar recordatorios');
+    } finally {
+      setIsSendingReminders(false);
     }
   };
 
@@ -321,6 +339,14 @@ export default function CompradoresAdminPage() {
             >
               {isGeneratingFlyer ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               Generar Flyer
+            </button>
+            <button 
+              onClick={handleSendReminders}
+              disabled={isSendingReminders}
+              className="bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 text-white px-4 py-2 rounded-xl transition-colors shadow-sm flex items-center gap-2"
+            >
+              {isSendingReminders ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
+              Recordatorios
             </button>
             <button 
               onClick={() => setShowManualModal(true)} 

@@ -593,4 +593,81 @@ export class RaffleService {
       this.logger.log(`Se liberaron ${expiredTickets.length} boletos expirados.`);
     }
   }
+
+  async sendPaymentReminders(raffleId: string, companyId: string) {
+    const raffle = await this.prisma.raffle.findUnique({
+      where: { id: raffleId },
+      include: { company: true }
+    });
+    if (!raffle || raffle.companyId !== companyId) throw new NotFoundException('Rifa no encontrada');
+
+    const tickets = await this.prisma.ticket.findMany({
+      where: {
+        raffleId,
+        status: { in: ['RESERVED', 'PARTIALLY_PAID'] },
+        contactId: { not: null }
+      },
+      include: { contact: true }
+    });
+
+    if (tickets.length === 0) return { message: 'No hay boletos pendientes de pago con contacto asociado.' };
+
+    const kitsMap = new Map();
+    for (const t of tickets) {
+      const kitKey = t.paymentReference || t.contact.id || t.ticketNumber;
+      if (!kitsMap.has(kitKey)) {
+        kitsMap.set(kitKey, {
+          contact: t.contact,
+          paymentReference: t.paymentReference,
+          tickets: [],
+          amountPaid: 0,
+          totalPrice: 0
+        });
+      }
+      const kit = kitsMap.get(kitKey);
+      kit.tickets.push(t.ticketNumber);
+      kit.amountPaid += (t.amountPaid || 0);
+      kit.totalPrice += raffle.ticketPrice;
+    }
+
+    const kits = Array.from(kitsMap.values());
+    let sentCount = 0;
+
+    // Formato de fecha del sorteo
+    let dateStr = '';
+    if (raffle.drawDate) {
+      const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      dateStr = raffle.drawDate.toLocaleDateString('es-MX', options);
+    }
+
+    for (const kit of kits) {
+      if (!kit.contact || !kit.contact.phone) continue;
+      
+      const debt = kit.totalPrice - kit.amountPaid;
+      if (debt <= 0) continue; // Por si acaso
+
+      let paymentMessage = ``;
+      if (raffle.company.stripeSecretKey && kit.paymentReference) {
+         const checkoutUrl = `https://api.omnichat.radiotecpro.com/api/v1/payments/pay/${kit.paymentReference}`;
+         paymentMessage = `\n💳 *PAGA EN LÍNEA (Tarjeta u Oxxo):*\n👉 Da clic aquí para pagar y asegurar tus boletos:\n${checkoutUrl}\n`;
+      } else {
+         paymentMessage = `\n🏦 *DATOS DE PAGO:*\n- Banco: *Banorte*\n- CLABE: *072762006567799946*\n- A nombre de: *Jorge Hurtado Cota*\n- Concepto / Referencia: *${kit.paymentReference || 'N/A'}*\n`;
+      }
+
+      let drawMsg = dateStr ? `\n\n📅 La fecha del sorteo es el *${dateStr}*, ¡y ya está muy próximo! ⏰` : ``;
+
+      const message = `👋 ¡Hola ${kit.contact.name}!\n\nTe escribimos de parte de *${raffle.company.name}* para saludarte y recordarte sobre tu paquete de boletos apartados para la rifa *"${raffle.name}"*.${drawMsg}\n\n🎟️ Tus boletos: *${kit.tickets.join(', ')}*\n✅ Abonado: *$${kit.amountPaid} MXN*\n⏳ Restante por pagar: *$${debt} MXN*\n${paymentMessage}\nQueremos recordarte que somos una empresa 100% seria y fiable en la generación de sorteos. Tu participación es muy importante para nosotros.\n\nSi tienes alguna duda o deseas reportar tu pago, ¡estamos a tus órdenes!`;
+
+      try {
+        await this.whatsapp.sendDirectMessage(companyId, kit.contact.phone, message, kit.contact.id);
+        sentCount++;
+        // Pausa para no saturar la API
+        await new Promise(res => setTimeout(res, 2000));
+      } catch (err) {
+        this.logger.error(`Error enviando recordatorio a ${kit.contact.phone}`, err);
+      }
+    }
+
+    return { message: `Recordatorios enviados con éxito. Total de mensajes: ${sentCount}` };
+  }
 }

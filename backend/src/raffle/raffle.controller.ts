@@ -99,4 +99,12 @@ export class RaffleController {
   ) {
     return this.raffleService.finishRaffle(id, body.companyId, body.winningNumber, body.evidenceUrl);
   }
+
+  @Post(':id/reminders')
+  async sendReminders(
+    @Param('id') id: string,
+    @Body() body: { companyId: string }
+  ) {
+    return this.raffleService.sendPaymentReminders(id, body.companyId);
+  }
 }
