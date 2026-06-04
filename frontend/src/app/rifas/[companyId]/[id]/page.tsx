@@ -118,8 +118,8 @@ export default function RaffleDetail() {
     raffle.tickets.forEach((t: any) => ticketMap.set(t.ticketNumber, t.status));
     
     const status = ticketMap.get(query);
-    if (status === 'RESERVED' || status === 'PAID') {
-      alert(`El boleto #${query} ya está ${status === 'PAID' ? 'pagado' : 'apartado'}.`);
+    if (status === 'RESERVED' || status === 'PAID' || status === 'PARTIALLY_PAID') {
+      alert(`El boleto #${query} ya está ${status === 'RESERVED' ? 'apartado' : 'pagado'}.`);
       return;
     }
 
@@ -387,7 +387,7 @@ export default function RaffleDetail() {
                         const isSelected = selectedTickets.includes(num);
                         
                         let bgClass = "bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer border border-slate-700/50";
-                        if (status === 'RESERVED') bgClass = "bg-amber-500/10 border-amber-500/30 text-amber-500/50 cursor-not-allowed";
+                        if (status === 'RESERVED' || status === 'PARTIALLY_PAID') bgClass = "bg-amber-500/10 border-amber-500/30 text-amber-500/50 cursor-not-allowed";
                         if (status === 'PAID') bgClass = "bg-red-500/10 border-red-500/30 text-red-500/50 cursor-not-allowed";
                         if (isSelected) bgClass = "bg-indigo-600 border-indigo-400 text-white shadow-[0_0_12px_rgba(99,102,241,0.6)] font-black z-10 scale-110";
 
