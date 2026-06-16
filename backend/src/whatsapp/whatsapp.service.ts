@@ -113,7 +113,7 @@ export class WhatsappService implements OnModuleInit {
     this.clients.set(companyId, { client: null as any, qr: '', status: 'INITIALIZING' });
 
     // Guardar el tiempo estricto en que inicializa este contenedor para descartar TODO el historial de WA
-    const sessionStartupTime = Math.floor(Date.now() / 1000);
+    const sessionStartupTime = Math.floor(Date.now() / 1000) - 300; // Buffer de 5 minutos por desincronización de relojes
 
     const client = new Client({
       authStrategy: new LocalAuth({ clientId: companyId, dataPath: './.wwebjs_auth' }),
@@ -981,7 +981,7 @@ export class WhatsappService implements OnModuleInit {
                   });
 
                   if (!existingMsg) {
-                      await this.prisma.message.create({
+                      const savedMsg = await this.prisma.message.create({
                           data: {
                               body: textBody,
                               fromMe: msg.fromMe,
@@ -989,6 +989,13 @@ export class WhatsappService implements OnModuleInit {
                               contactId: contact.id
                           }
                       });
+                      
+                      this.gateway.emitNewMessage({
+                          contactId: contact.id,
+                          message: savedMsg,
+                          pipeId: contact.pipelineId
+                      });
+                      
                       syncedCount++;
                   }
               }

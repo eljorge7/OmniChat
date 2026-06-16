@@ -508,7 +508,7 @@ export class AiService {
                      data: { pipelineId: validacionPipe.id, botStatus: 'PAUSED' }
                   });
                   
-                  const alertMsg = `🤖 *ALERTA OMNICHAT (Validación Manual Requerida)*\n\nHola Jorge, he recibido un ticket de *${args.phone}* por $${amountReceived}.\n\n⚠️ *Motivo:* ${reason}\nDeuda Real: $${debtInfo}\n\n👉 Ya lo moví a '*${validacionPipe.name}*'. ${isPromesa ? 'Le apliqué una Promesa de Pago provisional.' : 'No modifiqué su servicio en WispHub.'}`;
+                  const alertMsg = `🤖 *ALERTA OMNICHAT (Validación Manual Requerida)*\n\nHola Jorge, he recibido un ticket de *${contactPhone}* por $${amountReceived}.\n\n⚠️ *Motivo:* ${reason}\nDeuda Real: $${debtInfo}\n\n👉 Ya lo moví a '*${validacionPipe.name}*'. ${isPromesa ? 'Le apliqué una Promesa de Pago provisional.' : 'No modifiqué su servicio en WispHub.'}`;
                   try {
                      await axios.post(`http://localhost:3002/api/v1/messages/send`, {
                         phone: "5216421042123", text: alertMsg
@@ -529,7 +529,7 @@ export class AiService {
                   return `He recibido tu comprobante, pero los sistemas de cobro están en mantenimiento. Un asesor lo revisará manualmente.`;
                }
 
-               let searchPhone = args.phone.replace('+52', '').replace(/\s+/g, '');
+               let searchPhone = contactPhone.replace('+52', '').replace(/\s+/g, '');
                if (searchPhone.length > 10) searchPhone = searchPhone.slice(-10);
 
                const wispClientesRes = await axios.get(`https://api.wisphub.net/api/clientes/?telefono__icontains=${searchPhone}`, {
