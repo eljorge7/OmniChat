@@ -29,9 +29,9 @@ export class RaffleController {
   @Post(':id/reserve')
   async reserveTickets(
     @Param('id') id: string,
-    @Body() body: { ticketNumbers: string[], contactPhone: string, contactName: string }
+    @Body() body: { ticketNumbers: string[], contactPhone: string, contactName: string, sellerId?: string }
   ) {
-    return this.raffleService.reserveTickets(id, body.ticketNumbers, body.contactPhone, body.contactName);
+    return this.raffleService.reserveTickets(id, body.ticketNumbers, body.contactPhone, body.contactName, body.sellerId);
   }
 
   // --- ADMIN ENDPOINTS ---

@@ -24,6 +24,7 @@ model Company {
   paymentReceipts PaymentReceipt[]
   npsSurveys      NpsSurvey[]
   raffles         Raffle[]
+  sellers         Seller[]
   
   // Asistente AI RAG Multi-Tenant
   openAiKey    String?
@@ -257,8 +258,25 @@ model Raffle {
   companyId   String
   company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   tickets     Ticket[]
+  sellers     Seller[] @relation("SellerToRaffle")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Seller {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?
+  phone     String
+  
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  raffles   Raffle[] @relation("SellerToRaffle")
+  tickets   Ticket[] 
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Ticket {
@@ -272,6 +290,9 @@ model Ticket {
   
   contactId   String?
   contact     Contact? @relation(fields: [contactId], references: [id])
+  
+  sellerId    String?
+  seller      Seller?  @relation(fields: [sellerId], references: [id])
   
   reservedAt  DateTime?
   paidAt      DateTime?

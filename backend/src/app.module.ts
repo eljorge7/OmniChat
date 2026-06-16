@@ -15,6 +15,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { CompaniesModule } from './companies/companies.module';
 import { PaymentsModule } from './payments/payments.module';
 import { RaffleModule } from './raffle/raffle.module';
+import { SellersModule } from './sellers/sellers.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { RaffleModule } from './raffle/raffle.module';
     GoogleModule,
     CryptoModule,
     RaffleModule,
+    SellersModule,
     CompaniesModule,
     PaymentsModule
   ],

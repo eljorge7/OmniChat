@@ -10,6 +10,7 @@ export default function CompradoresAdminPage() {
   const router = useRouter();
   
   const [raffle, setRaffle] = useState<any>(null);
+  const [sellers, setSellers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [companyId, setCompanyId] = useState("");
@@ -30,7 +31,7 @@ export default function CompradoresAdminPage() {
 
   // Manual Sale State
   const [showManualModal, setShowManualModal] = useState(false);
-  const [manualData, setManualData] = useState({ name: "", phone: "", tickets: "" });
+  const [manualData, setManualData] = useState({ name: "", phone: "", tickets: "", sellerId: "" });
   const [isReservingManual, setIsReservingManual] = useState(false);
 
   const [isGeneratingFlyer, setIsGeneratingFlyer] = useState(false);
@@ -73,12 +74,13 @@ export default function CompradoresAdminPage() {
       await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/v1/raffles/${id}/reserve`, {
         ticketNumbers: finalTickets,
         contactName: manualData.name,
-        contactPhone: manualData.phone
+        contactPhone: manualData.phone,
+        sellerId: manualData.sellerId || undefined
       });
 
       alert("Boletos apartados exitosamente");
       setShowManualModal(false);
-      setManualData({ name: "", phone: "", tickets: "" });
+      setManualData({ name: "", phone: "", tickets: "", sellerId: "" });
       fetchRaffle(companyId);
     } catch (err: any) {
       alert(err.response?.data?.message || 'Error al apartar boletos');
@@ -128,6 +130,11 @@ export default function CompradoresAdminPage() {
         alert("Rifa no encontrada o sin acceso.");
         router.push('/settings/rifas');
       }
+
+      // Fetch sellers
+      const sellersRes = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/sellers`, { headers: { 'x-company-id': cId } });
+      setSellers(sellersRes.data.filter((s: any) => s.raffles?.some((r: any) => r.id === id)));
+
       setLoading(false);
     } catch (err) {
       console.error(err);
@@ -705,6 +712,20 @@ export default function CompradoresAdminPage() {
                     onChange={e => setManualData({...manualData, phone: e.target.value})}
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Vendedor (Opcional)</label>
+                <select
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
+                  value={manualData.sellerId}
+                  onChange={e => setManualData({...manualData, sellerId: e.target.value})}
+                >
+                  <option value="">-- Sin vendedor --</option>
+                  {sellers.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="pt-4">

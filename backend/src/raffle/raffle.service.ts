@@ -40,7 +40,7 @@ export class RaffleService {
   async findOne(id: string) {
     const raffle = await this.prisma.raffle.findUnique({
       where: { id },
-      include: { tickets: true }
+      include: { tickets: true, sellers: true }
     });
     if (!raffle) throw new NotFoundException('Rifa no encontrada');
     
@@ -430,7 +430,7 @@ export class RaffleService {
     }
   }
 
-  async reserveTickets(raffleId: string, ticketNumbers: string[], contactPhone: string, contactName: string) {
+  async reserveTickets(raffleId: string, ticketNumbers: string[], contactPhone: string, contactName: string, sellerId?: string) {
     const raffle = await this.prisma.raffle.findUnique({ 
         where: { id: raffleId },
         include: { company: true }
@@ -508,7 +508,8 @@ export class RaffleService {
           status: 'RESERVED',
           contactId: contact.id,
           reservedAt: new Date(),
-          paymentReference
+          paymentReference,
+          sellerId
         },
         create: {
           raffleId,
@@ -516,7 +517,8 @@ export class RaffleService {
           status: 'RESERVED',
           contactId: contact.id,
           reservedAt: new Date(),
-          paymentReference
+          paymentReference,
+          sellerId
         }
       });
       reservations.push(ticket);

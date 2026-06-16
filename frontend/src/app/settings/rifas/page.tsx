@@ -217,12 +217,20 @@ export default function RifasAdminPage() {
           </h1>
           <p className="text-slate-500 mt-2 font-medium">Administra tus sorteos, boletos y enlaces públicos.</p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" /> Nueva Rifa
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => router.push('/settings/rifas/vendedores')}
+            className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2"
+          >
+            <Users className="w-5 h-5 text-indigo-500" /> Vendedores
+          </button>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" /> Nueva Rifa
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

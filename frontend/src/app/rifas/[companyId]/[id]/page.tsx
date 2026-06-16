@@ -10,8 +10,9 @@ export default function RaffleDetail() {
   const [raffle, setRaffle] = useState<any>(null);
   const [branding, setBranding] = useState<{ logoUrl?: string, themeColor?: string, whatsappNumber?: string }>({});
   const [loading, setLoading] = useState(true);
+  const [sellers, setSellers] = useState<any[]>([]);
   const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
-  const [formData, setFormData] = useState({ name: '', phone: '' });
+  const [formData, setFormData] = useState({ name: '', phone: '', sellerId: '' });
   const [reserving, setReserving] = useState(false);
 
   // Engine State
@@ -25,9 +26,12 @@ export default function RaffleDetail() {
     if (id && companyId) {
       Promise.all([
         axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/v1/raffles/${id}`),
-        axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/v1/companies/${companyId}/public`).catch(() => ({ data: {} }))
-      ]).then(([raffleRes, brandingRes]) => {
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/v1/companies/${companyId}/public`).catch(() => ({ data: {} })),
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/sellers`, { headers: { 'x-company-id': companyId } }).catch(() => ({ data: [] }))
+      ]).then(([raffleRes, brandingRes, sellersRes]) => {
         setRaffle(raffleRes.data);
+        const filteredSellers = sellersRes.data.filter((s: any) => s.raffles?.some((r: any) => r.id === id));
+        setSellers(filteredSellers);
         if (brandingRes.data) {
           setBranding({
             logoUrl: brandingRes.data.logoUrl,
@@ -142,7 +146,8 @@ export default function RaffleDetail() {
       const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/v1/raffles/${id}/reserve`, {
         ticketNumbers: selectedTickets,
         contactName: formData.name,
-        contactPhone: formData.phone
+        contactPhone: formData.phone,
+        sellerId: formData.sellerId || undefined
       });
 
       const refCode = res.data.paymentReference || 'N/A';
@@ -150,7 +155,7 @@ export default function RaffleDetail() {
       
       // Clean form instead of redirecting
       setSelectedTickets([]);
-      setFormData({ name: '', phone: '' });
+      setFormData({ name: '', phone: '', sellerId: '' });
       
     } catch (err: any) {
       alert(err.response?.data?.message || 'Error al reservar los boletos.');
@@ -467,6 +472,22 @@ export default function RaffleDetail() {
                   />
                 </div>
               </div>
+
+              {sellers.length > 0 && (
+                <div>
+                  <label className="block text-sm font-bold text-slate-400 mb-2 pl-1">¿Te invitó algún vendedor? (Opcional)</label>
+                  <select 
+                    value={formData.sellerId}
+                    onChange={e => setFormData({...formData, sellerId: e.target.value})}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors font-medium appearance-none"
+                  >
+                    <option value="">-- Llegué por publicidad --</option>
+                    {sellers.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <button 
                 type="submit" 
