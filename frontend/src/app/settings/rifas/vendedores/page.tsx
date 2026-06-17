@@ -40,7 +40,8 @@ export default function VendedoresPage() {
         axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/raffles/admin/company/${cid}`)
       ]);
       setSellers(sellersRes.data);
-      setRaffles(rafflesRes.data);
+      // Solo permitir asignar a rifas activas
+      setRaffles(rafflesRes.data.filter((r: any) => r.status === 'ACTIVE'));
     } catch (err) {
       console.error(err);
     }
