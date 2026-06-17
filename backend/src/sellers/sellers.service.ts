@@ -12,7 +12,7 @@ export class SellersService {
         ...sellerData,
         companyId,
         raffles: raffles && raffles.length > 0 ? {
-          connect: raffles.map(id => ({ id }))
+          connect: raffles.map((id: string) => ({ id }))
         } : undefined
       },
       include: {
@@ -41,7 +41,7 @@ export class SellersService {
       data: {
         ...sellerData,
         raffles: raffles ? {
-          set: raffles.map(rId => ({ id: rId }))
+          set: raffles.map((rId: string) => ({ id: rId }))
         } : undefined
       },
       include: {
