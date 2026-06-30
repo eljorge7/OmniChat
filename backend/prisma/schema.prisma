@@ -255,6 +255,7 @@ model Raffle {
   drawDate    DateTime?
   winningNumber String?
   evidenceUrl   String?
+  opportunitiesMultiplier Int @default(1) // Agregado para soportar boletos con múltiples oportunidades (+200)
   companyId   String
   company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   tickets     Ticket[]

@@ -432,9 +432,32 @@ export default function RaffleDetail() {
                     </button>
                   )}
                 </div>
-                <div className="bg-slate-900/50 rounded-xl p-3 max-h-32 overflow-y-auto border border-slate-800/50 shadow-inner">
+                <div className="bg-slate-900/50 rounded-xl p-3 max-h-48 overflow-y-auto border border-slate-800/50 shadow-inner">
                   <span className="font-bold text-emerald-400 text-sm leading-relaxed tracking-wider break-words block">
-                    {selectedTickets.length > 0 ? selectedTickets.join(', ') : <span className="text-slate-600 font-normal">Ninguno, usa la Máquina arriba</span>}
+                    {selectedTickets.length > 0 ? (
+                      raffle.opportunitiesMultiplier && raffle.opportunitiesMultiplier > 1 ? (
+                        <div className="space-y-2">
+                          <p className="text-xs text-emerald-500/80 uppercase font-black tracking-widest border-b border-emerald-500/20 pb-1 mb-2">
+                            ¡Cada boleto incluye {raffle.opportunitiesMultiplier} oportunidades!
+                          </p>
+                          {selectedTickets.map(t => {
+                            const expanded = [];
+                            for (let i = 0; i < raffle.opportunitiesMultiplier; i++) {
+                              expanded.push(String(parseInt(t, 10) + (raffle.totalTickets * i)).padStart(t.length, '0'));
+                            }
+                            return (
+                              <div key={t} className="bg-slate-800/50 rounded-md p-2">
+                                <span className="text-white font-black">Boleto {t}</span> <span className="text-emerald-400 text-xs mt-1 block">Juegas con: {expanded.join(', ')}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        selectedTickets.join(', ')
+                      )
+                    ) : (
+                      <span className="text-slate-600 font-normal">Ninguno, usa la Máquina arriba</span>
+                    )}
                   </span>
                 </div>
               </div>

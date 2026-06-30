@@ -107,4 +107,11 @@ export class RaffleController {
   ) {
     return this.raffleService.sendPaymentReminders(id, body.companyId);
   }
+
+  @Post(':id/resend-opportunities')
+  async resendOpportunities(
+    @Param('id') id: string
+  ) {
+    return this.raffleService.resendOpportunities(id);
+  }
 }

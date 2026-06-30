@@ -37,6 +37,7 @@ export default function CompradoresAdminPage() {
   const [isGeneratingFlyer, setIsGeneratingFlyer] = useState(false);
   const [showRemindersModal, setShowRemindersModal] = useState(false);
   const [isSendingReminders, setIsSendingReminders] = useState(false);
+  const [isResendingOpps, setIsResendingOpps] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "compact">("grid");
 
   const handleDownloadFlyer = async () => {
@@ -106,6 +107,20 @@ export default function CompradoresAdminPage() {
       alert(err.response?.data?.message || 'Error al enviar recordatorios');
     } finally {
       setIsSendingReminders(false);
+    }
+  };
+
+  const handleResendOpportunitiesClick = async () => {
+    if (!confirm("¿Deseas reenviar los boletos VIP actualizados (con sus 5 oportunidades) a todos los clientes que ya pagaron?\n\nEsto usará tu conexión actual de OmniChat de forma automática.")) return;
+    setIsResendingOpps(true);
+    try {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/v1/raffles/${id}/resend-opportunities`);
+      alert(res.data.message || "Boletos VIP reenviados con éxito");
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || 'Error al reenviar boletos VIP');
+    } finally {
+      setIsResendingOpps(false);
     }
   };
 
@@ -360,6 +375,14 @@ export default function CompradoresAdminPage() {
             >
               {isSendingReminders ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
               Recordatorios
+            </button>
+            <button 
+              onClick={handleResendOpportunitiesClick}
+              disabled={isResendingOpps}
+              className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white px-4 py-2 rounded-xl transition-colors shadow-sm flex items-center gap-2"
+            >
+              {isResendingOpps ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ticket className="w-4 h-4" />}
+              Reenviar VIP (+200)
             </button>
             <button 
               onClick={() => setShowManualModal(true)} 

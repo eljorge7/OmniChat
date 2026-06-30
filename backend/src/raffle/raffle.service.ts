@@ -110,18 +110,19 @@ export class RaffleService {
        // Generar Boleto Digital VIP
        const company = await this.prisma.company.findUnique({ where: { id: companyId } });
        if (company && updatedTicket.contact) {
+          const expandedNumbers = this.expandTicketNumbers([ticketNumber], raffle.totalTickets, raffle.opportunitiesMultiplier);
           const imageBuffer = await this.ticketGenerator.generateTicket({
              companyName: company.name,
              raffleName: raffle.name,
              contactName: updatedTicket.contact.name || 'Participante',
-             ticketNumbers: [ticketNumber],
+             ticketNumbers: expandedNumbers,
              paymentRef: updatedTicket.paymentReference || 'N/A',
              themeColor: company.themeColor || '#3B82F6',
              logoUrl: company.logoUrl || undefined
           });
 
           if (imageBuffer) {
-             const message = `🎟️ *¡Tu Pago ha sido Confirmado!*\n\nHola ${updatedTicket.contact.name}, gracias por tu compra. Adjunto tu *Boleto Digital VIP* oficial para la rifa "${raffle.name}".\n\nPor favor guarda esta imagen, es tu comprobante oficial de participación.\n¡Mucha suerte! 🍀`;
+             const message = `🎟️ *¡Tu Pago ha sido Confirmado!*\n\nHola ${updatedTicket.contact.name}, gracias por tu compra. Adjunto tu *Boleto Digital VIP* oficial para la rifa "${raffle.name}".\n\nBoletos y oportunidades: ${expandedNumbers.join(', ')}\n\nPor favor guarda esta imagen, es tu comprobante oficial de participación.\n¡Mucha suerte! 🍀`;
              const fs = require('fs');
              const path = require('path');
              const filename = `ticket-${raffleId}-${ticketNumber}.png`;
@@ -173,18 +174,19 @@ export class RaffleService {
         // Generar Boleto Digital VIP
         const company = await this.prisma.company.findUnique({ where: { id: companyId } });
         if (company) {
+           const expandedNumbers = this.expandTicketNumbers([ticketNumber], raffle.totalTickets, raffle.opportunitiesMultiplier);
            const imageBuffer = await this.ticketGenerator.generateTicket({
               companyName: company.name,
               raffleName: raffle.name,
               contactName: updatedTicket.contact.name || 'Participante',
-              ticketNumbers: [ticketNumber],
+              ticketNumbers: expandedNumbers,
               paymentRef: updatedTicket.paymentReference || 'N/A',
               themeColor: company.themeColor || '#3B82F6',
               logoUrl: company.logoUrl || undefined
            });
 
            if (imageBuffer) {
-              const message = `🎟️ *¡Tu Pago ha sido Confirmado!*\n\nHola ${updatedTicket.contact.name}, tu boleto ha sido liquidado exitosamente. Adjunto tu *Boleto Digital VIP* oficial para la rifa "${raffle.name}".\n\nPor favor guarda esta imagen, es tu comprobante oficial de participación.\n¡Mucha suerte! 🍀`;
+              const message = `🎟️ *¡Tu Pago ha sido Confirmado!*\n\nHola ${updatedTicket.contact.name}, tu boleto ha sido liquidado exitosamente. Adjunto tu *Boleto Digital VIP* oficial para la rifa "${raffle.name}".\n\nBoletos y oportunidades: ${expandedNumbers.join(', ')}\n\nPor favor guarda esta imagen, es tu comprobante oficial de participación.\n¡Mucha suerte! 🍀`;
               const fs = require('fs');
               const path = require('path');
               const filename = `ticket-${raffleId}-${ticketNumber}.png`;
@@ -267,18 +269,19 @@ export class RaffleService {
       // Generar UN SOLO Boleto VIP para todo el Kit
       const company = await this.prisma.company.findUnique({ where: { id: companyId } });
       if (company) {
+        const expandedNumbers = this.expandTicketNumbers(ticketNumbers, raffle.totalTickets, raffle.opportunitiesMultiplier);
         const imageBuffer = await this.ticketGenerator.generateTicket({
           companyName: company.name,
           raffleName: raffle.name,
           contactName: contact.name || 'Participante',
-          ticketNumbers: ticketNumbers, // Array completo
+          ticketNumbers: expandedNumbers, // Array completo con oportunidades
           paymentRef: updatedTickets[0]?.paymentReference || 'N/A',
           themeColor: company.themeColor || '#3B82F6',
           logoUrl: company.logoUrl || undefined
         });
 
         if (imageBuffer) {
-          const message = `🎟️ *¡Tu Pago ha sido Confirmado!*\n\nHola ${contact.name}, los ${ticketNumbers.length} boletos de tu paquete han sido liquidados exitosamente. Adjunto tu *Boleto Digital VIP* oficial para la rifa "${raffle.name}".\n\nBoletos: ${ticketNumbers.join(', ')}\n\nPor favor guarda esta imagen, es tu comprobante oficial de participación.\n¡Mucha suerte! 🍀`;
+          const message = `🎟️ *¡Tu Pago ha sido Confirmado!*\n\nHola ${contact.name}, los ${ticketNumbers.length} boletos de tu paquete han sido liquidados exitosamente. Adjunto tu *Boleto Digital VIP* oficial para la rifa "${raffle.name}".\n\nBoletos y oportunidades: ${expandedNumbers.join(', ')}\n\nPor favor guarda esta imagen, es tu comprobante oficial de participación.\n¡Mucha suerte! 🍀`;
           const fs = require('fs');
           const path = require('path');
           const filename = `ticket-kit-${raffleId}-${Date.now()}.png`;
@@ -534,7 +537,8 @@ export class RaffleService {
         paymentMessage = `\n💰 *Total a pagar:* $${totalAmount.toFixed(2)} MXN.\n\n💳 *PAGA EN LÍNEA (Tarjeta u Oxxo):*\n👉 Da clic aquí para pagar automáticamente y asegurar tus boletos:\n${checkoutUrl}`;
     }
 
-    const notificationMessage = `🎟️ *¡Boletos Reservados!*\nHola ${contactName}, apartamos exitosamente tus boletos: *${ticketNumbers.join(', ')}* para la rifa "${raffle.name}".${paymentMessage}\n\n⚠️ *IMPORTANTE:* Cuentas con 12 horas para liquidar, de lo contrario se liberarán automáticamente.\n\nLink de la Rifa: https://omnichat.radiotecpro.com/rifas/${raffle.companyId}/${raffle.id}`;
+    const expandedNumbers = this.expandTicketNumbers(ticketNumbers, raffle.totalTickets, raffle.opportunitiesMultiplier);
+    const notificationMessage = `🎟️ *¡Boletos Reservados!*\nHola ${contactName}, apartamos exitosamente tus boletos: *${expandedNumbers.join(', ')}* para la rifa "${raffle.name}".${paymentMessage}\n\n⚠️ *IMPORTANTE:* Cuentas con 12 horas para liquidar, de lo contrario se liberarán automáticamente.\n\nLink de la Rifa: https://omnichat.radiotecpro.com/rifas/${raffle.companyId}/${raffle.id}`;
     
     try {
         await this.whatsapp.sendDirectMessage(raffle.companyId, `${phone}@c.us`, notificationMessage);
@@ -671,5 +675,77 @@ export class RaffleService {
     }
 
     return { message: `Recordatorios enviados con éxito. Total de mensajes: ${sentCount}` };
+  }
+
+  async resendOpportunities(raffleId: string) {
+    const raffle = await this.prisma.raffle.findUnique({
+      where: { id: raffleId },
+      include: { company: true }
+    });
+
+    if (!raffle) throw new NotFoundException('Rifa no encontrada');
+    if (!raffle.opportunitiesMultiplier || raffle.opportunitiesMultiplier <= 1) {
+      return { message: 'Esta rifa no tiene oportunidades múltiples activadas.' };
+    }
+
+    const paidTickets = await this.prisma.ticket.findMany({
+      where: { 
+        raffleId: raffle.id, 
+        status: 'PAID',
+        contactId: { not: null }
+      },
+      include: { contact: true }
+    });
+
+    let sentCount = 0;
+    for (const ticket of paidTickets) {
+      if (!ticket.contact || !ticket.contact.phone) continue;
+
+      const expandedNumbers = this.expandTicketNumbers([ticket.ticketNumber], raffle.totalTickets, raffle.opportunitiesMultiplier);
+      const imageBuffer = await this.ticketGenerator.generateTicket({
+        companyName: raffle.company.name,
+        raffleName: raffle.name,
+        contactName: ticket.contact.name || 'Participante',
+        ticketNumbers: expandedNumbers,
+        paymentRef: ticket.paymentReference || 'N/A',
+        themeColor: raffle.company.themeColor || '#3B82F6',
+        logoUrl: raffle.company.logoUrl || undefined
+      });
+
+      if (imageBuffer) {
+        const message = `🎉 *¡ACTUALIZACIÓN DE TUS BOLETOS!*\n\nHola ${ticket.contact.name}, para aumentar tus probabilidades de ganar y darte más valor por tu compra, ¡hemos implementado **${raffle.opportunitiesMultiplier} Oportunidades por Boleto**!\n\nTu boleto ${ticket.ticketNumber} ahora incluye automáticamente estas oportunidades:\n*${expandedNumbers.join(', ')}*\n\nAdjunto tu *NUEVO Boleto Digital VIP* oficial actualizado. ¡Te deseamos muchísima suerte! 🍀`;
+        const fs = require('fs');
+        const path = require('path');
+        const filename = `ticket-update-${raffle.id}-${ticket.ticketNumber}.png`;
+        const tmpPath = path.join('/tmp', filename);
+        
+        try {
+          if (!fs.existsSync('/tmp')) fs.mkdirSync('/tmp');
+          fs.writeFileSync(tmpPath, imageBuffer);
+          await this.whatsapp.sendDirectMediaMessage(raffle.companyId, ticket.contact.phone, tmpPath);
+          await this.whatsapp.sendDirectMessage(raffle.companyId, ticket.contact.phone, message);
+          fs.unlinkSync(tmpPath);
+          this.logger.log(`Nuevo Boleto VIP enviado con éxito a ${ticket.contact.name}`);
+          sentCount++;
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        } catch(e) {
+          this.logger.error(`Error enviando a ${ticket.contact.phone}`, e);
+        }
+      }
+    }
+    return { message: `Se reenviaron ${sentCount} boletos actualizados con éxito.` };
+  }
+
+  private expandTicketNumbers(ticketNumbers: string[], totalTickets: number, multiplier: number): string[] {
+    if (!multiplier || multiplier <= 1) return ticketNumbers;
+    const expanded = [];
+    for (const t of ticketNumbers) {
+      expanded.push(t);
+      const num = parseInt(t, 10);
+      for (let i = 1; i < multiplier; i++) {
+        expanded.push(String(num + (totalTickets * i)).padStart(t.length, '0'));
+      }
+    }
+    return expanded;
   }
 }
