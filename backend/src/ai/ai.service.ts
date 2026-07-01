@@ -586,7 +586,7 @@ export class AiService {
 
                    try {
                        // Liquidar Factura Permanentemente (Forma Pago 1 = Efectivo/Transfer)
-                       await axios.post(`https://api.wisphub.net/api/facturas/${facturaTarget.id_factura}/pagos/`, {
+                       await axios.post(`https://api.wisphub.net/api/facturas/${facturaTarget.id_factura}/registrar-pago/`, {
                            referencia: `BOT_${args.folio}`,
                            fecha_pago: `${todayStr} 12:00`,
                            nombre_user: cliente.nombre,
