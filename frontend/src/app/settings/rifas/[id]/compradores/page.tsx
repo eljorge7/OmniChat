@@ -604,14 +604,21 @@ export default function CompradoresAdminPage() {
                 </div>
               )}
 
-              {editingKit.tickets.length > 1 && (
-                <div className="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Números Incluidos</p>
-                  <p className="text-sm font-bold text-slate-700 leading-relaxed">
-                    {editingKit.tickets.map((t:any) => t.ticketNumber).join(', ')}
-                  </p>
-                </div>
-              )}
+              <div className="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  {raffle?.opportunitiesMultiplier && raffle.opportunitiesMultiplier > 1 ? 'Números Incluidos (Boleto VIP)' : 'Números Incluidos'}
+                </p>
+                <p className="text-sm font-bold text-slate-700 leading-relaxed">
+                  {raffle?.opportunitiesMultiplier && raffle.opportunitiesMultiplier > 1 
+                    ? editingKit.tickets.flatMap((t:any) => 
+                        Array.from({ length: raffle.opportunitiesMultiplier }).map((_, i) => 
+                          String(parseInt(t.ticketNumber, 10) + (raffle.totalTickets * i)).padStart(t.ticketNumber.length, '0')
+                        )
+                      ).join(', ')
+                    : editingKit.tickets.map((t:any) => t.ticketNumber).join(', ')
+                  }
+                </p>
+              </div>
 
               <div className="space-y-4 mb-8">
                 <div className="flex justify-between items-center text-sm">
