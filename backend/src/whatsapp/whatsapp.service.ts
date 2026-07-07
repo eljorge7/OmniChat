@@ -89,7 +89,6 @@ export class WhatsappService implements OnModuleInit {
     // Cron para SLA y Chats Abandonados (Cada hora)
     setInterval(async () => {
        try {
-           return; // ⚠️ KILL SWITCH TEMPORAL: Desactivado hasta definir filtros de Rifa vs Internet
            this.logger.log('Iniciando cron interno de SLA / Chats Abandonados...');
            const companies = await this.prisma.company.findMany();
            for (const company of companies) {
@@ -101,6 +100,11 @@ export class WhatsappService implements OnModuleInit {
                    where: { 
                        companyId: company.id,
                        botStatus: 'PAUSED', // Si está en ACTIVE, la IA se encarga de reabrirlo
+                       pipeline: {
+                           name: {
+                               in: ['Ventas-Radiotec', 'Radiotec (Internet)']
+                           }
+                       }
                    },
                    include: {
                        messages: {
