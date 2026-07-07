@@ -7,12 +7,12 @@ import { Building2, Layers, X, SendHorizontal, Phone, Clock, PanelRight, Users, 
 import { io } from "socket.io-client";
 
 export default function PipelinePage() {
-  const [departments, setDepartments] = useState([]);
-  const [chats, setChats] = useState([]);
-  const [activeDepartmentId, setActiveDepartmentId] = useState(null);
-  const [activePipelineId, setActivePipelineId] = useState(null);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [chats, setChats] = useState<any[]>([]);
+  const [activeDepartmentId, setActiveDepartmentId] = useState<string | null>(null);
+  const [activePipelineId, setActivePipelineId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedChatId, setSelectedChatId] = useState(null);
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
 
   const fetchData = async () => {
@@ -48,7 +48,7 @@ export default function PipelinePage() {
     };
   }, []);
 
-  const handleChatMove = async (contactId, newStageId) => {
+  const handleChatMove = async (contactId: any, newStageId: any) => {
     try {
       await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/contacts/stage`, {
         contactId,
@@ -72,13 +72,13 @@ export default function PipelinePage() {
     }
   };
 
-  const activeDepartment = departments.find(d => d.id === activeDepartmentId);
-  const activePipeline = activeDepartment?.pipelines?.find(p => p.id === activePipelineId);
+  const activeDepartment = departments.find((d: any) => d.id === activeDepartmentId);
+  const activePipeline = activeDepartment?.pipelines?.find((p: any) => p.id === activePipelineId);
   const stages = activePipeline?.stages || [];
   
   // Filtrar chats que pertenecen a la pipeline activa
-  const visibleChats = chats.filter(c => c.pipeId === activePipelineId);
-  const selectedChat = chats.find(c => c.id === selectedChatId);
+  const visibleChats = chats.filter((c: any) => c.pipeId === activePipelineId);
+  const selectedChat = chats.find((c: any) => c.id === selectedChatId);
 
   if (isLoading) {
     return <div className="flex-1 flex items-center justify-center bg-slate-50">Cargando Tablero Visual...</div>;
@@ -111,7 +111,7 @@ export default function PipelinePage() {
               }
             }}
           >
-            {departments.map(d => (
+            {departments.map((d: any) => (
               <option key={d.id} value={d.id}>{d.name}</option>
             ))}
           </select>
@@ -122,7 +122,7 @@ export default function PipelinePage() {
               value={activePipelineId || ''}
               onChange={(e) => setActivePipelineId(e.target.value)}
             >
-              {activeDepartment.pipelines.map(p => (
+              {activeDepartment.pipelines.map((p: any) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
@@ -170,7 +170,7 @@ export default function PipelinePage() {
 
             {/* Side Panel Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
-               {selectedChat.messages?.map((msg) => (
+               {selectedChat.messages?.map((msg: any) => (
                   <div key={msg.id} className={`flex max-w-[85%] flex-col ${msg.fromMe ? 'ml-auto items-end' : 'items-start'}`}>
                     <div className={`p-3 rounded-2xl text-sm shadow-sm ${msg.fromMe ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-white border border-slate-200 rounded-tl-sm text-slate-700'}`}>
                        {msg.body}
