@@ -117,35 +117,63 @@ export class WhatsappService implements OnModuleInit {
                for (const contact of abandonedContacts) {
                    const lastMsg = contact.messages[0];
                    if (lastMsg && lastMsg.fromMe && lastMsg.timestamp < inactiveLimit) {
-                       // Revisar que no le hayamos mandado ya un SLA recientemente (evitar spam)
-                       const hasSlaNote = await this.prisma.contactNote.findFirst({
-                           where: { 
-                               contactId: contact.id, 
-                               text: { contains: 'SLA_ABANDONED' }, 
-                               createdAt: { gte: inactiveLimit } 
-                           }
-                       });
+                        // Encontrar la ÚLTIMA nota SLA_ABANDONED para este contacto
+                        const lastSlaNote = await this.prisma.contactNote.findFirst({
+                            where: { 
+                                contactId: contact.id, 
+                                text: { contains: 'SLA_ABANDONED' }
+                            },
+                            orderBy: { createdAt: 'desc' }
+                        });
 
-                       if (!hasSlaNote) {
-                           this.logger.log(`[SLA] Chat inactivo detectado: ${contact.name} (${contact.phone})`);
-                           const displayName = (contact.name && contact.name !== 'Nuevo Lead') ? ` ${contact.name}` : '';
-                           const msg = `Hola${displayName}, ¿tuviste oportunidad de revisar nuestra última conversación? Sigo a tus órdenes.`;
-                           
-                           try {
-                               await this.sendDirectMessage(company.id, contact.phone, msg, contact.id);
-                               
-                               await this.prisma.contactNote.create({
-                                   data: {
-                                       text: `🤖 [SISTEMA SLA_ABANDONED] Se envió mensaje de seguimiento automático tras 24h de inactividad.`,
-                                       contactId: contact.id,
-                                       authorId: 'SYSTEM_BOT'
-                                   }
-                               });
-                           } catch (e) {
-                               this.logger.error("Error enviando SLA", e);
-                           }
-                       }
-                   }
+                        if (!lastSlaNote) {
+                            // NUNCA se le ha enviado SLA en este ciclo (o en la vida).
+                            this.logger.log(`[SLA] Chat inactivo detectado: ${contact.name} (${contact.phone})`);
+                            const displayName = (contact.name && contact.name !== 'Nuevo Lead') ? ` ${contact.name}` : '';
+                            const msg = `Hola${displayName}, ¿tuviste oportunidad de revisar nuestra última conversación? Sigo a tus órdenes.`;
+                            
+                            try {
+                                await this.sendDirectMessage(company.id, contact.phone, msg, contact.id);
+                                
+                                await this.prisma.contactNote.create({
+                                    data: {
+                                        text: `🤖 [SISTEMA SLA_ABANDONED] Se envió mensaje de seguimiento automático tras 24h de inactividad.`,
+                                        contactId: contact.id,
+                                        authorId: 'SYSTEM_BOT'
+                                    }
+                                });
+                            } catch (e) {
+                                this.logger.error("Error enviando SLA", e);
+                            }
+                        } else {
+                            // YA se le envió un SLA.
+                            // ¿Han pasado 48 horas desde que se le envió el SLA?
+                            const deadLimit = new Date(Date.now() - 48 * 60 * 60 * 1000); // 48 horas atrás
+                            
+                            // Validar que el SLA_ABANDONED sea posterior al penúltimo mensaje del usuario
+                            // (Para evitar que notas viejas de SLA bloqueen nuevos seguimientos si el chat revivió hace meses)
+                            if (lastSlaNote.createdAt >= lastMsg.timestamp) {
+                                if (lastSlaNote.createdAt < deadLimit) {
+                                    // Dar por muerto el lead
+                                    this.logger.log(`[SLA] Lead Muerto (Sin respuesta tras 48h del SLA): ${contact.name}`);
+                                    await this.prisma.contact.update({
+                                       where: { id: contact.id },
+                                       data: {
+                                           botStatus: 'RESOLVED',
+                                           tags: { push: 'CERRADO_POR_INACTIVIDAD' }
+                                       }
+                                    });
+                                    await this.prisma.contactNote.create({
+                                        data: {
+                                            text: `🤖 [SISTEMA SLA_ABANDONED] El contacto fue archivado automáticamente por falta de respuesta 48h después del seguimiento.`,
+                                            contactId: contact.id,
+                                            authorId: 'SYSTEM_BOT'
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
                }
            }
        } catch(e) {

@@ -322,6 +322,20 @@ export class AiService {
         {
           type: "function",
           function: {
+            name: "close_lead_lost",
+            description: "Cierra el chat y lo marca como Venta Perdida. Ejecútalo INMEDIATAMENTE si el cliente dice que ya no está interesado, que contrató a otro proveedor, que no tiene cobertura o que se cancela la compra. Despídete muy amablemente antes de ejecutarlo.",
+            parameters: {
+              type: "object",
+              properties: {
+                reason: { type: "string", description: "El motivo por el cual el cliente declinó (Ej. 'Ya contrató otro', 'Muy caro', 'No hay cobertura')." }
+              },
+              required: ["reason"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
             name: "check_rentcontrol_balance",
             description: "Consulta internamente la base de datos de los inquilinos de RentControl para saber si debe meses de renta o algún cargo. Úsalo SÓLO SI el cliente te pregunta cosas específicas sobre 'renta', 'departamento' o 'cuarto'. Si el cliente sólo dice 'estado de cuenta' o 'cuánto debo' y NO menciona renta, asume que es de Internet y usa la herramienta de WispHub en su lugar.",
             parameters: {
@@ -628,6 +642,31 @@ export class AiService {
             } catch (e: any) {
                this.logger.error("Error validando receipt en AI", e?.response?.data || e.message);
                return "Recibí tu imagen, pero hubo un error en mis servidores. Un asesor te atenderá pronto.";
+            }
+         } else if (toolCall.function.name === "close_lead_lost") {
+            this.logger.log(`[AI-AGENT] Marcando Lead como Venta Perdida. Razón: ${args.reason}`);
+            
+            try {
+               await this.prisma.contact.update({
+                  where: { id: contactId },
+                  data: {
+                     botStatus: 'RESOLVED',
+                     tags: { push: 'VENTA_PERDIDA' }
+                  }
+               });
+
+               await this.prisma.contactNote.create({
+                  data: {
+                     text: `🤖 [SISTEMA AI] Venta Perdida / Rechazo del Cliente.\nMotivo: ${args.reason}\nEl chat ha sido cerrado automáticamente.`,
+                     contactId: contactId,
+                     authorId: 'SYSTEM_BOT'
+                  }
+               });
+
+               toolReturnContext = `[SISTEMA INTERNO: Has clasificado a este contacto como Venta Perdida y el sistema cerró el chat. Despídete de forma muy amable y profesional, deseándole éxito e indicando que quedamos a la orden para el futuro.]`;
+            } catch(e) {
+               this.logger.error("Error cerrando lead perdido", e);
+               toolReturnContext = "[SISTEMA INTERNO: Error al cerrar chat.]";
             }
          } else if (toolCall.function.name === "route_user_to_pipeline") {
             this.logger.log(`[AI-AGENT] Enrutando prospecto a Embudo: ${args.pipelineKeyword}`);
