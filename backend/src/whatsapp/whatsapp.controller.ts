@@ -124,6 +124,8 @@ export class WhatsappController {
       time: c.messages[0]?.timestamp.toISOString() || '',
       unread: c.unreadCount || 0,
       pipeId: c.pipelineId,
+      departmentId: c.departmentId,
+      pipelineStageId: c.pipelineStageId,
       botStatus: c.botStatus,
       tags: c.tags || [],
       notes: c.notes || [],
@@ -131,8 +133,29 @@ export class WhatsappController {
       messages: c.messages.reverse()
     }));
 
+    const departments = await this.prisma.department.findMany({
+      where: { companyId: firstCompany.id },
+      include: {
+        pipelines: {
+          include: {
+            stages: { orderBy: { order: 'asc' } }
+          }
+        }
+      }
+    });
+
+    // Retrocompatibilidad: Mapear pipelines con nombre del departamento para el frontend actual
+    const compatPipelines = pipelines.map(p => {
+      const dept = departments.find(d => d.id === p.departmentId);
+      return {
+        ...p,
+        name: dept ? `${dept.name} - ${p.name}` : p.name
+      };
+    });
+
     return {
-      pipelines, // Return the full pipeline objects so the Bot Settings page can edit 'keywords' and 'autoReply'
+      pipelines: compatPipelines, // Para Frontend Actual
+      departments, // Para Nuevo Frontend Kanban
       chats: formattedChats
     };
   }

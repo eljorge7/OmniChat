@@ -8,17 +8,31 @@ const prisma = new PrismaClient();
 
 async function run() {
   const company = await prisma.company.findFirst({ where: { wisphubApiKey: { not: null } } });
-  if (!company) return console.log("No company with wisphub API key");
-  console.log("Using API key for", company.name);
   
-  try {
-    const res = await axios.get('https://api.wisphub.net/api/facturas/?limit=1', {
-      headers: { 'Authorization': 'Api-Key ' + company.wisphubApiKey }
-    });
-    console.log(JSON.stringify(res.data, null, 2));
-  } catch(e) {
-    console.error("API Error:");
-    console.error(e.response ? e.response.data : e.message);
+  const endpointsToTest = [
+    'https://api.wisphub.net/api/facturas/3953/pagar/',
+    'https://api.wisphub.net/api/facturas/3953/pagos/',
+    'https://api.wisphub.net/api/facturas/3953/pago/',
+    'https://api.wisphub.net/api/facturas/3953/registrar-pago/'
+  ];
+  
+  for (const url of endpointsToTest) {
+    try {
+      console.log("\\nTesting POST", url);
+      const res = await axios.post(url, {}, {
+        headers: { 'Authorization': 'Api-Key ' + company.wisphubApiKey }
+      });
+      console.log("Success:", res.status);
+    } catch(e) {
+      if (e.response) {
+         console.log("Status:", e.response.status);
+         if (e.response.status !== 404) {
+           console.log("Data:", e.response.data);
+         }
+      } else {
+         console.log("Error:", e.message);
+      }
+    }
   }
 }
 run().finally(() => process.exit(0));

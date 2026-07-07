@@ -8,17 +8,28 @@ const prisma = new PrismaClient();
 
 async function run() {
   const company = await prisma.company.findFirst({ where: { wisphubApiKey: { not: null } } });
-  if (!company) return console.log("No company with wisphub API key");
-  console.log("Using API key for", company.name);
   
+  const payload = {
+    referencia: "BOT_TEST",
+    fecha_pago: "2026-07-01 12:00",
+    nombre_user: "Test User",
+    forma_pago: 1,
+    comprobante_pago: "Test IA"
+  };
+
   try {
-    const res = await axios.get('https://api.wisphub.net/api/facturas/?limit=1', {
+    const res = await axios.post('https://api.wisphub.net/api/facturas/3953/registrar-pago/', payload, {
       headers: { 'Authorization': 'Api-Key ' + company.wisphubApiKey }
     });
-    console.log(JSON.stringify(res.data, null, 2));
+    console.log("Success:", res.status);
+    console.log("Data:", res.data);
   } catch(e) {
-    console.error("API Error:");
-    console.error(e.response ? e.response.data : e.message);
+    if (e.response) {
+       console.log("Status:", e.response.status);
+       console.log("Data:", e.response.data);
+    } else {
+       console.log("Error:", e.message);
+    }
   }
 }
 run().finally(() => process.exit(0));

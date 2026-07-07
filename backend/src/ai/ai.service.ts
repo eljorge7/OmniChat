@@ -672,10 +672,24 @@ export class AiService {
             this.logger.log(`[AI-AGENT] Enrutando prospecto a Embudo: ${args.pipelineKeyword}`);
             
             try {
+               let keyword = args.pipelineKeyword;
+               const legacyMap: Record<string, string> = {
+                  'Ventas-Radiotec': 'Ventas',
+                  'Soporte-Radiotec': 'Soporte',
+                  'Mantenimiento-RentControl': 'Mantenimiento',
+                  'HcSuperlavado': 'Ventas y Servicios',
+                  'Validar': 'Finanzas',
+                  'Atención General': 'Recepción'
+               };
+               if (legacyMap[keyword]) keyword = legacyMap[keyword];
+
                const targetPipeline = await this.prisma.pipeline.findFirst({
                   where: { 
                      companyId: companyId,
-                     name: { contains: args.pipelineKeyword, mode: 'insensitive' }
+                     name: { contains: keyword, mode: 'insensitive' }
+                  },
+                  include: {
+                     stages: { orderBy: { order: 'asc' }, take: 1 }
                   }
                });
 
@@ -683,10 +697,14 @@ export class AiService {
                   return `Me encantaría ayudarte a pasarte con el departamento de ${args.pipelineKeyword}, pero no encuentro ese canal activo en este momento. Un humano revisará tu mensaje en breve.`;
                }
 
-               // Asignar al Embudo Local
+               // Asignar al Embudo, Departamento y Primera Etapa
                const currentContact = await this.prisma.contact.update({ 
                   where: { id: contactId },
-                  data: { pipelineId: targetPipeline.id }
+                  data: { 
+                     pipelineId: targetPipeline.id,
+                     departmentId: targetPipeline.departmentId,
+                     pipelineStageId: targetPipeline.stages[0]?.id || null
+                  }
                });
 
                // Añadir nota de contexto

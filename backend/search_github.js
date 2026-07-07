@@ -2,28 +2,22 @@ const { Client } = require('ssh2');
 const conn = new Client();
 conn.on('ready', () => {
   const scriptToRunInsideDocker = `
-const { PrismaClient } = require('@prisma/client');
 const axios = require('axios');
-const prisma = new PrismaClient();
-
 async function run() {
-  const company = await prisma.company.findFirst({ where: { wisphubApiKey: { not: null } } });
-  if (!company) return console.log("No company with wisphub API key");
-  console.log("Using API key for", company.name);
-  
   try {
-    const res = await axios.get('https://api.wisphub.net/api/facturas/?limit=1', {
-      headers: { 'Authorization': 'Api-Key ' + company.wisphubApiKey }
+    const res = await axios.get('https://api.github.com/search/code?q=wisphub+pago+OR+pagos+in:file', {
+       headers: { 'User-Agent': 'node.js' }
     });
-    console.log(JSON.stringify(res.data, null, 2));
+    const items = res.data.items || [];
+    for (const item of items.slice(0, 5)) {
+      console.log(item.html_url);
+    }
   } catch(e) {
-    console.error("API Error:");
-    console.error(e.response ? e.response.data : e.message);
+    console.log(e.message);
   }
 }
 run().finally(() => process.exit(0));
 `;
-  
   conn.exec(`docker exec omnichat-backend node -e "${scriptToRunInsideDocker.replace(/"/g, '\\"').replace(/\n/g, ' ')}"`, (err, stream) => {
     stream.on('data', (data) => console.log(data.toString()));
     stream.stderr.on('data', (data) => console.error(data.toString()));

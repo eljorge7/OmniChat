@@ -100,9 +100,12 @@ export class WhatsappService implements OnModuleInit {
                    where: { 
                        companyId: company.id,
                        botStatus: 'PAUSED', // Si está en ACTIVE, la IA se encarga de reabrirlo
+                       department: {
+                           name: 'Radiotec'
+                       },
                        pipeline: {
                            name: {
-                               in: ['Ventas-Radiotec', 'Radiotec (Internet)']
+                               in: ['Ventas', 'Radiotec (Internet)']
                            }
                        }
                    },
