@@ -3,7 +3,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { KanbanCard } from './KanbanCard';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 
-export function KanbanColumn({ stage, chats, onChatClick }) {
+export function KanbanColumn({ stage, chats, onChatClick }: { stage: any, chats: any[], onChatClick: any }) {
   const { setNodeRef } = useSortable({
     id: stage.id,
     data: {

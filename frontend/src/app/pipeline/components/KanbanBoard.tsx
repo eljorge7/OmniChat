@@ -17,10 +17,9 @@ import {
 } from '@dnd-kit/sortable';
 import { KanbanColumn } from './KanbanColumn';
 import { KanbanCard } from './KanbanCard';
-
-export function KanbanBoard({ stages, initialChats, onChatMove, onChatClick }) {
+export function KanbanBoard({ stages, initialChats, onChatMove, onChatClick }: { stages: any[], initialChats: any[], onChatMove: any, onChatClick: any }) {
   const [chats, setChats] = useState(initialChats);
-  const [activeId, setActiveId] = useState(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
