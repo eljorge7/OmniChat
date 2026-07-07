@@ -28,11 +28,11 @@ export function KanbanBoard({ stages, initialChats, onChatMove, onChatClick }: {
     })
   );
 
-  const handleDragStart = (event) => {
+  const handleDragStart = (event: any) => {
     setActiveId(event.active.id);
   };
 
-  const handleDragOver = (event) => {
+  const handleDragOver = (event: any) => {
     const { active, over } = event;
     if (!over) return;
 
@@ -75,7 +75,7 @@ export function KanbanBoard({ stages, initialChats, onChatMove, onChatClick }: {
     }
   };
 
-  const handleDragEnd = (event) => {
+  const handleDragEnd = (event: any) => {
     setActiveId(null);
   };
 
