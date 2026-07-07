@@ -89,6 +89,7 @@ export class WhatsappService implements OnModuleInit {
     // Cron para SLA y Chats Abandonados (Cada hora)
     setInterval(async () => {
        try {
+           return; // ⚠️ KILL SWITCH TEMPORAL: Desactivado hasta definir filtros de Rifa vs Internet
            this.logger.log('Iniciando cron interno de SLA / Chats Abandonados...');
            const companies = await this.prisma.company.findMany();
            for (const company of companies) {
@@ -123,7 +124,8 @@ export class WhatsappService implements OnModuleInit {
 
                        if (!hasSlaNote) {
                            this.logger.log(`[SLA] Chat inactivo detectado: ${contact.name} (${contact.phone})`);
-                           const msg = `Hola ${contact.name || 'cliente'}, ¿tuviste oportunidad de revisar nuestra última conversación? Sigo a tus órdenes.`;
+                           const displayName = (contact.name && contact.name !== 'Nuevo Lead') ? ` ${contact.name}` : '';
+                           const msg = `Hola${displayName}, ¿tuviste oportunidad de revisar nuestra última conversación? Sigo a tus órdenes.`;
                            
                            try {
                                await this.sendDirectMessage(company.id, contact.phone, msg, contact.id);
