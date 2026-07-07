@@ -566,10 +566,35 @@ export class WhatsappController {
   @Post('contacts/tags')
   async updateTags(@Body() body: { contactId: string, tags: string[] }) {
     if (!body.contactId || !body.tags) throw new BadRequestException("Faltan tags");
+    
+    const oldContact = await this.prisma.contact.findUnique({ where: { id: body.contactId } });
+    
     const updated = await this.prisma.contact.update({
       where: { id: body.contactId },
       data: { tags: body.tags }
     });
+
+    const oldTags = oldContact?.tags || [];
+    if (body.tags.includes('LISTO_INSTALACION') && !oldTags.includes('LISTO_INSTALACION')) {
+        const adminPhone = process.env.ADMIN_PHONE || '5216681020000'; // TODO: Configurar en .env
+        const msg = `🚨 *NUEVA INSTALACIÓN LISTA*\n\nEl cliente *${updated.name}* (${updated.phone}) ha sido marcado como LISTO PARA INSTALACIÓN.\nPor favor revisa el CRM y agenda la cita en Google Calendar.`;
+        
+        this.whatsapp.sendDirectMessage(updated.companyId, `${adminPhone}@c.us`, msg).catch(e => console.error("Error sending admin alert", e));
+        
+        // Agregar a la Agenda Local
+        this.prisma.calendarEvent.create({
+           data: {
+             title: `Instalación Pendiente: ${updated.name}`,
+             description: `Requiere agendar instalación. Tel: ${updated.phone}`,
+             startTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // Default tomorrow
+             endTime: new Date(Date.now() + 26 * 60 * 60 * 1000),
+             contactId: updated.id,
+             pipelineId: updated.pipelineId,
+             status: 'SCHEDULED'
+           }
+        }).catch(e => console.error(e));
+    }
+
     return updated;
   }
 

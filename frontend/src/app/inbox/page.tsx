@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
 import { useSession } from "next-auth/react";
+import { AnimatePresence, motion } from "framer-motion";
 
 export default function InboxPage() {
   const { data: session } = useSession();
@@ -63,6 +64,7 @@ export default function InboxPage() {
   // Sync History
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const currentChat = chats.find(c => c.id === selectedChatId) || chats.filter(c => c.pipeId === activePipeline)[0];
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -678,7 +680,12 @@ export default function InboxPage() {
                           <div className={`p-4 rounded-2xl shadow-sm relative group border ${msg.fromMe ? 'bg-indigo-600 text-white border-indigo-700 rounded-br-sm' : 'bg-white border-slate-200 rounded-bl-sm'}`}>
                              
                              {safeMediaUrl && msg.mediaType?.startsWith('image/') && (
-                                <img src={safeMediaUrl} alt="WhatsApp Adjunto" className="max-w-full max-h-64 object-cover rounded-xl mb-3 shadow-md border border-white/20" />
+                                <img 
+                                  src={safeMediaUrl} 
+                                  alt="WhatsApp Adjunto" 
+                                  onClick={() => setSelectedImage(safeMediaUrl)}
+                                  className="max-w-full max-h-64 object-cover rounded-xl mb-3 shadow-md border border-white/20 cursor-pointer hover:opacity-90 transition-opacity" 
+                                />
                              )}
                              {safeMediaUrl && msg.mediaType?.startsWith('audio/') && (
                                 <audio controls src={safeMediaUrl} className={`max-w-[260px] h-10 mb-3 rounded-full ${msg.fromMe ? 'opacity-90' : 'opacity-100'}`} />
@@ -1214,6 +1221,45 @@ export default function InboxPage() {
           </div>
         </div>
       )}
+
+      {/* LIGHTBOX MODAL */}
+      <AnimatePresence>
+        {selectedImage && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
+            onClick={() => setSelectedImage(null)}
+          >
+            <button 
+               className="absolute top-4 right-4 text-white hover:text-red-400 z-50 p-2 bg-black/50 rounded-full transition-colors"
+               onClick={() => setSelectedImage(null)}
+            >
+              <X className="w-8 h-8" />
+            </button>
+            <motion.img 
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+              src={selectedImage} 
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" 
+              onClick={(e) => e.stopPropagation()}
+            />
+            <a 
+              href={selectedImage} 
+              download
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="absolute bottom-6 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-full font-bold shadow-xl transition-all"
+            >
+              Descargar Imagen
+            </a>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

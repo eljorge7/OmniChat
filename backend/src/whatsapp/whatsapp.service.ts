@@ -81,10 +81,71 @@ export class WhatsappService implements OnModuleInit {
                    });
                }
            }
-       } catch(e) {
+        } catch(e) {
            this.logger.error('Error en loop cron de follow up', e);
+        }
+     }, 60000); // 1 minuto
+
+    // Cron para SLA y Chats Abandonados (Cada hora)
+    setInterval(async () => {
+       try {
+           this.logger.log('Iniciando cron interno de SLA / Chats Abandonados...');
+           const companies = await this.prisma.company.findMany();
+           for (const company of companies) {
+               if (company.emergencyMode) continue; // Si está en emergencia no mandar SLAs
+
+               const inactiveLimit = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 horas
+
+               const abandonedContacts = await this.prisma.contact.findMany({
+                   where: { 
+                       companyId: company.id,
+                       botStatus: 'PAUSED', // Si está en ACTIVE, la IA se encarga de reabrirlo
+                   },
+                   include: {
+                       messages: {
+                           orderBy: { timestamp: 'desc' },
+                           take: 1
+                       }
+                   }
+               });
+
+               for (const contact of abandonedContacts) {
+                   const lastMsg = contact.messages[0];
+                   if (lastMsg && lastMsg.fromMe && lastMsg.timestamp < inactiveLimit) {
+                       // Revisar que no le hayamos mandado ya un SLA recientemente (evitar spam)
+                       const hasSlaNote = await this.prisma.contactNote.findFirst({
+                           where: { 
+                               contactId: contact.id, 
+                               text: { contains: 'SLA_ABANDONED' }, 
+                               createdAt: { gte: inactiveLimit } 
+                           }
+                       });
+
+                       if (!hasSlaNote) {
+                           this.logger.log(`[SLA] Chat inactivo detectado: ${contact.name} (${contact.phone})`);
+                           const msg = `Hola ${contact.name || 'cliente'}, ¿tuviste oportunidad de revisar nuestra última conversación? Sigo a tus órdenes.`;
+                           
+                           try {
+                               await this.sendDirectMessage(company.id, contact.phone, msg, contact.id);
+                               
+                               await this.prisma.contactNote.create({
+                                   data: {
+                                       text: `🤖 [SISTEMA SLA_ABANDONED] Se envió mensaje de seguimiento automático tras 24h de inactividad.`,
+                                       contactId: contact.id,
+                                       authorId: 'SYSTEM_BOT'
+                                   }
+                               });
+                           } catch (e) {
+                               this.logger.error("Error enviando SLA", e);
+                           }
+                       }
+                   }
+               }
+           }
+       } catch(e) {
+           this.logger.error('Error en loop cron de SLA abandonado', e);
        }
-    }, 60000); // 1 minuto
+    }, 60 * 60 * 1000); // 1 hora
   }
 
   getQrCode(companyId: string) {
@@ -276,12 +337,20 @@ export class WhatsappService implements OnModuleInit {
         return;
     }
 
-    let contact = await this.prisma.contact.findFirst({ where: { phone, companyId } });
+    let cleanPhoneForSearch = phone.slice(-10);
+    let contacts = await this.prisma.$queryRaw<any[]>`
+        SELECT * FROM "Contact" 
+        WHERE "companyId" = ${companyId} AND "phone" LIKE ${'%' + cleanPhoneForSearch}
+        LIMIT 1
+    `;
+    let contact = contacts && contacts.length > 0 ? contacts[0] : null;
+
     if (!contact) {
         // En caso de que Jorge le hable a alguien nuevo directo desde su móvil
         contact = await this.prisma.contact.create({
             data: { phone, name: 'Contacto (Desde Celular)', companyId, botStatus: 'PAUSED' }
         });
+
         
         // --- Sincronización Google Workspace ---
         try {
