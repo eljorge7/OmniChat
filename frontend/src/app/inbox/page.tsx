@@ -453,12 +453,17 @@ export default function InboxPage() {
 
   const assignChat = async (contactId: string, pipelineId: string) => {
     try {
+       // Optimistic UI update for immediate feedback
+       setActivePipeline(pipelineId || null);
+       setChats(prev => prev.map(c => c.id === contactId ? { ...c, pipeId: pipelineId || null } : c));
+
        await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/assign`, { contactId, pipelineId });
        const activeCid = localStorage.getItem('activeCompanyId');
        const qParams = activeCid ? `?companyId=${activeCid}` : '';
        axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox${qParams}`).then(res => setChats(res.data.chats));
     } catch (e) {
        console.error("Error asignando:", e);
+       alert("Error al reasignar embudo.");
     }
   };
 
