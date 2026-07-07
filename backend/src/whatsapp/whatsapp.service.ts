@@ -255,22 +255,26 @@ export class WhatsappService implements OnModuleInit {
     });
 
     client.on('message_create', async (message) => {
-      // Ignorar los mensajes históricos
-      if (message.timestamp < sessionStartupTime) return;
+      try {
+        // Ignorar los mensajes históricos
+        if (message.timestamp < sessionStartupTime) return;
 
-      this.logger.log(`[OmniChat-Debug] Mensaje detectado. Tipo: ${message.type}, fromMe: ${message.fromMe}, from: ${message.from}`);
+        this.logger.log(`[OmniChat-Debug] Mensaje detectado. Tipo: ${message.type}, fromMe: ${message.fromMe}, from: ${message.from}, to: ${message.to}`);
 
-      // Trampa global para llamadas perdidas
-      if (message.type === 'call_log' || (message.body && message.body.includes('Llamada perdida'))) {
-         this.logger.log(`[OmniChat] Trampa de llamada activada. Tipo: ${message.type}. Enviando respuesta.`);
-         try {
-            await client.sendMessage(message.from, "Hola! Soy Julio 🤖. Ahorita las líneas telefónicas están saturadas y no puedo contestar llamadas de voz, pero escríbeme o mándame un audio por aquí y te atiendo al instante. ¡Soy todo oídos!");
-         } catch(e) {}
-         return;
-      }
+        // Trampa global para llamadas perdidas
+        if (message.type === 'call_log' || (message.body && message.body.includes('Llamada perdida'))) {
+           this.logger.log(`[OmniChat] Trampa de llamada activada. Tipo: ${message.type}. Enviando respuesta.`);
+           try {
+              await client.sendMessage(message.from, "Hola! Soy Julio 🤖. Ahorita las líneas telefónicas están saturadas y no puedo contestar llamadas de voz, pero escríbeme o mándame un audio por aquí y te atiendo al instante. ¡Soy todo oídos!");
+           } catch(e) {}
+           return;
+        }
 
-      if (message.fromMe) {
-          await this.handleOutgoingPhoneMessage(companyId, message);
+        if (message.fromMe) {
+            await this.handleOutgoingPhoneMessage(companyId, message);
+        }
+      } catch (e) {
+          this.logger.error(`[OmniChat-Crash] Error fatal en message_create: ${e.message}`, e.stack);
       }
     });
 
@@ -328,9 +332,12 @@ export class WhatsappService implements OnModuleInit {
   }
 
   async handleOutgoingPhoneMessage(companyId: string, message: any) {
-    if (message.to.includes('@g.us') || message.isStatus || message.broadcast) return;
+    try {
+      const target = message.to || (message.id && message.id.remote);
+      if (!target) return;
+      if (target.includes('@g.us') || message.isStatus || message.broadcast) return;
 
-    let phone = message.to.replace('@c.us', '');
+      let phone = target.replace('@c.us', '');
     let textBody = message.body ? message.body.trim() : '';
     if (!textBody && message.hasMedia) {
         textBody = '[Multimedia o Archivo enviado desde Celular]';
@@ -369,8 +376,8 @@ export class WhatsappService implements OnModuleInit {
 
     // Filtro Quirúrgico: Matar el Autoresponder Fantasma Inyectado por Facebook / Meta Business Suite
     // (Aparece cuando WispHub abre un chat a un cliente y Meta detecta la sesión ligada)
-    if (textBody.includes('¿En qué puedo ayudarte hoy?') && message.to.includes('@lid')) {
-        this.logger.log(`[OmniChat] Filtro aplicado: Ignorando 'Mensaje de Bienvenida' fantasma de Meta Business Suite hacia el LID ${message.to}.`);
+    if (textBody.includes('¿En qué puedo ayudarte hoy?') && target.includes('@lid')) {
+        this.logger.log(`[OmniChat] Filtro aplicado: Ignorando 'Mensaje de Bienvenida' fantasma de Meta Business Suite hacia el LID ${target}.`);
         return;
     }
 
@@ -458,6 +465,9 @@ export class WhatsappService implements OnModuleInit {
        this.logger.log(`[OmniChat-${companyId}] MODO EMERGENCIA DESACTIVADO por WhatsApp`);
     }
     // =====================================
+    } catch (e) {
+      this.logger.error(`[OmniChat-${companyId}] Crash in handleOutgoingPhoneMessage: ${e.message}`, e.stack);
+    }
   }
 
   async handleIncomingMessage(companyId: string, message: any) {
