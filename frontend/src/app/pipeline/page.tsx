@@ -166,7 +166,7 @@ export default function PipelinePage() {
                  </div>
                </div>
                <div className="flex items-center gap-1">
-                 <button onClick={() => window.location.href = '/inbox'} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors" title="Abrir en Bandeja Completa">
+                 <button onClick={() => window.location.href = `/inbox?chatId=${selectedChat.id}`} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors" title="Abrir en Bandeja Completa">
                    <PanelRight className="w-5 h-5" />
                  </button>
                  <button onClick={() => setSelectedChatId(null)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">

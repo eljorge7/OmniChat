@@ -66,6 +66,25 @@ export default function InboxPage() {
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const chatId = params.get("chatId");
+      if (chatId) {
+        setSelectedChatId(chatId);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (chats.length > 0 && selectedChatId) {
+      const chat = chats.find(c => c.id === selectedChatId);
+      if (chat && chat.pipeId !== activePipeline) {
+        setActivePipeline(chat.pipeId);
+      }
+    }
+  }, [selectedChatId, chats, activePipeline]);
+
   const currentChat = chats.find(c => c.id === selectedChatId) || chats.filter(c => c.pipeId === activePipeline)[0];
   const fileInputRef = useRef<HTMLInputElement>(null);
 

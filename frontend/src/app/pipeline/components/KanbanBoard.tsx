@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -20,6 +20,10 @@ import { KanbanCard } from './KanbanCard';
 export function KanbanBoard({ stages, initialChats, onChatMove, onChatClick }: { stages: any[], initialChats: any[], onChatMove: any, onChatClick: any }) {
   const [chats, setChats] = useState(initialChats);
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setChats(initialChats);
+  }, [initialChats]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
