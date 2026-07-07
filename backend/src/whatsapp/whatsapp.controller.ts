@@ -134,7 +134,7 @@ export class WhatsappController {
     }));
 
     const departments = await this.prisma.department.findMany({
-      where: { companyId: firstCompany.id },
+      where: { companyId: targetCompanyId },
       include: {
         pipelines: {
           include: {
