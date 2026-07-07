@@ -590,6 +590,7 @@ export class WhatsappController {
              endTime: new Date(Date.now() + 26 * 60 * 60 * 1000),
              contactId: updated.id,
              pipelineId: updated.pipelineId,
+             companyId: updated.companyId,
              status: 'SCHEDULED'
            }
         }).catch(e => console.error(e));
