@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { KanbanBoard } from "./components/KanbanBoard";
-import { Building2, Layers, X, SendHorizontal, Phone, Clock, PanelRight, Users, Ticket, Wrench, Search } from "lucide-react";
+import { Building2, Layers, X, SendHorizontal, Phone, Clock, PanelRight, Users, Ticket, Wrench, Search, PencilLine } from "lucide-react";
 import { io } from "socket.io-client";
 
 export default function PipelinePage() {
@@ -14,6 +14,8 @@ export default function PipelinePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState("");
 
   const fetchData = async () => {
     const activeCid = localStorage.getItem('activeCompanyId');
@@ -71,6 +73,23 @@ export default function PipelinePage() {
       fetchData();
     } catch (e) {
       console.error("Send error:", e);
+    }
+  };
+
+  const handleRenameContact = async () => {
+    if (!selectedChatId) return;
+    setIsEditingName(false);
+    if (editedName.trim() === "") return;
+    
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/contacts/edit-name`, {
+         contactId: selectedChatId,
+         newName: editedName
+      });
+      fetchData();
+    } catch(e: any) {
+      console.error("Error renaming contact", e);
+      alert("No se pudo actualizar el nombre");
     }
   };
 
@@ -160,9 +179,30 @@ export default function PipelinePage() {
                  <div className="w-10 h-10 bg-indigo-100 text-indigo-700 font-black flex items-center justify-center rounded-full uppercase">
                     {selectedChat.name?.substring(0,2) || 'CL'}
                  </div>
-                 <div>
-                   <h3 className="font-bold text-slate-800 leading-tight">{selectedChat.name || selectedChat.phone}</h3>
-                   <span className="text-[10px] font-bold text-emerald-500">EN LÍNEA</span>
+                 <div className="flex-1 min-w-0">
+                   {isEditingName ? (
+                      <input 
+                        autoFocus
+                        value={editedName}
+                        onChange={e => setEditedName(e.target.value)}
+                        onBlur={handleRenameContact}
+                        onKeyDown={e => e.key === 'Enter' && handleRenameContact()}
+                        className="font-bold text-slate-800 bg-white px-2 py-1 rounded outline-none border border-indigo-200 w-full text-sm shadow-inner"
+                        placeholder="Nombre del cliente..."
+                      />
+                   ) : (
+                      <div className="flex items-center gap-2 group">
+                        <h3 className="font-bold text-slate-800 leading-tight truncate">{selectedChat.name || selectedChat.phone}</h3>
+                        <button 
+                          onClick={() => { setIsEditingName(true); setEditedName(selectedChat.name || ""); }} 
+                          className="text-indigo-600 hover:bg-indigo-50 p-1 rounded transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
+                          title="Editar nombre"
+                        >
+                          <PencilLine className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                   )}
+                   <span className="text-[10px] font-bold text-emerald-500 block mt-0.5">EN LÍNEA</span>
                  </div>
                </div>
                <div className="flex items-center gap-1">
@@ -183,7 +223,7 @@ export default function PipelinePage() {
                        {msg.body}
                     </div>
                     <span className="text-[9px] text-slate-400 font-bold mt-1 px-1">
-                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'})}
+                      {new Date(msg.timestamp).toLocaleDateString([], { day: 'numeric', month: 'short'})} {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'})}
                     </span>
                   </div>
                ))}
