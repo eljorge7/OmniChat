@@ -2,7 +2,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Clock, MessageCircle, Phone } from 'lucide-react';
 
-export function KanbanCard({ chat, onClick }: { chat: any, onClick: any }) {
+export function KanbanCard({ chat, onClick }: { chat: any, onClick?: any }) {
   const {
     setNodeRef,
     attributes,
