@@ -700,7 +700,7 @@ export default function InboxPage() {
                              
                              <div className={`flex w-full mt-1.5 -mb-1 items-center gap-1 ${msg.fromMe ? 'justify-end' : 'justify-start'}`}>
                                <span className={`text-[9px] font-medium tracking-wide ${msg.fromMe ? 'text-indigo-200' : 'text-slate-400'}`}>
-                                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  {new Date(msg.timestamp).toLocaleDateString([], { day: '2-digit', month: '2-digit', year: '2-digit' })} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                </span>
                                {msg.fromMe && (
                                   <CheckCheck className="w-3.5 h-3.5 text-blue-300 ml-1" />
