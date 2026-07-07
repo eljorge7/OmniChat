@@ -343,6 +343,17 @@ export class WhatsappController {
     return updated;
   }
 
+  // --- KANBAN ASSIGNMENT ---
+  @Post('contacts/stage')
+  async updateContactStage(@Body() body: { contactId: string, pipelineStageId: string | null }) {
+    if (!body.contactId) throw new BadRequestException("Falta contactId");
+    const updated = await this.prisma.contact.update({
+      where: { id: body.contactId },
+      data: { pipelineStageId: body.pipelineStageId }
+    });
+    return updated;
+  }
+
   // --- AGENT ASSIGNMENT ---
 
   @Get('agents/:companyId')
