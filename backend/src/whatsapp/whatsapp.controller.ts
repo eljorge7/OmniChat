@@ -276,9 +276,16 @@ export class WhatsappController {
 
   @Post('assign')
   async assignContact(@Body() body: { contactId: string, pipelineId: string }) {
+    const firstStage = body.pipelineId 
+      ? await this.prisma.pipelineStage.findFirst({ where: { pipelineId: body.pipelineId }, orderBy: { order: 'asc' } })
+      : null;
+
     const updated = await this.prisma.contact.update({
       where: { id: body.contactId },
-      data: { pipelineId: body.pipelineId },
+      data: { 
+        pipelineId: body.pipelineId,
+        pipelineStageId: firstStage ? firstStage.id : null
+      },
       include: { company: true }
     });
 
