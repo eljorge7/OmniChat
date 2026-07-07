@@ -454,7 +454,9 @@ export default function InboxPage() {
   const assignChat = async (contactId: string, pipelineId: string) => {
     try {
        await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/assign`, { contactId, pipelineId });
-       // No necesitamos modificar estado, el Socket disparará 'contactRouted' recargando la UI.
+       const activeCid = localStorage.getItem('activeCompanyId');
+       const qParams = activeCid ? `?companyId=${activeCid}` : '';
+       axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox${qParams}`).then(res => setChats(res.data.chats));
     } catch (e) {
        console.error("Error asignando:", e);
     }
