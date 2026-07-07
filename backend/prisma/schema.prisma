@@ -8,47 +8,59 @@ datasource db {
 }
 
 model Company {
-  id        String   @id @default(uuid())
-  name      String
-  apiKey    String?  @unique // Llave maestra para Integración B2B (RentControl)
+  id                 String           @id @default(uuid())
+  name               String
+  apiKey             String?          @unique // Llave maestra para Integración B2B (RentControl)
   facturaproTenantId String? // ID del Tenant en FacturaPro para sincronización de inventario
-  stripeSecretKey String? // Para procesar pagos de rifas
-  stripePublicKey String?
-  users     User[]
-  contacts  Contact[]
-  pipelines Pipeline[]
-  replies   QuickReply[]
-  calendarEvents CalendarEvent[]
-  documents Document[]
-  campaigns Campaign[]
-  paymentReceipts PaymentReceipt[]
-  npsSurveys      NpsSurvey[]
-  raffles         Raffle[]
-  sellers         Seller[]
-  
+  stripeSecretKey    String? // Para procesar pagos de rifas
+  stripePublicKey    String?
+  users              User[]
+  contacts           Contact[]
+  departments        Department[]
+  pipelines          Pipeline[]
+  replies            QuickReply[]
+  calendarEvents     CalendarEvent[]
+  documents          Document[]
+  campaigns          Campaign[]
+  paymentReceipts    PaymentReceipt[]
+  npsSurveys         NpsSurvey[]
+  raffles            Raffle[]
+  sellers            Seller[]
+
   // Asistente AI RAG Multi-Tenant
   openAiKey    String?
-  openAiPrompt String?    @db.Text
-  
+  openAiPrompt String? @db.Text
+
   // Branding (Marca Blanca)
-  logoUrl      String?
-  themeColor   String?    @default("#3B82F6") // Azul por defecto
+  logoUrl        String?
+  themeColor     String? @default("#3B82F6") // Azul por defecto
   whatsappNumber String?
-  
+
   // WispHub Integration
   wisphubApiKey String?
-  
+
   // Emergency Mode (Anti-Saturación)
   emergencyMode    Boolean @default(false)
   emergencyMessage String? @db.Text
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
+model Department {
+  id        String     @id @default(uuid())
+  name      String // Ej. "Radiotec", "RentControl", "Superlavado"
+  companyId String
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  pipelines Pipeline[]
+  contacts  Contact[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
 model QuickReply {
   id        String   @id @default(uuid())
-  shortcut  String   // Ej. "/cuenta"
+  shortcut  String // Ej. "/cuenta"
   content   String   @db.Text
   companyId String
   company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -56,20 +68,20 @@ model QuickReply {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String   // Hash secreto de seguridad
-  name      String?
-  role      String   @default("AGENT") // ADMIN, AGENT
-  avatarUrl String?
-  companyId String
-  company   Company  @relation(fields: [companyId], references: [id])
-  assignedContacts Contact[] @relation("AgentToContact")
+  id               String          @id @default(uuid())
+  email            String          @unique
+  password         String // Hash secreto de seguridad
+  name             String?
+  role             String          @default("AGENT") // ADMIN, AGENT
+  avatarUrl        String?
+  companyId        String
+  company          Company         @relation(fields: [companyId], references: [id])
+  assignedContacts Contact[]       @relation("AgentToContact")
   calendarEvents   CalendarEvent[]
-  
+
   // Sincronización Google Workspace (OAuth2)
-  googleAccessToken  String?  @db.Text
-  googleRefreshToken String?  @db.Text
+  googleAccessToken  String? @db.Text
+  googleRefreshToken String? @db.Text
   googleEmail        String?
 
   createdAt DateTime @default(now())
@@ -78,28 +90,32 @@ model User {
 
 model Contact {
   id          String   @id @default(uuid())
-  phone       String   // Número de WhatsApp del cliente externo
+  phone       String // Número de WhatsApp del cliente externo
   name        String?
   tags        String[] @default([]) // Ej: ["Venta_Caliente", "Moroso"]
-  metadata    Json?    // Datos personalizados dinámicos desde Excel (Ej. {"deuda": 500, "plan": "10Megas"})
+  metadata    Json? // Datos personalizados dinámicos desde Excel (Ej. {"deuda": 500, "plan": "10Megas"})
   botStatus   String   @default("ACTIVE") // ACTIVE | PAUSED | RESOLVED
   avatarUrl   String?
   unreadCount Int      @default(0) // Control de Notificaciones y Badges Visuales
 
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id])
-  messages    Message[]
-  notes       ContactNote[] // Historial de post-its internos del equipo
-  pipelineId  String?
-  pipeline    Pipeline? @relation(fields: [pipelineId], references: [id])
-  assignedToId String?
-  assignedTo  User?    @relation("AgentToContact", fields: [assignedToId], references: [id])
-  calendarEvents CalendarEvent[]
+  companyId       String
+  company         Company          @relation(fields: [companyId], references: [id])
+  messages        Message[]
+  notes           ContactNote[] // Historial de post-its internos del equipo
+  pipelineId      String?
+  pipeline        Pipeline?        @relation(fields: [pipelineId], references: [id])
+  departmentId    String?
+  department      Department?      @relation(fields: [departmentId], references: [id])
+  pipelineStageId String?
+  pipelineStage   PipelineStage?   @relation(fields: [pipelineStageId], references: [id])
+  assignedToId    String?
+  assignedTo      User?            @relation("AgentToContact", fields: [assignedToId], references: [id])
+  calendarEvents  CalendarEvent[]
   paymentReceipts PaymentReceipt[]
   npsSurveys      NpsSurvey[]
   tickets         Ticket[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@unique([phone, companyId]) // Un mismo cliente (número) es único por cada compañía
 }
@@ -109,21 +125,35 @@ model ContactNote {
   text      String   @db.Text
   contactId String
   contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  authorId  String   // ID del Agente que dejó la nota
+  authorId  String // ID del Agente que dejó la nota
   createdAt DateTime @default(now())
 }
 
 model Pipeline {
-  id         String   @id @default(uuid())
-  name       String   // Ej. "Ventas Internet", "Mantenimiento RJL"
-  keywords   String?  // Ej. "fuga,agua,plomero,tubo" (separado por comas)
-  autoReply  String?  // Mensaje inteligente automático al detectar la palabra clave
-  companyId  String
-  company    Company  @relation(fields: [companyId], references: [id])
-  contacts   Contact[]
+  id             String          @id @default(uuid())
+  name           String // Ej. "Ventas Internet", "Mantenimiento RJL"
+  keywords       String? // Ej. "fuga,agua,plomero,tubo" (separado por comas)
+  autoReply      String? // Mensaje inteligente automático al detectar la palabra clave
+  companyId      String
+  company        Company         @relation(fields: [companyId], references: [id])
+  departmentId   String?
+  department     Department?     @relation(fields: [departmentId], references: [id])
+  stages         PipelineStage[]
+  contacts       Contact[]
   calendarEvents CalendarEvent[]
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model PipelineStage {
+  id         String    @id @default(uuid())
+  name       String // Ej. "Nuevo Lead", "En Negociación", "Cerrado"
+  order      Int // 1, 2, 3...
+  pipelineId String
+  pipeline   Pipeline  @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  contacts   Contact[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 }
 
 model Message {
@@ -133,50 +163,50 @@ model Message {
   timestamp DateTime @default(now())
   contactId String
   contact   Contact  @relation(fields: [contactId], references: [id])
-  senderId  String?  // El User ID del Agente que lo envió (si aplica)
-  mediaUrl  String?  // URL remota o path local del archivo
-  mediaType String?  // MIME (image/jpeg, audio/ogg)
+  senderId  String? // El User ID del Agente que lo envió (si aplica)
+  mediaUrl  String? // URL remota o path local del archivo
+  mediaType String? // MIME (image/jpeg, audio/ogg)
 }
 
 model CalendarEvent {
-  id           String   @id @default(uuid())
-  title        String   // Ej. "Instalación Internet", "Lavado Sala"
-  description  String?  @db.Text
-  startTime    DateTime
-  endTime      DateTime
-  status       String   @default("SCHEDULED") // SCHEDULED, IN_PROGRESS, COMPLETED, CANCELED
+  id          String   @id @default(uuid())
+  title       String // Ej. "Instalación Internet", "Lavado Sala"
+  description String?  @db.Text
+  startTime   DateTime
+  endTime     DateTime
+  status      String   @default("SCHEDULED") // SCHEDULED, IN_PROGRESS, COMPLETED, CANCELED
 
-  location     String?  // Ej. "Av. Universidad 400"
-  locationUrl  String?  // Ej. shortlink de Google Maps
+  location    String? // Ej. "Av. Universidad 400"
+  locationUrl String? // Ej. shortlink de Google Maps
 
   // Relaciones
-  contactId    String?
-  contact      Contact? @relation(fields: [contactId], references: [id])
-  
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id])
+
   assignedToId String?
-  assignedTo   User?    @relation(fields: [assignedToId], references: [id])
-  
-  pipelineId   String?  // Para aplicar el código de color según rama de negocio
-  pipeline     Pipeline? @relation(fields: [pipelineId], references: [id])
-  
-  companyId    String
-  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  googleEventId String?  // ID devuelto por la API de Google Calendar para sincronización
-  
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  assignedTo   User?   @relation(fields: [assignedToId], references: [id])
+
+  pipelineId String? // Para aplicar el código de color según rama de negocio
+  pipeline   Pipeline? @relation(fields: [pipelineId], references: [id])
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  googleEventId String? // ID devuelto por la API de Google Calendar para sincronización
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Document {
-  id        String   @id @default(uuid())
+  id        String          @id @default(uuid())
   fileName  String
   fileUrl   String?
-  status    String   @default("PROCESSED") // UPLOADING, PROCESSED, ERROR
+  status    String          @default("PROCESSED") // UPLOADING, PROCESSED, ERROR
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company   Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
   chunks    DocumentChunk[]
-  createdAt DateTime @default(now())
+  createdAt DateTime        @default(now())
 }
 
 model DocumentChunk {
@@ -184,119 +214,119 @@ model DocumentChunk {
   documentId String
   document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
   text       String   @db.Text
-  embedding  Float[]  // PostgreSQL Native Array for vector representation
+  embedding  Float[] // PostgreSQL Native Array for vector representation
   createdAt  DateTime @default(now())
 }
 
 model Campaign {
-  id              String   @id @default(uuid())
-  companyId       String
-  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  name            String?  @default("Difusión Masiva")
-  message         String   @db.Text
-  mediaUrl        String?  // Opcional para PDFs y Flyers
-  audience        String   // "all", "tag"
-  tag             String?
-  
-  status          String   @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, FAILED, SCHEDULED, RECURRING
-  successCount    Int      @default(0)
-  failedCount     Int      @default(0)
-  
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  name     String? @default("Difusión Masiva")
+  message  String  @db.Text
+  mediaUrl String? // Opcional para PDFs y Flyers
+  audience String // "all", "tag"
+  tag      String?
+
+  status       String @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, FAILED, SCHEDULED, RECURRING
+  successCount Int    @default(0)
+  failedCount  Int    @default(0)
+
   // Agendamiento CRON y Perenne
-  isScheduled     Boolean  @default(false)
-  cronRule        String?  // Ej. "15,30 * *" (Días 15 y 30 del mes)
-  lastRunAt       DateTime?
-  metadataFilter  Json?    // Ej. {"deuda": { "gt": 0 }} para enviar solo si debe algo
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  isScheduled    Boolean   @default(false)
+  cronRule       String? // Ej. "15,30 * *" (Días 15 y 30 del mes)
+  lastRunAt      DateTime?
+  metadataFilter Json? // Ej. {"deuda": { "gt": 0 }} para enviar solo si debe algo
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model PaymentReceipt {
-  id          String   @id @default(uuid())
-  folio       String   // Número de rastreo extraído por IA
-  amount      Float    // Monto del pago
-  bank        String   // Banco destino detectado
-  dateStr     String   // Fecha detectada en el ticket
-  
-  contactId   String
-  contact     Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  createdAt   DateTime @default(now())
-  
+  id      String @id @default(uuid())
+  folio   String // Número de rastreo extraído por IA
+  amount  Float // Monto del pago
+  bank    String // Banco destino detectado
+  dateStr String // Fecha detectada en el ticket
+
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
   @@unique([folio, companyId]) // Un mismo folio no se puede reusar en la misma empresa
 }
 
 model NpsSurvey {
-  id        String   @id @default(uuid())
-  score     Int?     // Del 1 al 5
-  status    String   @default("PENDING") // PENDING, COMPLETED
-  
+  id     String @id @default(uuid())
+  score  Int? // Del 1 al 5
+  status String @default("PENDING") // PENDING, COMPLETED
+
   contactId String
-  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Raffle {
-  id          String   @id @default(uuid())
-  name        String   // Ej. "Rifa Panel Solar 3.3kWh"
-  description String?  @db.Text
-  ticketPrice Float
-  totalTickets Int
-  imageUrl    String?
-  status      String   @default("ACTIVE") // ACTIVE, FINISHED, CANCELLED
-  drawDate    DateTime?
-  winningNumber String?
-  evidenceUrl   String?
-  opportunitiesMultiplier Int @default(1) // Agregado para soportar boletos con múltiples oportunidades (+200)
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  tickets     Ticket[]
-  sellers     Seller[] @relation("SellerToRaffle")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                      String    @id @default(uuid())
+  name                    String // Ej. "Rifa Panel Solar 3.3kWh"
+  description             String?   @db.Text
+  ticketPrice             Float
+  totalTickets            Int
+  imageUrl                String?
+  status                  String    @default("ACTIVE") // ACTIVE, FINISHED, CANCELLED
+  drawDate                DateTime?
+  winningNumber           String?
+  evidenceUrl             String?
+  opportunitiesMultiplier Int       @default(1) // Agregado para soportar boletos con múltiples oportunidades (+200)
+  companyId               String
+  company                 Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  tickets                 Ticket[]
+  sellers                 Seller[]  @relation("SellerToRaffle")
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 }
 
 model Seller {
-  id        String   @id @default(uuid())
-  name      String
-  email     String?
-  phone     String
-  
+  id    String  @id @default(uuid())
+  name  String
+  email String?
+  phone String
+
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  raffles   Raffle[] @relation("SellerToRaffle")
-  tickets   Ticket[] 
-  
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  raffles Raffle[] @relation("SellerToRaffle")
+  tickets Ticket[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Ticket {
-  id          String   @id @default(uuid())
-  ticketNumber String  // "000" to "199"
-  status      String   @default("AVAILABLE") // AVAILABLE, RESERVED, PARTIALLY_PAID, PAID
-  amountPaid  Float    @default(0)
+  id               String  @id @default(uuid())
+  ticketNumber     String // "000" to "199"
+  status           String  @default("AVAILABLE") // AVAILABLE, RESERVED, PARTIALLY_PAID, PAID
+  amountPaid       Float   @default(0)
   paymentReference String? // Auto-generated or manual reference for transfer match
-  raffleId    String
-  raffle      Raffle   @relation(fields: [raffleId], references: [id], onDelete: Cascade)
-  
-  contactId   String?
-  contact     Contact? @relation(fields: [contactId], references: [id])
-  
-  sellerId    String?
-  seller      Seller?  @relation(fields: [sellerId], references: [id])
-  
-  reservedAt  DateTime?
-  paidAt      DateTime?
-  
+  raffleId         String
+  raffle           Raffle  @relation(fields: [raffleId], references: [id], onDelete: Cascade)
+
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id])
+
+  sellerId String?
+  seller   Seller? @relation(fields: [sellerId], references: [id])
+
+  reservedAt DateTime?
+  paidAt     DateTime?
+
   @@unique([raffleId, ticketNumber])
 }
