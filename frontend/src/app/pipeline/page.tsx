@@ -20,7 +20,9 @@ export default function PipelinePage() {
     const qParams = activeCid ? `?companyId=${activeCid}` : '';
     try {
       const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox${qParams}`);
-      setDepartments(res.data.departments || []);
+      const depts = res.data.departments || [];
+      const filteredDepts = depts.filter((d: any) => !d.name.toLowerCase().includes('wisphub'));
+      setDepartments(filteredDepts);
       setChats(res.data.chats || []);
       
       if (res.data.departments?.length > 0 && !activeDepartmentId) {
@@ -163,9 +165,14 @@ export default function PipelinePage() {
                    <span className="text-[10px] font-bold text-emerald-500">EN LÍNEA</span>
                  </div>
                </div>
-               <button onClick={() => setSelectedChatId(null)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
-                 <X className="w-5 h-5" />
-               </button>
+               <div className="flex items-center gap-1">
+                 <button onClick={() => window.location.href = '/inbox'} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors" title="Abrir en Bandeja Completa">
+                   <PanelRight className="w-5 h-5" />
+                 </button>
+                 <button onClick={() => setSelectedChatId(null)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
+                   <X className="w-5 h-5" />
+                 </button>
+               </div>
             </div>
 
             {/* Side Panel Messages */}
