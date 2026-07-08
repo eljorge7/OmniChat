@@ -461,8 +461,6 @@ export default function InboxPage() {
        const activeCid = localStorage.getItem('activeCompanyId');
        const qParams = activeCid ? `?companyId=${activeCid}&_t=${Date.now()}` : `?_t=${Date.now()}`;
        axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox${qParams}`).then(res => setChats(res.data.chats));
-       
-       alert("¡Cambio de embudo procesado correctamente por el servidor!");
     } catch (e: any) {
        console.error("Error asignando:", e);
        alert("Error al reasignar embudo: " + (e.response?.data?.message || e.message));
