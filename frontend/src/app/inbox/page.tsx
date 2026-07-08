@@ -517,7 +517,10 @@ export default function InboxPage() {
             return (
               <button 
                 key={p.id || 'general'} 
-                onClick={() => setActivePipeline(p.id)}
+                onClick={() => {
+                  setActivePipeline(p.id);
+                  setSelectedChatId(null);
+                }}
                 className={`whitespace-nowrap px-3 lg:px-4 py-2 rounded-xl text-xs lg:text-sm font-bold transition-all shrink-0 flex items-center gap-1.5 snap-start ${
                   isActive 
                     ? 'bg-white text-indigo-700 shadow border border-slate-200/50 scale-100' 
