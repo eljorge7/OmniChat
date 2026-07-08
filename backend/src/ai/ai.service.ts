@@ -28,7 +28,7 @@ export class AiService {
       // 1. Recover Company OpenAI Settings
       const company = await this.prisma.company.findUnique({
         where: { id: companyId },
-        select: { openAiKey: true, openAiPrompt: true, name: true, apiKey: true, wisphubApiKey: true }
+        select: { openAiKey: true, openAiPrompt: true, name: true, apiKey: true, wisphubApiKey: true, activePlugins: true, businessVertical: true }
       });
       
       if (company) {
@@ -59,7 +59,7 @@ export class AiService {
       let contactPhone = 'Desconocido';
       try {
          const contact = await this.prisma.contact.findUnique({ where: { id: contactId } });
-         if (contact && contact.phone) {
+         if (contact && contact.phone && company.activePlugins?.includes('RENTCONTROL')) {
              contactPhone = contact.phone;
              this.logger.log(`[AI-AGENT] Buscando identidad de RentControl para el cel: ${contact.phone}`);
              const baseUrl = process.env.RENTCONTROL_API_URL || 'https://radiotecpro.com/api';
@@ -77,7 +77,7 @@ export class AiService {
              }
 
              // --- CUSTOM TAGS (WISPHUB) ---
-             if (contact.tags && contact.tags.length > 0) {
+             if (contact.tags && contact.tags.length > 0 && company.activePlugins?.includes('WISPHUB')) {
                  const hasWispHub = contact.tags.some(tag => tag.toLowerCase() === 'wisphub');
                  tenantContextInfo += `\n[INFORMACIÓN DE CONTACTO LOCAL: El cliente se llama '${contact.name}'. Sus etiquetas son: ${contact.tags.join(', ')}. `;
                  if (hasWispHub) {
@@ -109,7 +109,9 @@ export class AiService {
          calendarContext += ".\nNUNCA ofrezcas ni agendes citas que se empalmen con estos horarios ocupados. Ofrece horarios libres en la mañana (9am-1pm) o tarde (3pm-6pm) basándote en esta disponibilidad. Cuando acuerdes un horario libre y lugar con el cliente, USA LA HERRAMIENTA 'schedule_appointment' automáticamente para bloquear el calendario y despídete confirmando la fecha.]\n";
       } catch(e) { console.error(e) }
 
-      const strictWispHubRules = `\n[REGLAS DE NEGOCIO Y ENRUTAMIENTO (¡MUY IMPORTANTE!): 1. Si el cliente pregunta por planes de internet, paquetes o cobertura, USA INMEDIATAMENTE la herramienta 'route_user_to_pipeline' con pipelineKeyword: 'Ventas-Radiotec' en esa misma respuesta. No esperes a que acabe la charla. 2. Si el cliente reporta un problema técnico grave (sin internet, foco rojo, lentitud), usa INMEDIATAMENTE 'route_user_to_pipeline' con pipelineKeyword: 'Soporte-Radiotec'. 3. Si estás recolectando datos para Internet (process_isp_installation_request), el teléfono debe tener 10 a 12 dígitos y el correo un '@'. 4. Si el último mensaje del historial fue un comprobante/factura enviada por nosotros, y el cliente responde "Gracias" o "Listo", despídete respondiendo ÚNICAMENTE con un emoji para no estorbar.]`;
+      const strictWispHubRules = company.activePlugins?.includes('WISPHUB') 
+        ? `\n[REGLAS DE NEGOCIO Y ENRUTAMIENTO (¡MUY IMPORTANTE!): 1. Si el cliente pregunta por planes de internet, paquetes o cobertura, USA INMEDIATAMENTE la herramienta 'route_user_to_pipeline' con pipelineKeyword: 'Ventas-Radiotec' en esa misma respuesta. No esperes a que acabe la charla. 2. Si el cliente reporta un problema técnico grave (sin internet, foco rojo, lentitud), usa INMEDIATAMENTE 'route_user_to_pipeline' con pipelineKeyword: 'Soporte-Radiotec'. 3. Si estás recolectando datos para Internet (process_isp_installation_request), el teléfono debe tener 10 a 12 dígitos y el correo un '@'. 4. Si el último mensaje del historial fue un comprobante/factura enviada por nosotros, y el cliente responde "Gracias" o "Listo", despídete respondiendo ÚNICAMENTE con un emoji para no estorbar.]` 
+        : '';
       
       const currentTimeContext = `\n[CONTEXTO TEMPORAL ACTUAL: El servidor donde habitas opera en Hora Local de Sonora (UTC-7). Hoy es **${new Date().toLocaleString('es-MX', { timeZone: 'America/Hermosillo', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' })}**. SI el cliente te dice: "Hablamos el Lunes", o "Te aviso a las 8am", usa Inmediatamente la herramienta 'schedule_followup_reminder' fijando la fecha en formato ISO, y el sistema se encargará de reabrir el chat en ese momento por ti exacto.]\n`;
 
@@ -147,8 +149,9 @@ export class AiService {
 
       // --- RAFFLES CONTEXT ---
       let raffleContext = '';
-      try {
-          const activeRaffles = await this.prisma.raffle.findMany({
+      if (company.activePlugins?.includes('RAFFLES')) {
+        try {
+            const activeRaffles = await this.prisma.raffle.findMany({
               where: { companyId, status: 'ACTIVE' },
               include: { tickets: { where: { contactId: contactId, status: 'RESERVED' } } }
           });
@@ -174,7 +177,8 @@ export class AiService {
                  raffleContext += `REGLA DE ORO RIFAS:\n1) Si un cliente escribe diciendo que acaba de apartar o reservar boletos desde la página web, dale la bienvenida calurosa a Sorteos Hurtado, dale los datos bancarios y pídele que envíe su comprobante.\n2) Si el cliente envía un comprobante de pago o foto, agradécele, dile que un administrador lo verificará y USA la herramienta 'route_user_to_pipeline' con pipelineKeyword 'Validar'. NUNCA digas que su pago ya fue validado automáticamente ni uses verify_wisphub_receipt.]\n`;
              }
           }
-      } catch(e) {}
+        } catch(e) {}
+      }
 
       const defaultPhoneInjection = `\n[El número de WhatsApp actual de este cliente con el que estás hablando es: ${contactPhone}. Úsalo como 'phone' por defecto si ejecutas herramientas y el cliente no te da uno diferente.]\n`;
       const personalityBaseline = `\n[INSTRUCCIÓN DE PERSONALIDAD: Te llamas 'Julio'. Tienes una personalidad hiper-humana, amigable, ingeniosa y empática (estilo mexicano relajado). 1) ESTÁ ESTRICTAMENTE PROHIBIDO usar frases robóticas, acartonadas o corporativas como "nuestro equipo de humanos les atenderá" o "un agente se pondrá en contacto". En su lugar usa lenguaje natural como "Ahorita te paso con uno de mis compañeros", "Enseguida le aviso a los chicos del taller", o "Dame chance y te conecto con un especialista". 2) Tienes excelente sentido del humor: Si el cliente te pide un chiste, DEBES contarle uno (preferiblemente de tecnología, ingenieros, internet o cosas de oficina) y reírte con ellos usando 'jajaja' o emojis. 3) Siéntete libre de tener conversaciones triviales breves si el cliente está aburrido.]\n`;
@@ -224,23 +228,7 @@ export class AiService {
 
       // Definir Herramientas (Function Calling)
       const tools: any[] = [
-        {
-          type: "function",
-          function: {
-            name: "create_maintenance_ticket",
-            description: "Registra un ticket oficial de mantenimiento en el sistema cuando un inquilino reporta un problema físico en su unidad.",
-            parameters: {
-              type: "object",
-              properties: {
-                description: { type: "string", description: "Descripción detallada del problema que reporta el inquilino." },
-                priority: { type: "string", enum: ["LOW", "MEDIUM", "HIGH", "URGENT"], description: "Nivel de urgencia deducido (Alta/Urgente para fugas o electricidad, Media/Baja para daños menores)." },
-                tenantId: { type: "string", description: "El ID del inquilino (proveído en el Contexto del System Prompt)" },
-                unitId: { type: "string", description: "El ID de la unidad (proveído en el Contexto del System Prompt)" }
-              },
-              required: ["description", "priority", "tenantId", "unitId"],
-            },
-          },
-        },
+
         {
           type: "function",
           function: {
@@ -333,20 +321,7 @@ export class AiService {
             }
           }
         },
-        {
-          type: "function",
-          function: {
-            name: "check_rentcontrol_balance",
-            description: "Consulta internamente la base de datos de los inquilinos de RentControl para saber si debe meses de renta o algún cargo. Úsalo SÓLO SI el cliente te pregunta cosas específicas sobre 'renta', 'departamento' o 'cuarto'. Si el cliente sólo dice 'estado de cuenta' o 'cuánto debo' y NO menciona renta, asume que es de Internet y usa la herramienta de WispHub en su lugar.",
-            parameters: {
-              type: "object",
-              properties: {
-                phone: { type: "string", description: "El número a 10 dígitos del cliente (Ej. 6421042123). Obtenlo del historial o solicítalo indirectamente si no está en tu memoria." }
-              },
-              required: ["phone"]
-            }
-          }
-        },
+
         {
           type: "function",
           function: {
@@ -363,8 +338,8 @@ export class AiService {
         }
       ];
 
-      // Add WispHub tools only if the company has the API Key configured
-      if (company.wisphubApiKey) {
+      // Add WispHub tools only if the company has the plugin enabled
+      if (company.activePlugins?.includes('WISPHUB')) {
          tools.push(
             {
                type: "function",
@@ -411,6 +386,43 @@ export class AiService {
                      required: ["phone"]
                   }
                }
+            }
+         );
+      }
+
+      // Add RentControl tools only if the company has the plugin enabled
+      if (company.activePlugins?.includes('RENTCONTROL')) {
+         tools.push(
+            {
+              type: "function",
+              function: {
+                name: "create_maintenance_ticket",
+                description: "Registra un ticket oficial de mantenimiento en el sistema cuando un inquilino reporta un problema físico en su unidad.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    description: { type: "string", description: "Descripción detallada del problema que reporta el inquilino." },
+                    priority: { type: "string", enum: ["LOW", "MEDIUM", "HIGH", "URGENT"], description: "Nivel de urgencia deducido (Alta/Urgente para fugas o electricidad, Media/Baja para daños menores)." },
+                    tenantId: { type: "string", description: "El ID del inquilino (proveído en el Contexto del System Prompt)" },
+                    unitId: { type: "string", description: "El ID de la unidad (proveído en el Contexto del System Prompt)" }
+                  },
+                  required: ["description", "priority", "tenantId", "unitId"],
+                },
+              },
+            },
+            {
+              type: "function",
+              function: {
+                name: "check_rentcontrol_balance",
+                description: "Consulta internamente la base de datos de los inquilinos de RentControl para saber si debe meses de renta o algún cargo.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    phone: { type: "string", description: "El número a 10 dígitos del cliente (Ej. 6421042123). Obtenlo del historial o solicítalo indirectamente si no está en tu memoria." }
+                  },
+                  required: ["phone"]
+                }
+              }
             }
          );
       }

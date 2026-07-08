@@ -28,8 +28,10 @@ model Company {
   sellers            Seller[]
 
   // Asistente AI RAG Multi-Tenant
-  openAiKey    String?
-  openAiPrompt String? @db.Text
+  openAiKey        String?
+  openAiPrompt     String? @db.Text
+  businessVertical String  @default("GENERAL")
+  activePlugins    String[] @default([])
 
   // Branding (Marca Blanca)
   logoUrl        String?

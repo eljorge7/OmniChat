@@ -12,6 +12,9 @@ export default function AiProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  
+  const [businessVertical, setBusinessVertical] = useState("GENERAL");
+  const [activePlugins, setActivePlugins] = useState<string[]>([]);
 
   // RAG States
   const [documents, setDocuments] = useState<any[]>([]);
@@ -24,7 +27,8 @@ export default function AiProfilePage() {
       .then(res => {
          setOpenAiKey(res.data.openAiKey || "");
          setOpenAiPrompt(res.data.openAiPrompt || "");
-         setOpenAiPrompt(res.data.openAiPrompt || "");
+         setBusinessVertical(res.data.businessVertical || "GENERAL");
+         setActivePlugins(res.data.activePlugins || []);
       })
       .catch(console.error);
 
@@ -47,7 +51,9 @@ export default function AiProfilePage() {
       await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/bot/config`, {
         companyId: activeCid,
         openAiKey,
-        openAiPrompt
+        openAiPrompt,
+        businessVertical,
+        activePlugins
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -103,6 +109,14 @@ export default function AiProfilePage() {
     return <div className="p-8 text-slate-500 font-bold">Cargando perfil IA...</div>;
   }
 
+  const togglePlugin = (pluginId: string) => {
+    setActivePlugins(prev => 
+      prev.includes(pluginId) 
+        ? prev.filter(p => p !== pluginId) 
+        : [...prev, pluginId]
+    );
+  };
+
   return (
     <div className="p-8 max-w-4xl">
       <div className="mb-8">
@@ -142,6 +156,57 @@ export default function AiProfilePage() {
           <p className="text-xs text-slate-400 mt-2">
             Obtén tu clave secreta desde el panel de <a href="https://platform.openai.com/api-keys" target="_blank" className="text-indigo-500 hover:underline">OpenAI Developers</a>. Requiere saldo en la plataforma.
           </p>
+        </div>
+
+        {/* Business Vertical and Plugins */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+           <label className="flex items-center gap-2 text-sm font-black text-slate-800 mb-4">
+             <BrainCircuit className="h-4 w-4 text-slate-400" />
+             Giro de Negocio y Módulos de IA (Plugins B2B)
+           </label>
+           
+           <div className="mb-6">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tipo de Empresa</label>
+              <select 
+                 value={businessVertical}
+                 onChange={(e) => setBusinessVertical(e.target.value)}
+                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition"
+              >
+                 <option value="GENERAL">Empresa General (Servicios/Productos)</option>
+                 <option value="ISP">Proveedor de Internet (ISP)</option>
+                 <option value="REAL_ESTATE">Inmobiliaria / Gestión de Rentas</option>
+                 <option value="CARWASH">Autolavado / Estética Automotriz</option>
+              </select>
+           </div>
+
+           <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Módulos Inteligentes</label>
+              <div className="space-y-3">
+                 <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 cursor-pointer transition">
+                    <input type="checkbox" checked={activePlugins.includes('WISPHUB')} onChange={() => togglePlugin('WISPHUB')} className="mt-1 accent-indigo-600 w-4 h-4 rounded" />
+                    <div>
+                       <div className="text-sm font-bold text-slate-800">Integración WispHub</div>
+                       <div className="text-xs text-slate-500">Inyecta en la IA habilidades para revisar estados de cuenta de WispHub y diagnosticar antenas caídas.</div>
+                    </div>
+                 </label>
+                 
+                 <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 cursor-pointer transition">
+                    <input type="checkbox" checked={activePlugins.includes('RENTCONTROL')} onChange={() => togglePlugin('RENTCONTROL')} className="mt-1 accent-indigo-600 w-4 h-4 rounded" />
+                    <div>
+                       <div className="text-sm font-bold text-slate-800">Integración RentControl</div>
+                       <div className="text-xs text-slate-500">Permite a la IA revisar saldos de inquilinos y levantar tickets de mantenimiento.</div>
+                    </div>
+                 </label>
+
+                 <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 cursor-pointer transition">
+                    <input type="checkbox" checked={activePlugins.includes('RAFFLES')} onChange={() => togglePlugin('RAFFLES')} className="mt-1 accent-indigo-600 w-4 h-4 rounded" />
+                    <div>
+                       <div className="text-sm font-bold text-slate-800">Motor de Sorteos Automáticos</div>
+                       <div className="text-xs text-slate-500">Inyecta instrucciones para que la IA reciba pagos de rifas y los envíe a validación.</div>
+                    </div>
+                 </label>
+              </div>
+           </div>
         </div>
 
         {/* System Prompt (Knowledge Base) */}

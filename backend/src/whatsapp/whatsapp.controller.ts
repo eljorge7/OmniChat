@@ -212,12 +212,14 @@ export class WhatsappController {
     
     return {
        openAiKey: this.crypto.decrypt(company.openAiKey) || "",
-       openAiPrompt: company.openAiPrompt || ""
+       openAiPrompt: company.openAiPrompt || "",
+       businessVertical: company.businessVertical || "GENERAL",
+       activePlugins: company.activePlugins || []
     };
   }
 
   @Post('bot/config')
-  async updateAiConfig(@Body() body: { companyId?: string, openAiKey: string, openAiPrompt: string }) {
+  async updateAiConfig(@Body() body: { companyId?: string, openAiKey: string, openAiPrompt: string, businessVertical?: string, activePlugins?: string[] }) {
     let company;
     if (body.companyId) {
       company = await this.prisma.company.findUnique({ where: { id: body.companyId }});
@@ -230,7 +232,9 @@ export class WhatsappController {
        where: { id: company.id },
        data: {
          openAiKey: body.openAiKey?.trim() ? this.crypto.encrypt(body.openAiKey.trim()) : null,
-         openAiPrompt: body.openAiPrompt || null
+         openAiPrompt: body.openAiPrompt || null,
+         businessVertical: body.businessVertical || "GENERAL",
+         activePlugins: body.activePlugins || []
        }
     });
 
