@@ -52,7 +52,7 @@ export default function InboxPage() {
 
   // Smart Scheduling
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [scheduleData, setScheduleData] = useState({ title: "", date: "", time: "10:00", location: "", pipelineId: "" });
+  const [scheduleData, setScheduleData] = useState({ title: "", date: "", time: "10:00", duration: "60", location: "", pipelineId: "" });
 
   // FacturaPro Inline Operations
   const [isFacturaModalOpen, setIsFacturaModalOpen] = useState(false);
@@ -264,7 +264,8 @@ export default function InboxPage() {
      if(!currentChat || !scheduleData.title) return alert("Título y campos requeridos");
      const cid = localStorage.getItem('activeCompanyId') || '';
      const startObj = new Date(`${scheduleData.date}T${scheduleData.time}:00`);
-     const endObj = new Date(startObj.getTime() + 60*60*1000); // +1h default
+     const durationMinutes = parseInt(scheduleData.duration, 10) || 60;
+     const endObj = new Date(startObj.getTime() + durationMinutes * 60 * 1000);
      
      try {
        await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/calendar/${cid}`, {
@@ -1107,14 +1108,27 @@ export default function InboxPage() {
                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Título del Servicio</label>
                  <input autoFocus type="text" className="w-full border-slate-200 rounded-xl bg-slate-50 focus:bg-white p-3 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ej. Instalación RadioTec, Lavado de Sala..." value={scheduleData.title} onChange={e => setScheduleData({...scheduleData, title: e.target.value})} />
                </div>
-               <div className="grid grid-cols-2 gap-4">
+               <div className="grid grid-cols-3 gap-4">
                  <div>
                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Fecha de Visita</label>
                    <input type="date" className="w-full border-slate-200 rounded-xl bg-slate-50 focus:bg-white p-3 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500" value={scheduleData.date} onChange={e => setScheduleData({...scheduleData, date: e.target.value})} />
                  </div>
                  <div>
-                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Hora (Aprox)</label>
+                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Hora de Inicio</label>
                    <input type="time" className="w-full border-slate-200 rounded-xl bg-slate-50 focus:bg-white p-3 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500" value={scheduleData.time} onChange={e => setScheduleData({...scheduleData, time: e.target.value})} />
+                 </div>
+                 <div>
+                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Duración</label>
+                   <select className="w-full border-slate-200 rounded-xl bg-slate-50 focus:bg-white p-3 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500" value={scheduleData.duration} onChange={e => setScheduleData({...scheduleData, duration: e.target.value})}>
+                     <option value="30">30 minutos</option>
+                     <option value="60">1 hora</option>
+                     <option value="90">1.5 horas</option>
+                     <option value="120">2 horas</option>
+                     <option value="180">3 horas</option>
+                     <option value="240">4 horas</option>
+                     <option value="360">6 horas</option>
+                     <option value="480">8 horas</option>
+                   </select>
                  </div>
                </div>
                <div>
