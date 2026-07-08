@@ -676,10 +676,7 @@ export class AiService {
                const legacyMap: Record<string, string> = {
                   'Ventas-Radiotec': 'Ventas',
                   'Soporte-Radiotec': 'Soporte',
-                  'Mantenimiento-RentControl': 'Mantenimiento',
-                  'HcSuperlavado': 'Ventas y Servicios',
-                  'Validar': 'Finanzas',
-                  'Atención General': 'Recepción'
+                  'Mantenimiento-RentControl': 'Mantenimiento'
                };
                if (legacyMap[keyword]) keyword = legacyMap[keyword];
 
