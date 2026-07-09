@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/Sidebar";
 import HelpCenterOverlay from "@/components/HelpCenterOverlay";
 import WelcomeTourModal from "@/components/WelcomeTourModal";
 import WhatsAppWidget from "@/components/WhatsAppWidget";
+import { AppLauncher } from "@/components/AppLauncher";
 
 export default function LayoutClientWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -24,6 +25,9 @@ export default function LayoutClientWrapper({ children }: { children: React.Reac
     <div className="flex h-screen overflow-hidden w-full max-w-full">
       <Sidebar />
       <main className="flex-1 min-w-0 flex flex-col h-full relative z-0 overflow-y-auto">
+        <div className="fixed top-4 right-4 z-[9999]">
+          <AppLauncher currentApp="OmniChat" />
+        </div>
         {children}
         <HelpCenterOverlay />
         <WelcomeTourModal />

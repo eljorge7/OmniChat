@@ -141,7 +141,6 @@ export function Sidebar() {
               </div>
               {!isCollapsed && <span className="text-2xl font-black text-slate-900 tracking-tight transition-opacity duration-200">OmniChat</span>}
             </Link>
-            <AppLauncher currentApp="OmniChat" />
           </div>
         
         {isAdmin && companies.length > 0 && !isCollapsed && (
