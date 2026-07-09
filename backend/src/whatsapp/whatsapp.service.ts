@@ -501,7 +501,17 @@ export class WhatsappService implements OnModuleInit {
             return;
         }
     }
-    let textBody = message.body.trim();
+    let textBody = message.body ? message.body.trim() : '';
+
+    // Interceptar mensajes de ubicación para mostrar enlace a Google Maps en lugar de la miniatura Base64
+    if (message.type === 'location' && message.location) {
+        const lat = message.location.latitude;
+        const lng = message.location.longitude;
+        textBody = `📍 Ubicación compartida: https://maps.google.com/?q=${lat},${lng}`;
+        if (message.location.description) {
+            textBody += `\nLugar: ${message.location.description}`;
+        }
+    }
 
     // =============== ANTI BOT-LOOP RATE LIMITER ===============
     // Prevent infinite ping-pong loops against WA Business Auto-Responders
