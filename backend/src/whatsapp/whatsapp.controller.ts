@@ -234,7 +234,7 @@ export class WhatsappController {
          openAiKey: body.openAiKey?.trim() ? this.crypto.encrypt(body.openAiKey.trim()) : null,
          openAiPrompt: body.openAiPrompt || null,
          businessVertical: body.businessVertical || "GENERAL",
-         activePlugins: body.activePlugins || []
+         activePlugins: { set: body.activePlugins || [] }
        }
     });
 

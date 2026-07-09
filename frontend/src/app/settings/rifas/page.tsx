@@ -246,10 +246,11 @@ export default function RifasAdminPage() {
         )}
 
         {raffles.map(r => {
-          const ticketsVendidos = r.tickets?.filter((t: any) => t.status === 'PAID').length || 0;
-          const ticketsApartados = r.tickets?.filter((t: any) => t.status === 'RESERVED' || t.status === 'PARTIALLY_PAID').length || 0;
-          const recaudado = ticketsVendidos * r.ticketPrice;
-          const hasMovement = ticketsVendidos > 0 || ticketsApartados > 0 || r.status === 'FINISHED';
+          const ticketsPagados = r.tickets?.filter((t: any) => t.status === 'PAID').length || 0;
+          const ticketsAbonos = r.tickets?.filter((t: any) => t.status === 'PARTIALLY_PAID').length || 0;
+          const ticketsApartados = r.tickets?.filter((t: any) => t.status === 'RESERVED').length || 0;
+          const recaudado = r.tickets?.reduce((sum: number, t: any) => sum + (t.status === 'PAID' ? r.ticketPrice : (t.amountPaid || 0)), 0) || 0;
+          const hasMovement = ticketsPagados > 0 || ticketsAbonos > 0 || ticketsApartados > 0 || r.status === 'FINISHED';
           const url = `${typeof window !== 'undefined' ? window.location.origin : 'https://omnichat.radiotecpro.com'}/rifas/${companyId}/${r.id}`;
           
           return (
@@ -275,20 +276,34 @@ export default function RifasAdminPage() {
               <div className="p-6">
                 <h3 className="text-xl font-bold text-slate-900 mb-4 line-clamp-2">{r.name}</h3>
                 
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="bg-slate-50 rounded-2xl p-3 flex items-center gap-3">
-                    <div className="bg-indigo-100 p-2 rounded-xl text-indigo-600"><Ticket className="w-5 h-5"/></div>
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  <div className="bg-indigo-50 rounded-xl p-3 border border-indigo-100 flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-slate-500 font-bold uppercase">Vendidos</p>
-                      <p className="text-lg font-black text-slate-900">{ticketsVendidos} <span className="text-sm font-medium text-slate-400">/ {r.totalTickets}</span></p>
+                      <p className="text-[10px] text-indigo-500 font-bold uppercase tracking-wider">Pagados</p>
+                      <p className="text-lg font-black text-indigo-900">{ticketsPagados} <span className="text-xs font-medium text-indigo-400">/ {r.totalTickets}</span></p>
                     </div>
+                    <CheckCircle2 className="w-5 h-5 text-indigo-300"/>
                   </div>
-                  <div className="bg-slate-50 rounded-2xl p-3 flex items-center gap-3">
-                    <div className="bg-emerald-100 p-2 rounded-xl text-emerald-600"><CircleDollarSign className="w-5 h-5"/></div>
+                  <div className="bg-amber-50 rounded-xl p-3 border border-amber-100 flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-slate-500 font-bold uppercase">Ingresos</p>
-                      <p className="text-lg font-black text-slate-900">${recaudado.toLocaleString()}</p>
+                      <p className="text-[10px] text-amber-500 font-bold uppercase tracking-wider">Abonos</p>
+                      <p className="text-lg font-black text-amber-900">{ticketsAbonos}</p>
                     </div>
+                    <CircleDollarSign className="w-5 h-5 text-amber-300"/>
+                  </div>
+                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Apartados</p>
+                      <p className="text-lg font-black text-slate-900">{ticketsApartados}</p>
+                    </div>
+                    <Ticket className="w-5 h-5 text-slate-300"/>
+                  </div>
+                  <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Ingresos</p>
+                      <p className="text-lg font-black text-emerald-900">${recaudado.toLocaleString()}</p>
+                    </div>
+                    <CircleDollarSign className="w-5 h-5 text-emerald-300"/>
                   </div>
                 </div>
 
