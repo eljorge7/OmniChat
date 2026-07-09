@@ -341,6 +341,17 @@ export default function CompradoresAdminPage() {
   const pendingKits = kits.filter((kit: any) => kit.status !== 'PAID' && kit.contact?.phone);
   
   const displayedKits = kits.filter((kit: any) => statusFilter === "ALL" || kit.status === statusFilter);
+  const filteredTicketsCount = displayedKits.reduce((acc: number, kit: any) => acc + kit.tickets.length, 0);
+
+  const getFilterLabel = () => {
+    switch(statusFilter) {
+      case 'PAID': return 'Pagados';
+      case 'PARTIALLY_PAID': return 'Abonados';
+      case 'LOCKED': return 'Fijados';
+      case 'APARTADO': return 'Apartados';
+      default: return 'Ocupados';
+    }
+  };
 
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto h-full flex flex-col font-sans">
@@ -416,12 +427,20 @@ export default function CompradoresAdminPage() {
             >
               + Apartar Manual
             </button>
-            <div className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl border border-indigo-100 flex items-center">
-              Total: {raffle.totalTickets}
-            </div>
-            <div className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-xl border border-emerald-100 flex items-center">
-              Vendidos: {raffle.tickets.length}
-            </div>
+            {statusFilter === 'ALL' ? (
+              <>
+                <div className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl border border-indigo-100 flex items-center">
+                  Total: {raffle.totalTickets}
+                </div>
+                <div className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-xl border border-emerald-100 flex items-center">
+                  Vendidos: {raffle.tickets.length}
+                </div>
+              </>
+            ) : (
+              <div className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl border border-indigo-100 flex items-center font-bold">
+                Total {getFilterLabel()}: {filteredTicketsCount}
+              </div>
+            )}
             <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
                <button onClick={() => setViewMode("grid")} className={`p-1.5 rounded-lg transition-colors ${viewMode === 'grid' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`} title="Vista de Tarjetas">
                   <LayoutGrid className="w-4 h-4" />
