@@ -13,6 +13,7 @@ export default function CompradoresAdminPage() {
   const [sellers, setSellers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
   const [companyId, setCompanyId] = useState("");
 
   // Edit Modal State
@@ -338,6 +339,8 @@ export default function CompradoresAdminPage() {
   });
 
   const pendingKits = kits.filter((kit: any) => kit.status !== 'PAID' && kit.contact?.phone);
+  
+  const displayedKits = kits.filter((kit: any) => statusFilter === "ALL" || kit.status === statusFilter);
 
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto h-full flex flex-col font-sans">
@@ -359,15 +362,28 @@ export default function CompradoresAdminPage() {
 
       <div className="bg-white rounded-3xl shadow-sm border border-slate-200 flex flex-col flex-1 overflow-hidden">
         <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row gap-4 items-center justify-between bg-slate-50">
-          <div className="relative w-full sm:max-w-md">
-            <Search className="w-5 h-5 absolute left-4 top-3.5 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Buscar por cliente, teléfono, boleto o referencia..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium shadow-sm"
-            />
+          <div className="relative w-full sm:max-w-xl flex gap-2">
+            <div className="relative flex-1">
+              <Search className="w-5 h-5 absolute left-4 top-3.5 text-slate-400" />
+              <input 
+                type="text" 
+                placeholder="Buscar por cliente, teléfono, boleto o referencia..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium shadow-sm"
+              />
+            </div>
+            <select 
+               value={statusFilter}
+               onChange={(e) => setStatusFilter(e.target.value)}
+               className="bg-white border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-700 shadow-sm"
+            >
+               <option value="ALL">Todos</option>
+               <option value="PAID">Pagados</option>
+               <option value="PARTIALLY_PAID">Abonados</option>
+               <option value="LOCKED">Fijados</option>
+               <option value="APARTADO">Apartados</option>
+            </select>
           </div>
           <div className="flex gap-4 text-sm font-bold flex-wrap">
             <button 
@@ -419,7 +435,7 @@ export default function CompradoresAdminPage() {
 
         <div className="flex-1 overflow-y-auto bg-slate-50 p-6">
           <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" : "flex flex-col gap-2"}>
-            {kits.map((kit: any) => (
+            {displayedKits.map((kit: any) => (
               viewMode === 'grid' ? (
                 <div key={kit.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group flex flex-col">
                   <div className={`absolute top-0 left-0 w-1 h-full ${kit.status === 'PAID' ? 'bg-emerald-500' : kit.status === 'PARTIALLY_PAID' ? 'bg-sky-500' : kit.status === 'LOCKED' ? 'bg-purple-500' : 'bg-amber-500'}`}></div>
@@ -540,10 +556,10 @@ export default function CompradoresAdminPage() {
             ))}
           </div>
         </div>            
-            {filteredTickets.length === 0 && (
+            {displayedKits.length === 0 && (
               <div className="col-span-full py-12 text-center text-slate-500 font-medium flex flex-col items-center">
                 <Ticket className="w-12 h-12 text-slate-300 mb-3" />
-                No se encontraron boletos con esa búsqueda.
+                No se encontraron boletos con esa búsqueda o filtro.
               </div>
             )}
       </div>
