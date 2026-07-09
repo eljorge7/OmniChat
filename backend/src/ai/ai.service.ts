@@ -90,6 +90,28 @@ export class AiService {
          this.logger.error(`No se pudo conectar con RentControl para extraer contexto: ${e.message}`);
       }
 
+      // 3.5 Lookup Customer via HTTP to FacturaPro
+      let facturaproContextInfo = "";
+      try {
+         const contact = await this.prisma.contact.findUnique({ where: { id: contactId } });
+         if (contact && contact.phone && company.activePlugins?.includes('FACTURAPRO')) {
+             contactPhone = contact.phone || contactPhone;
+             this.logger.log(`[AI-AGENT] Buscando identidad de FacturaPro para el cel: ${contact.phone}`);
+             const fpBaseUrl = process.env.FACTURAPRO_API_URL || 'https://facturapro.radiotecpro.com/api';
+             const fpResponse = await axios.get(`${fpBaseUrl}/integrations/omnichat/identify/${contact.phone}`, {
+                headers: { 'x-api-key': process.env.OMNICHAT_WEBHOOK_SECRET || 'SUPER_SECRET_KEY_123' }
+             });
+             
+             if (fpResponse.data?.found) {
+                const fData = fpResponse.data;
+                facturaproContextInfo = `\n[CONTEXTO INTERNO INVISIBLE FACTURAPRO: ${fData.facturaproContext}]\n`;
+                this.logger.log(`[AI-AGENT] Contexto FacturaPro inyectado: ${fData.facturaproContext}`);
+             }
+         }
+      } catch(e: any) {
+         this.logger.error(`No se pudo conectar con FacturaPro para extraer contexto: ${e.message}`);
+      }
+
       // Fetch Next 7 Days Calendar Context
       let calendarContext = "";
       try {
@@ -182,7 +204,7 @@ export class AiService {
 
       const defaultPhoneInjection = `\n[El número de WhatsApp actual de este cliente con el que estás hablando es: ${contactPhone}. Úsalo como 'phone' por defecto si ejecutas herramientas y el cliente no te da uno diferente.]\n`;
       const personalityBaseline = `\n[INSTRUCCIÓN DE PERSONALIDAD: Te llamas 'Julio'. Tienes una personalidad hiper-humana, amigable, ingeniosa y empática (estilo mexicano relajado). 1) ESTÁ ESTRICTAMENTE PROHIBIDO usar frases robóticas, acartonadas o corporativas como "nuestro equipo de humanos les atenderá" o "un agente se pondrá en contacto". En su lugar usa lenguaje natural como "Ahorita te paso con uno de mis compañeros", "Enseguida le aviso a los chicos del taller", o "Dame chance y te conecto con un especialista". 2) Tienes excelente sentido del humor: Si el cliente te pide un chiste, DEBES contarle uno (preferiblemente de tecnología, ingenieros, internet o cosas de oficina) y reírte con ellos usando 'jajaja' o emojis. 3) Siéntete libre de tener conversaciones triviales breves si el cliente está aburrido.]\n`;
-      const systemPrompt = (company.openAiPrompt || `Eres el recepcionista virtual experto de ${company.name}. Atiendes leads de manera corta, cortés y persuasiva por WhatsApp. Responde usando emojis moderadamente. Nunca inventes precios. Si no sabes, pide amablemente que esperen a un asesor humano. Sé conversacional, ¡nunca parezcas un bot rígido!`) + personalityBaseline + defaultPhoneInjection + tenantContextInfo + calendarContext + strictWispHubRules + currentTimeContext + ragContext + raffleContext;
+      const systemPrompt = (company.openAiPrompt || `Eres el recepcionista virtual experto de ${company.name}. Atiendes leads de manera corta, cortés y persuasiva por WhatsApp. Responde usando emojis moderadamente. Nunca inventes precios. Si no sabes, pide amablemente que esperen a un asesor humano. Sé conversacional, ¡nunca parezcas un bot rígido!`) + personalityBaseline + defaultPhoneInjection + tenantContextInfo + facturaproContextInfo + calendarContext + strictWispHubRules + currentTimeContext + ragContext + raffleContext;
 
       const messagesParams: any[] = [
         { role: 'system', content: systemPrompt }
@@ -413,20 +435,39 @@ export class AiService {
             {
               type: "function",
               function: {
-                name: "check_rentcontrol_balance",
-                description: "Consulta internamente la base de datos de los inquilinos de RentControl para saber si debe meses de renta o algún cargo.",
+                name: "report_rent_payment",
+                description: "Notifica al gestor o propietario que el inquilino acaba de realizar el pago de su renta (o abonar). Úsalo cuando el inquilino envíe un comprobante o diga 'Ya pagué la renta'.",
                 parameters: {
                   type: "object",
                   properties: {
-                    phone: { type: "string", description: "El número a 10 dígitos del cliente (Ej. 6421042123). Obtenlo del historial o solicítalo indirectamente si no está en tu memoria." }
+                    amount: { type: "number", description: "El monto que dice haber pagado." },
+                    tenantId: { type: "string", description: "El ID del inquilino (proveído en el Contexto)" }
                   },
-                  required: ["phone"]
+                  required: ["amount", "tenantId"]
                 }
               }
             }
          );
       }
 
+      if (company.activePlugins?.includes('FACTURAPRO')) {
+         tools.push(
+            {
+              type: "function",
+              function: {
+                name: "generate_facturapro_invoice_draft",
+                description: "Genera una factura en estado de BORRADOR en el sistema. Úsalo ÚNICAMENTE si el cliente te pide su factura y tienes un Ticket ID (orderId) en tu contexto.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    orderId: { type: "string", description: "El ID del ticket o venta pendiente de facturar (proveído en el Contexto)" }
+                  },
+                  required: ["orderId"]
+                }
+              }
+            }
+         );
+      }
 
       // 4. Ping OpenAI API
       this.logger.log(`[AI] Solicitando Inferencia a OpenAI para Contact ${contactId}...`);
@@ -454,7 +495,55 @@ export class AiService {
              this.logger.warn(`[AI] Error parseando argumentos de la herramienta ${toolCall.function.name}: ${toolCall.function.arguments}`);
          }
 
-         if (toolCall.function.name === "create_maintenance_ticket") {
+         if (toolCall.function.name === "report_rent_payment") {
+            this.logger.log(`[AI-AGENT] Ejecutando 'report_rent_payment' para Inquilino ${args.tenantId} por $${args.amount}`);
+            
+            try {
+               await this.prisma.contactNote.create({
+                  data: {
+                     text: `🤖 [SISTEMA AI] El inquilino reporta haber realizado un pago/abono por $${args.amount}.\nFavor de verificar las cuentas bancarias.`,
+                     contactId: contactId,
+                     authorId: 'SYSTEM_BOT'
+                  }
+               });
+
+               // Marcar para revisión humana
+               let validacionPipe = await this.prisma.pipeline.findFirst({
+                  where: { companyId: companyId, name: { contains: 'Validar', mode: 'insensitive' } }
+               });
+               if (!validacionPipe) {
+                  validacionPipe = await this.prisma.pipeline.create({
+                     data: { companyId: companyId, name: 'Pagos Por Validar', autoReply: '🤖 Tu pago está en revisión.' }
+                  });
+               }
+               await this.prisma.contact.update({
+                  where: { id: contactId },
+                  data: { pipelineId: validacionPipe.id, botStatus: 'PAUSED' }
+               });
+
+               return `✅ ¡He recibido tu reporte de pago por $${args.amount}! Lo he turnado al departamento de finanzas para su validación manual. Ellos te confirmarán por aquí en un momento. ¡Gracias!`;
+            } catch (err) {
+               return "Recibí la notificación de tu pago, pero hubo un error interno. Un asesor la validará manualmente.";
+            }
+         } else if (toolCall.function.name === "generate_facturapro_invoice_draft") {
+            this.logger.log(`[AI-AGENT] Ejecutando 'generate_facturapro_invoice_draft' para OrderID ${args.orderId}`);
+            
+            try {
+               const fpBaseUrl = process.env.FACTURAPRO_API_URL || 'https://facturapro.radiotecpro.com/api';
+               const fpRes = await axios.post(`${fpBaseUrl}/integrations/omnichat/invoices/generate`, { orderId: args.orderId }, {
+                  headers: { 'x-api-key': process.env.OMNICHAT_WEBHOOK_SECRET || 'SUPER_SECRET_KEY_123' }
+               });
+
+               if (fpRes.data?.success) {
+                   return `✅ ¡Listo! He generado el BORRADOR de tu factura con folio ${fpRes.data.invoiceNumber}. El equipo de finanzas la timbrará y te la enviará a tu correo a la brevedad. ¿Hay algo más en lo que pueda ayudarte?`;
+               } else {
+                   return `Lo siento, no pude generar la factura automáticamente (${fpRes.data?.message || 'Error'}). Ya le avisé a un humano para que la genere por ti.`;
+               }
+            } catch (err) {
+               this.logger.error("Error conectando con FacturaPro", err);
+               return "Lo siento, hubo un problema de conexión con el sistema de facturación. Un humano revisará tu caso en un momento.";
+            }
+         } else if (toolCall.function.name === "create_maintenance_ticket") {
             this.logger.log(`[AI-AGENT] Ejecutando 'create_maintenance_ticket' para Inquilino ${args.tenantId}`);
             
             try {
