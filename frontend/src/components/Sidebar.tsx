@@ -7,6 +7,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { ThemeToggle } from "./ThemeToggle";
+import { AppLauncher } from "./AppLauncher";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -133,12 +134,15 @@ export function Sidebar() {
              </button>
           )}
 
-          <Link href="/" onClick={() => setIsOpenMobile(false)} className={`flex items-center gap-3 mb-6 block w-fit ${isCollapsed ? 'mx-auto justify-center' : ''}`}>
-          <div className="bg-indigo-600 p-2.5 rounded-xl flex-shrink-0 shadow-lg shadow-indigo-600/20 transform -rotate-6">
-            <MessageSquareText className="w-6 h-6 text-white" />
+          <div className={`flex items-center mb-6 ${isCollapsed ? 'flex-col gap-4' : 'justify-between w-full'}`}>
+            <Link href="/" onClick={() => setIsOpenMobile(false)} className={`flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''}`}>
+              <div className="bg-indigo-600 p-2.5 rounded-xl flex-shrink-0 shadow-lg shadow-indigo-600/20 transform -rotate-6">
+                <MessageSquareText className="w-6 h-6 text-white" />
+              </div>
+              {!isCollapsed && <span className="text-2xl font-black text-slate-900 tracking-tight transition-opacity duration-200">OmniChat</span>}
+            </Link>
+            <AppLauncher currentApp="OmniChat" />
           </div>
-          {!isCollapsed && <span className="text-2xl font-black text-slate-900 tracking-tight transition-opacity duration-200">OmniChat</span>}
-        </Link>
         
         {isAdmin && companies.length > 0 && !isCollapsed && (
            <div className="relative transition-opacity duration-200">
