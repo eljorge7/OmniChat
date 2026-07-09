@@ -219,10 +219,10 @@ export default function CompradoresAdminPage() {
       });
       await fetchRaffle(companyId);
       
-      // Update local state so it shows as ABONADO and the button disappears
+      // Update local state so it shows as LOCKED and the button disappears
       setEditingKit({
         ...editingKit,
-        status: 'PARTIALLY_PAID'
+        status: 'LOCKED'
       });
     } catch (err) {
       console.error(err);
@@ -320,8 +320,18 @@ export default function CompradoresAdminPage() {
 
   const kits = Array.from(kitsMap.values()).map((kit: any) => {
     const allPaid = kit.tickets.every((t: any) => t.status === 'PAID');
-    const anyPaidOrPartial = kit.amountPaid > 0;
-    kit.status = allPaid ? 'PAID' : (anyPaidOrPartial ? 'PARTIALLY_PAID' : 'APARTADO');
+    const anyPartiallyPaid = kit.tickets.some((t: any) => t.status === 'PARTIALLY_PAID');
+    
+    if (allPaid) {
+      kit.status = 'PAID';
+    } else if (kit.amountPaid > 0) {
+      kit.status = 'PARTIALLY_PAID'; // Real Abono
+    } else if (anyPartiallyPaid) {
+      kit.status = 'LOCKED'; // Fijado sin abono (DB is PARTIALLY_PAID but amountPaid is 0)
+    } else {
+      kit.status = 'APARTADO'; // Regular reservation
+    }
+    
     kit.tickets.sort((a: any, b: any) => parseInt(a.ticketNumber) - parseInt(b.ticketNumber));
     kit.reservedAt = kit.tickets[0]?.reservedAt;
     return kit;
@@ -412,7 +422,7 @@ export default function CompradoresAdminPage() {
             {kits.map((kit: any) => (
               viewMode === 'grid' ? (
                 <div key={kit.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group flex flex-col">
-                  <div className={`absolute top-0 left-0 w-1 h-full ${kit.status === 'PAID' ? 'bg-emerald-500' : kit.status === 'PARTIALLY_PAID' ? 'bg-sky-500' : 'bg-amber-500'}`}></div>
+                  <div className={`absolute top-0 left-0 w-1 h-full ${kit.status === 'PAID' ? 'bg-emerald-500' : kit.status === 'PARTIALLY_PAID' ? 'bg-sky-500' : kit.status === 'LOCKED' ? 'bg-purple-500' : 'bg-amber-500'}`}></div>
                   
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex flex-col gap-1">
@@ -430,8 +440,9 @@ export default function CompradoresAdminPage() {
                         <span className="text-xs font-bold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-md w-fit">Paquete de {kit.tickets.length}</span>
                       )}
                     </div>
-                    <span className={`px-2.5 py-1 text-[10px] font-black rounded-full uppercase tracking-wider ${kit.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : kit.status === 'PARTIALLY_PAID' ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {kit.status === 'PAID' ? 'PAGADO' : kit.status === 'PARTIALLY_PAID' ? 'ABONADO' : 'APARTADO'}
+                    <span className={`px-2.5 py-1 text-[10px] font-black rounded-full uppercase tracking-wider flex items-center gap-1 ${kit.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : kit.status === 'PARTIALLY_PAID' ? 'bg-sky-100 text-sky-700' : kit.status === 'LOCKED' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {kit.status === 'LOCKED' && <span className="text-[10px]">🔒</span>}
+                      {kit.status === 'PAID' ? 'PAGADO' : kit.status === 'PARTIALLY_PAID' ? 'ABONADO' : kit.status === 'LOCKED' ? 'FIJADO' : 'APARTADO'}
                     </span>
                   </div>
 
@@ -480,7 +491,7 @@ export default function CompradoresAdminPage() {
               ) : (
                 <div key={kit.id} className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow flex items-center justify-between group">
                    <div className="flex items-center gap-4">
-                      <div className={`w-2 h-12 rounded-full ${kit.status === 'PAID' ? 'bg-emerald-500' : kit.status === 'PARTIALLY_PAID' ? 'bg-sky-500' : 'bg-amber-500'}`}></div>
+                      <div className={`w-2 h-12 rounded-full ${kit.status === 'PAID' ? 'bg-emerald-500' : kit.status === 'PARTIALLY_PAID' ? 'bg-sky-500' : kit.status === 'LOCKED' ? 'bg-purple-500' : 'bg-amber-500'}`}></div>
                       <div>
                          <div className="flex items-center gap-2">
                            <span className="font-black text-slate-800">
@@ -490,8 +501,9 @@ export default function CompradoresAdminPage() {
                                  ? kit.tickets.map((t:any) => `#${t.ticketNumber}`).join(', ')
                                  : `#${kit.tickets[0].ticketNumber} y ${kit.tickets.length - 1} más`}
                            </span>
-                           <span className={`px-2 py-0.5 text-[9px] font-black rounded-full uppercase tracking-wider ${kit.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : kit.status === 'PARTIALLY_PAID' ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-700'}`}>
-                             {kit.status === 'PAID' ? 'PAGADO' : kit.status === 'PARTIALLY_PAID' ? 'ABONADO' : 'APARTADO'}
+                           <span className={`px-2 py-0.5 text-[9px] font-black rounded-full uppercase tracking-wider flex items-center gap-1 ${kit.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : kit.status === 'PARTIALLY_PAID' ? 'bg-sky-100 text-sky-700' : kit.status === 'LOCKED' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
+                             {kit.status === 'LOCKED' && <span className="text-[9px]">🔒</span>}
+                             {kit.status === 'PAID' ? 'PAGADO' : kit.status === 'PARTIALLY_PAID' ? 'ABONADO' : kit.status === 'LOCKED' ? 'FIJADO' : 'APARTADO'}
                            </span>
                          </div>
                          <div className="text-xs text-slate-500 mt-0.5 flex gap-3">
@@ -558,8 +570,9 @@ export default function CompradoresAdminPage() {
                      : `${editingKit.tickets.length} Boletos`}
                 </span>
                 <div className="flex flex-col items-end gap-2">
-                  <span className={`px-3 py-1.5 text-xs font-black rounded-full uppercase tracking-wider ${editingKit.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : editingKit.status === 'PARTIALLY_PAID' ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {editingKit.status === 'PAID' ? 'PAGADO' : editingKit.status === 'PARTIALLY_PAID' ? 'ABONADO' : 'APARTADO'}
+                  <span className={`px-3 py-1.5 text-xs font-black rounded-full uppercase tracking-wider flex items-center gap-1 ${editingKit.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : editingKit.status === 'PARTIALLY_PAID' ? 'bg-sky-100 text-sky-700' : editingKit.status === 'LOCKED' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {editingKit.status === 'LOCKED' && <span>🔒</span>}
+                    {editingKit.status === 'PAID' ? 'PAGADO' : editingKit.status === 'PARTIALLY_PAID' ? 'ABONADO' : editingKit.status === 'LOCKED' ? 'FIJADO' : 'APARTADO'}
                   </span>
                   {editingKit.reservedAt && (
                     <span className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase">
@@ -667,7 +680,7 @@ export default function CompradoresAdminPage() {
                 )}
               </div>
 
-              {editingKit.status === 'APARTADO' && editingKit.amountPaid === 0 && (
+              {editingKit.status === 'APARTADO' && (
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6 relative overflow-hidden flex flex-col items-center text-center">
                   <AlertTriangle className="w-6 h-6 text-amber-500 mb-2" />
                   <h4 className="text-sm font-bold text-amber-800 mb-1">Evitar Cancelación Automática</h4>
@@ -675,9 +688,9 @@ export default function CompradoresAdminPage() {
                   <button 
                     onClick={handleSecureApartado}
                     disabled={isSecuring}
-                    className="bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 text-white font-bold py-2 px-6 rounded-xl transition-colors flex items-center justify-center w-full"
+                    className="bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 text-white font-bold py-2 px-6 rounded-xl transition-colors flex items-center justify-center w-full shadow-sm"
                   >
-                    {isSecuring ? <Loader2 className="w-5 h-5 animate-spin" /> : "Fijar Apartado (Sin Abono)"}
+                    {isSecuring ? <Loader2 className="w-5 h-5 animate-spin" /> : "🔒 Fijar Apartado (Bloquear)"}
                   </button>
                 </div>
               )}
