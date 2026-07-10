@@ -28,9 +28,7 @@ export default function AiAnalyticsPage() {
     const fetchAnalytics = async () => {
       try {
         const activeCompanyId = localStorage.getItem('activeCompanyId') || '';
-        const res = await axios.get(`https://omnichat.radiotecpro.com/api/v1/ai/analytics?companyId=${activeCompanyId}`, {
-          headers: { Authorization: `Bearer ${(session?.user as any)?.accessToken || ''}` }
-        });
+        const res = await axios.get(`https://omnichat.radiotecpro.com/api/v1/ai/analytics?companyId=${activeCompanyId}`);
         if (res.data.success) {
           setMetrics(res.data.data);
         }
@@ -41,10 +39,8 @@ export default function AiAnalyticsPage() {
       }
     };
     
-    if ((session?.user as any)?.accessToken) {
-      fetchAnalytics();
-    }
-  }, [session]);
+    fetchAnalytics();
+  }, []);
 
   if (loading) {
     return (
