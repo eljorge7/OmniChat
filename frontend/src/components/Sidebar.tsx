@@ -46,6 +46,7 @@ export function Sidebar() {
 
   const primaryNav = [
     { name: 'Estadísticas / KPIs', href: '/', icon: PieChart, adminOnly: true },
+    { name: 'Analítica IA & ROI', href: '/dashboard/ai', icon: BrainCircuit, adminOnly: true },
     { name: 'Agencia Maestra', href: '/dashboard', icon: Building2, adminOnly: true },
     { name: 'Tablero Visual (Kanban)', href: '/pipeline', icon: Layers, adminOnly: false },
     { name: 'Bandeja Compartida', href: '/inbox', icon: MessageSquareText, adminOnly: false },

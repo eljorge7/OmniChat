@@ -483,6 +483,28 @@ export class AiService {
 
       const responseMessage = completion.choices[0]?.message;
 
+      // 4.5 AI Analytics & ROI Telemetry
+      const tokensUsed = completion.usage?.total_tokens || 0;
+      let isAutomatedTask = false;
+      if (responseMessage?.tool_calls && responseMessage.tool_calls.length > 0) {
+         const funcName = responseMessage.tool_calls[0].function.name;
+         if (["report_rent_payment", "generate_facturapro_invoice_draft", "create_maintenance_ticket", "process_isp_installation_request", "verify_wisphub_receipt"].includes(funcName)) {
+            isAutomatedTask = true;
+         }
+      }
+
+      try {
+         await this.prisma.company.update({
+            where: { id: companyId },
+            data: {
+               aiTokensUsed: { increment: tokensUsed },
+               ...(isAutomatedTask ? { aiTasksAutomated: { increment: 1 }, aiMoneySaved: { increment: 2.0 } } : {})
+            }
+         });
+      } catch (e) {
+         this.logger.error("Error updating AI analytics", e);
+      }
+
       // 5. Check if OpenAI wants to call a Function
       if (responseMessage?.tool_calls && responseMessage.tool_calls.length > 0) {
          const toolCall: any = responseMessage.tool_calls[0];

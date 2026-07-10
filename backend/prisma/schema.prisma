@@ -45,6 +45,11 @@ model Company {
   emergencyMode    Boolean @default(false)
   emergencyMessage String? @db.Text
 
+  // AI Analytics & ROI (Phase 3)
+  aiTokensUsed     Int     @default(0)
+  aiTasksAutomated Int     @default(0)
+  aiMoneySaved     Float   @default(0.0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
