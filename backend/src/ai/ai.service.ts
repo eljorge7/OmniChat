@@ -418,6 +418,22 @@ export class AiService {
             {
               type: "function",
               function: {
+                name: "create_rentcontrol_tenant",
+                description: "Da de alta a un prospecto como Inquilino oficial en RentControl. Ejecuta esta función ÚNICAMENTE cuando el prospecto acepte rentar y proporcione su nombre y teléfono (el correo es opcional). Da la bienvenida como nuevo inquilino al tener éxito.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string", description: "Nombre completo del prospecto/nuevo inquilino." },
+                    phone: { type: "string", description: "Número de WhatsApp o teléfono a 10 dígitos." },
+                    email: { type: "string", description: "Correo electrónico (Opcional)." }
+                  },
+                  required: ["name", "phone"]
+                }
+              }
+            },
+            {
+              type: "function",
+              function: {
                 name: "create_maintenance_ticket",
                 description: "Registra un ticket oficial de mantenimiento en el sistema cuando un inquilino reporta un problema físico en su unidad.",
                 parameters: {
@@ -488,7 +504,7 @@ export class AiService {
       let isAutomatedTask = false;
       if (responseMessage?.tool_calls && responseMessage.tool_calls.length > 0) {
          const funcName = (responseMessage.tool_calls[0] as any).function.name;
-         if (["report_rent_payment", "generate_facturapro_invoice_draft", "create_maintenance_ticket", "process_isp_installation_request", "verify_wisphub_receipt"].includes(funcName)) {
+         if (["report_rent_payment", "generate_facturapro_invoice_draft", "create_maintenance_ticket", "process_isp_installation_request", "verify_wisphub_receipt", "create_rentcontrol_tenant", "check_wisphub_balance", "check_wisphub_technical_status"].includes(funcName)) {
             isAutomatedTask = true;
          }
       }
