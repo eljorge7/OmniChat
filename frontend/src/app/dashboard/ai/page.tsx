@@ -27,8 +27,9 @@ export default function AiAnalyticsPage() {
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        const res = await axios.get("https://omnichat.radiotecpro.com/api/v1/ai/analytics", {
-          headers: { Authorization: `Bearer ${session?.user?.accessToken}` }
+        const activeCompanyId = localStorage.getItem('activeCompanyId') || '';
+        const res = await axios.get(`https://omnichat.radiotecpro.com/api/v1/ai/analytics?companyId=${activeCompanyId}`, {
+          headers: { Authorization: `Bearer ${(session?.user as any)?.accessToken || ''}` }
         });
         if (res.data.success) {
           setMetrics(res.data.data);

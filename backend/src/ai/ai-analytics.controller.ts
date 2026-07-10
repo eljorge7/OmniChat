@@ -1,17 +1,16 @@
-import { Controller, Get, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Query, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { JwtAuthGuard } from '../users/jwt-auth.guard';
 
-@Controller('ai/analytics')
-@UseGuards(JwtAuthGuard)
+@Controller('api/v1/ai/analytics')
 export class AiAnalyticsController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Get()
-  async getAiAnalytics(@Req() req: any) {
-    const user = req.user;
+  async getAiAnalytics(@Query('companyId') companyId: string) {
+    if (!companyId) throw new HttpException('companyId is required', HttpStatus.BAD_REQUEST);
+
     const company = await this.prisma.company.findUnique({
-      where: { id: user.companyId },
+      where: { id: companyId },
       select: {
         aiTokensUsed: true,
         aiTasksAutomated: true,

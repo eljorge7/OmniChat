@@ -487,7 +487,7 @@ export class AiService {
       const tokensUsed = completion.usage?.total_tokens || 0;
       let isAutomatedTask = false;
       if (responseMessage?.tool_calls && responseMessage.tool_calls.length > 0) {
-         const funcName = responseMessage.tool_calls[0].function.name;
+         const funcName = (responseMessage.tool_calls[0] as any).function.name;
          if (["report_rent_payment", "generate_facturapro_invoice_draft", "create_maintenance_ticket", "process_isp_installation_request", "verify_wisphub_receipt"].includes(funcName)) {
             isAutomatedTask = true;
          }
