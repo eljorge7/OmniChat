@@ -41,7 +41,7 @@ export default function AiAnalyticsPage() {
       }
     };
     
-    if (session?.user?.accessToken) {
+    if ((session?.user as any)?.accessToken) {
       fetchAnalytics();
     }
   }, [session]);
