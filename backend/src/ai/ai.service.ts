@@ -132,7 +132,7 @@ export class AiService {
       } catch(e) { console.error(e) }
 
       const strictWispHubRules = company.activePlugins?.includes('WISPHUB') 
-        ? `\n[REGLAS DE NEGOCIO Y ENRUTAMIENTO (¡MUY IMPORTANTE!): 1. Si el cliente pregunta por planes de internet, paquetes o cobertura, USA INMEDIATAMENTE la herramienta 'route_user_to_pipeline' con pipelineKeyword: 'Ventas-Radiotec' en esa misma respuesta. No esperes a que acabe la charla. 2. Si el cliente reporta un problema técnico grave (sin internet, foco rojo, lentitud), usa INMEDIATAMENTE 'route_user_to_pipeline' con pipelineKeyword: 'Soporte-Radiotec'. 3. Si estás recolectando datos para Internet (process_isp_installation_request), el teléfono debe tener 10 a 12 dígitos y el correo un '@'. 4. Si el último mensaje del historial fue un comprobante/factura enviada por nosotros, y el cliente responde "Gracias" o "Listo", despídete respondiendo ÚNICAMENTE con un emoji para no estorbar.]` 
+        ? `\n[REGLAS DE NEGOCIO Y ENRUTAMIENTO (¡MUY IMPORTANTE!): 1. Si el cliente pregunta por planes de internet, paquetes o cobertura, USA INMEDIATAMENTE la herramienta 'route_user_to_pipeline' con pipelineKeyword: 'Ventas-Radiotec' en esa misma respuesta. No esperes a que acabe la charla. 2. Si el cliente reporta un problema técnico grave (sin internet, foco rojo, lentitud), usa INMEDIATAMENTE 'route_user_to_pipeline' con pipelineKeyword: 'Soporte-Radiotec'. 3. Si estás recolectando datos para Internet (process_isp_installation_request), el teléfono debe tener 10 a 12 dígitos y el correo un '@'. 4. Si el último mensaje del historial fue un comprobante/factura enviada por nosotros, y el cliente responde "Gracias" o "Listo", despídete respondiendo ÚNICAMENTE con un emoji para no estorbar. 5. Si el cliente reporta una falla técnica de internet y no puedes resolverla con tus conocimientos (o no funciona reiniciar el router), dile que levantarás un ticket técnico y pídele su nombre completo y descripción de la falla. Una vez que te dé esos datos, DEBES ejecutar INMEDIATAMENTE la herramienta 'create_support_ticket'.]` 
         : '';
       
       const currentTimeContext = `\n[CONTEXTO TEMPORAL ACTUAL: El servidor donde habitas opera en Hora Local de Sonora (UTC-7). Hoy es **${new Date().toLocaleString('es-MX', { timeZone: 'America/Hermosillo', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' })}**. SI el cliente te dice: "Hablamos el Lunes", o "Te aviso a las 8am", usa Inmediatamente la herramienta 'schedule_followup_reminder' fijando la fecha en formato ISO, y el sistema se encargará de reabrir el chat en ese momento por ti exacto.]\n`;
@@ -408,6 +408,21 @@ export class AiService {
                      required: ["phone"]
                   }
                }
+            },
+            {
+               type: "function",
+               function: {
+                  name: "create_support_ticket",
+                  description: "Crea un ticket de soporte técnico cuando no puedas resolver una falla de internet. Úsalo ÚNICAMENTE después de pedirle al cliente su nombre completo y confirmar su falla.",
+                  parameters: {
+                     type: "object",
+                     properties: {
+                        customerName: { type: "string", description: "Nombre completo del cliente que reporta la falla." },
+                        issueDescription: { type: "string", description: "Descripción detallada de la falla reportada por el cliente." }
+                     },
+                     required: ["customerName", "issueDescription"]
+                  }
+               }
             }
          );
       }
@@ -504,7 +519,7 @@ export class AiService {
       let isAutomatedTask = false;
       if (responseMessage?.tool_calls && responseMessage.tool_calls.length > 0) {
          const funcName = (responseMessage.tool_calls[0] as any).function.name;
-         if (["report_rent_payment", "generate_facturapro_invoice_draft", "create_maintenance_ticket", "process_isp_installation_request", "verify_wisphub_receipt", "create_rentcontrol_tenant", "check_wisphub_balance", "check_wisphub_technical_status"].includes(funcName)) {
+         if (["report_rent_payment", "generate_facturapro_invoice_draft", "create_maintenance_ticket", "process_isp_installation_request", "verify_wisphub_receipt", "create_rentcontrol_tenant", "check_wisphub_balance", "check_wisphub_technical_status", "create_support_ticket"].includes(funcName)) {
             isAutomatedTask = true;
          }
       }
@@ -1092,6 +1107,50 @@ export class AiService {
                    toolReturnContext = `[SISTEMA INTERNO: Error de conexión con WispHub. Dile al cliente que estamos experimentando una interrupción del sistema interno y que un técnico leerá su mensaje en unos momentos.]`;
                 }
             }
+         } else if (toolCall.function.name === "create_support_ticket") {
+             this.logger.log(`[AI-WISPHUB] Intentando crear Ticket de Soporte para: ${args.customerName}`);
+             
+             try {
+                // FALLBACK + API ATTEMPT
+                let ticketId = "Generando...";
+
+                // 1. Agregar TAG y NOTA en OmniChat (Fallback Local Seguro)
+                await this.prisma.contact.update({
+                   where: { id: contactId },
+                   data: { tags: { push: 'TICKET-SOPORTE' } }
+                });
+                
+                await this.prisma.contactNote.create({
+                   data: {
+                      text: `🤖 [TICKET AI] Julio intentó levantar un ticket técnico.\nCliente: ${args.customerName}\nFalla: ${args.issueDescription}\n🚨 Revisar en WispHub o crear manualmente.`,
+                      contactId: contactId,
+                      authorId: 'SYSTEM_BOT'
+                   }
+                });
+
+                // 2. Intentar POST experimental a WispHub
+                if (company.wisphubApiKey) {
+                   try {
+                       const postRes = await axios.post('https://api.wisphub.net/api/tickets/', {
+                           nombre_cliente: args.customerName,
+                           problema: args.issueDescription,
+                           estado: 1
+                       }, { headers: { 'Authorization': `Api-Key ${company.wisphubApiKey}` } });
+                       
+                       if (postRes.data && postRes.data.id_ticket) {
+                           ticketId = postRes.data.id_ticket.toString();
+                       }
+                   } catch (apiErr: any) {
+                       this.logger.warn(`[AI-WISPHUB] Falló creación directa de ticket por API. Se usó el Fallback local. ${apiErr.message}`);
+                       ticketId = "Pendiente de Asignación";
+                   }
+                }
+
+                return `✅ ¡Entendido ${args.customerName}! Ya hemos levantado tu ticket de soporte técnico (ID: ${ticketId}). Un técnico especialista se comunicará contigo muy pronto o visitará tu domicilio. ¿Hay algo más en lo que pueda apoyarte por ahora?`;
+             } catch (err: any) {
+                this.logger.error("Error creando ticket de soporte", err);
+                return "Lo siento, intenté levantar tu ticket técnico pero nuestro sistema interno está ocupado. Ya avisé a mis compañeros técnicos para que revisen este chat manualmente.";
+             }
          } else {
              // Hallucinated tool
              this.logger.warn(`[AI] OpenAI intentó llamar a una función no programada: ${toolCall.function.name}`);
