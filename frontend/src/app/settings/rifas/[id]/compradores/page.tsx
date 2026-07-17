@@ -848,7 +848,7 @@ export default function CompradoresAdminPage() {
               <div>
                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Ejemplo del Mensaje que se enviará:</p>
                  <div className="bg-slate-100 p-4 rounded-xl text-sm text-slate-700 whitespace-pre-wrap font-medium">
-                   {`👋 ¡Hola [Nombre del Cliente]!\n\nTe escribimos de parte de ${raffle.company?.name || 'la empresa'} para saludarte y recordarte sobre tu paquete de boletos apartados para la rifa "${raffle.name}".\n\n🎟️ Tus boletos: [Boletos]\n✅ Abonado: $[Abono] MXN\n⏳ Restante por pagar: $[Deuda] MXN\n\n💳 PAGA EN LÍNEA (Tarjeta u Oxxo):\n👉 Da clic aquí para pagar y asegurar tus boletos:\n[Link de Pago]\n\nQueremos recordarte que somos una empresa 100% seria y fiable en la generación de sorteos. Tu participación es muy importante para nosotros.\n\nSi tienes alguna duda o deseas reportar tu pago, ¡estamos a tus órdenes!`}
+                   {`👋 ¡Hola [Nombre del Cliente]!\n\nTe escribimos de parte de ${raffle.company?.name || 'la empresa'} para saludarte y recordarte sobre tu paquete de boletos apartados para la rifa "${raffle.name}".\n\n🎟️ Tus boletos: [Boletos]\n✅ Abonado: $[Abono] MXN\n⏳ Restante por pagar: $[Deuda] MXN\n\n💳 PAGA EN LÍNEA (Tarjeta u Oxxo):\n👉 Da clic aquí para pagar y asegurar tus boletos:\n[Link de Pago]\n\n🏦 TRANSFERENCIA BANCARIA:\n- Banco: Banorte\n- CLABE: 072762006567799946\n- A nombre de: Jorge Hurtado Cota\n- Concepto: [Referencia]\n\nQueremos recordarte que somos una empresa 100% seria y fiable en la generación de sorteos. Tu participación es muy importante para nosotros.\n\nSi tienes alguna duda o deseas reportar tu pago, ¡estamos a tus órdenes!`}
                  </div>
               </div>
 

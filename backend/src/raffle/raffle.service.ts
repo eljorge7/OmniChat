@@ -534,7 +534,7 @@ export class RaffleService {
     
     if (raffle.company.stripeSecretKey) {
         const checkoutUrl = `https://api.omnichat.radiotecpro.com/api/v1/payments/pay/${paymentReference}`;
-        paymentMessage = `\n💰 *Total a pagar:* $${totalAmount.toFixed(2)} MXN.\n\n💳 *PAGA EN LÍNEA (Tarjeta u Oxxo):*\n👉 Da clic aquí para pagar automáticamente y asegurar tus boletos:\n${checkoutUrl}`;
+        paymentMessage = `\n💰 *Total a pagar:* $${totalAmount.toFixed(2)} MXN.\n\n💳 *PAGA EN LÍNEA (Tarjeta u Oxxo):*\n👉 Da clic aquí para pagar automáticamente y asegurar tus boletos:\n${checkoutUrl}\n\n🏦 *TRANSFERENCIA BANCARIA:*\n- Banco: *Banorte*\n- CLABE: *072762006567799946*\n- A nombre de: *Jorge Hurtado Cota*\n- Concepto: *${paymentReference}*\n\nPor favor, responde a este mensaje enviando la FOTO de tu comprobante de pago si usas transferencia.`;
     }
 
     const expandedNumbers = this.expandTicketNumbers(ticketNumbers, raffle.totalTickets, raffle.opportunitiesMultiplier);
@@ -653,11 +653,13 @@ export class RaffleService {
       if (debt <= 0) continue; // Por si acaso
 
       let paymentMessage = ``;
+      const bankDetails = `\n🏦 *TRANSFERENCIA BANCARIA:*\n- Banco: *Banorte*\n- CLABE: *072762006567799946*\n- A nombre de: *Jorge Hurtado Cota*\n- Concepto / Referencia: *${kit.paymentReference || 'N/A'}*\n`;
+
       if (raffle.company.stripeSecretKey && kit.paymentReference) {
          const checkoutUrl = `https://api.omnichat.radiotecpro.com/api/v1/payments/pay/${kit.paymentReference}`;
-         paymentMessage = `\n💳 *PAGA EN LÍNEA (Tarjeta u Oxxo):*\n👉 Da clic aquí para pagar y asegurar tus boletos:\n${checkoutUrl}\n`;
+         paymentMessage = `\n💳 *PAGA EN LÍNEA (Tarjeta u Oxxo):*\n👉 Da clic aquí para pagar y asegurar tus boletos:\n${checkoutUrl}\n${bankDetails}`;
       } else {
-         paymentMessage = `\n🏦 *DATOS DE PAGO:*\n- Banco: *Banorte*\n- CLABE: *072762006567799946*\n- A nombre de: *Jorge Hurtado Cota*\n- Concepto / Referencia: *${kit.paymentReference || 'N/A'}*\n`;
+         paymentMessage = bankDetails;
       }
 
       let drawMsg = dateStr ? `\n\n📅 La fecha del sorteo es el *${dateStr}*, ¡y ya está muy próximo! ⏰` : ``;
