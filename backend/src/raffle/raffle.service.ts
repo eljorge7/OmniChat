@@ -637,46 +637,42 @@ export class RaffleService {
     }
 
     const kits = Array.from(kitsMap.values());
-    let sentCount = 0;
+    // Enviar en background para evitar Timeout de HTTP (504 Gateway Timeout) en peticiones largas
+    (async () => {
+      let sentCount = 0;
+      for (const kit of kits) {
+        if (!kit.contact || !kit.contact.phone) continue;
+        
+        const debt = kit.totalPrice - kit.amountPaid;
+        if (debt <= 0) continue; // Por si acaso
 
-    // Formato de fecha del sorteo
-    let dateStr = '';
-    if (raffle.drawDate) {
-      const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-      dateStr = raffle.drawDate.toLocaleDateString('es-MX', options);
-    }
+        let paymentMessage = ``;
+        const bankDetails = `\n🏦 *TRANSFERENCIA BANCARIA:*\n- Banco: *Banorte*\n- CLABE: *072762006567799946*\n- A nombre de: *Jorge Hurtado Cota*\n- Concepto / Referencia: *${kit.paymentReference || 'N/A'}*\n`;
 
-    for (const kit of kits) {
-      if (!kit.contact || !kit.contact.phone) continue;
-      
-      const debt = kit.totalPrice - kit.amountPaid;
-      if (debt <= 0) continue; // Por si acaso
+        if (raffle.company.stripeSecretKey && kit.paymentReference) {
+           const checkoutUrl = `https://api.omnichat.radiotecpro.com/api/v1/payments/pay/${kit.paymentReference}`;
+           paymentMessage = `\n💳 *PAGA EN LÍNEA (Tarjeta u Oxxo):*\n👉 Da clic aquí para pagar y asegurar tus boletos:\n${checkoutUrl}\n${bankDetails}`;
+        } else {
+           paymentMessage = bankDetails;
+        }
 
-      let paymentMessage = ``;
-      const bankDetails = `\n🏦 *TRANSFERENCIA BANCARIA:*\n- Banco: *Banorte*\n- CLABE: *072762006567799946*\n- A nombre de: *Jorge Hurtado Cota*\n- Concepto / Referencia: *${kit.paymentReference || 'N/A'}*\n`;
+        let drawMsg = dateStr ? `\n\n📅 La fecha del sorteo es el *${dateStr}*, ¡y ya está muy próximo! ⏰` : ``;
 
-      if (raffle.company.stripeSecretKey && kit.paymentReference) {
-         const checkoutUrl = `https://api.omnichat.radiotecpro.com/api/v1/payments/pay/${kit.paymentReference}`;
-         paymentMessage = `\n💳 *PAGA EN LÍNEA (Tarjeta u Oxxo):*\n👉 Da clic aquí para pagar y asegurar tus boletos:\n${checkoutUrl}\n${bankDetails}`;
-      } else {
-         paymentMessage = bankDetails;
+        const message = `👋 ¡Hola ${kit.contact.name}!\n\nTe escribimos de parte de *${raffle.company.name}* para saludarte y recordarte sobre tu paquete de boletos apartados para la rifa *"${raffle.name}"*.${drawMsg}\n\n🎟️ Tus boletos: *${kit.tickets.join(', ')}*\n✅ Abonado: *$${kit.amountPaid} MXN*\n⏳ Restante por pagar: *$${debt} MXN*\n${paymentMessage}\nQueremos recordarte que somos una empresa 100% seria y fiable en la generación de sorteos. Tu participación es muy importante para nosotros.\n\nSi tienes alguna duda o deseas reportar tu pago, ¡estamos a tus órdenes!`;
+
+        try {
+          await this.whatsapp.sendDirectMessage(companyId, kit.contact.phone, message, kit.contact.id);
+          sentCount++;
+          // Pausa para no saturar la API
+          await new Promise(res => setTimeout(res, 2000));
+        } catch (err) {
+          this.logger.error(`Error enviando recordatorio a ${kit.contact.phone}`, err);
+        }
       }
+      this.logger.log(`Recordatorios finalizados. Total de mensajes enviados: ${sentCount}`);
+    })();
 
-      let drawMsg = dateStr ? `\n\n📅 La fecha del sorteo es el *${dateStr}*, ¡y ya está muy próximo! ⏰` : ``;
-
-      const message = `👋 ¡Hola ${kit.contact.name}!\n\nTe escribimos de parte de *${raffle.company.name}* para saludarte y recordarte sobre tu paquete de boletos apartados para la rifa *"${raffle.name}"*.${drawMsg}\n\n🎟️ Tus boletos: *${kit.tickets.join(', ')}*\n✅ Abonado: *$${kit.amountPaid} MXN*\n⏳ Restante por pagar: *$${debt} MXN*\n${paymentMessage}\nQueremos recordarte que somos una empresa 100% seria y fiable en la generación de sorteos. Tu participación es muy importante para nosotros.\n\nSi tienes alguna duda o deseas reportar tu pago, ¡estamos a tus órdenes!`;
-
-      try {
-        await this.whatsapp.sendDirectMessage(companyId, kit.contact.phone, message, kit.contact.id);
-        sentCount++;
-        // Pausa para no saturar la API
-        await new Promise(res => setTimeout(res, 2000));
-      } catch (err) {
-        this.logger.error(`Error enviando recordatorio a ${kit.contact.phone}`, err);
-      }
-    }
-
-    return { message: `Recordatorios enviados con éxito. Total de mensajes: ${sentCount}` };
+    return { message: `Enviando recordatorios en segundo plano a ${kits.length} clientes. Puede tardar unos minutos en terminar.` };
   }
 
   async resendOpportunities(raffleId: string) {
