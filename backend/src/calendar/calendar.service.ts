@@ -105,7 +105,9 @@ export class CalendarService {
         endTime: data.endTime ? new Date(data.endTime) : undefined,
         status: data.status,
         assignedToId: data.assignedToId,
-        pipelineId: data.pipelineId
+        pipelineId: data.pipelineId,
+        locationLogged: data.locationLogged,
+        photoEvidence: data.photoEvidence
       }
     });
 

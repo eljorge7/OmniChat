@@ -185,6 +185,8 @@ model CalendarEvent {
 
   location    String? // Ej. "Av. Universidad 400"
   locationUrl String? // Ej. shortlink de Google Maps
+  locationLogged Json?   // Ej. { "lat": 19.4326, "lng": -99.1332 }
+  photoEvidence  String? // URL a la foto de evidencia al completar el servicio
 
   // Relaciones
   contactId String?
