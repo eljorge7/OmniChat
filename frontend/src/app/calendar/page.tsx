@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import axios from "axios";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { es } from "date-fns/locale";
-import { CalendarDays, Plus } from "lucide-react";
+import { CalendarDays, Plus, MessageCircle } from "lucide-react";
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
@@ -269,6 +269,17 @@ export default function CalendarPage() {
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                   Editar
                 </button>
+                {(() => {
+                   const phoneMatch = selectedEvent.description?.match(/Tel(?:é|e)fono:\s*(\d+)/i);
+                   const chatId = selectedEvent.contact?.id || (phoneMatch ? phoneMatch[1] : null);
+                   if (!chatId) return null;
+                   return (
+                     <a href={`/inbox?chatId=${chatId}`} className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-xl flex items-center gap-2 transition-colors text-sm">
+                       <MessageCircle className="w-4 h-4" />
+                       Ver Chat
+                     </a>
+                   );
+                })()}
                 <button onClick={() => {
                   if (confirm(`¿Estás seguro de eliminar el evento "${selectedEvent.title}"? Esto lo borrará permanentemente de la agenda y de Google Calendar.`)) {
                     handleDelete(selectedEvent.id);
