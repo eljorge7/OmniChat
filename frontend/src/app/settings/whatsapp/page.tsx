@@ -93,7 +93,10 @@ export default function WhatsappSettingsPage() {
             </h1>
             <p className="text-slate-500 mt-3 font-medium text-lg">Gestiona la conexión física del número de esta Franquicia.</p>
           </div>
-          <button onClick={checkStatus} className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all shadow-sm">
+          <button onClick={() => {
+            const companyId = (session?.user as any)?.companyId;
+            if (companyId) checkStatus(companyId);
+          }} className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all shadow-sm">
             <RefreshCw className="h-5 w-5" />
           </button>
         </div>
