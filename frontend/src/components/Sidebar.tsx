@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, MessageSquareText, Settings, Bot, Users, PieChart, Info, HelpCircle, LogOut, Megaphone, Zap, UserPlus, BrainCircuit, Building2, Menu, X, ChevronLeft, ChevronRight, CalendarDays, Server, Gift, Palette, CreditCard, Layers } from 'lucide-react';
+import { LayoutDashboard, MessageSquareText, Settings, Bot, Users, PieChart, Info, HelpCircle, LogOut, Megaphone, Zap, UserPlus, BrainCircuit, Building2, Menu, X, ChevronLeft, ChevronRight, CalendarDays, Server, Gift, Palette, CreditCard, Layers, Truck } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -48,6 +48,7 @@ export function Sidebar() {
     { name: 'Estadísticas / KPIs', href: '/', icon: PieChart, adminOnly: true },
     { name: 'Analítica IA & ROI', href: '/dashboard/ai', icon: BrainCircuit, adminOnly: true },
     { name: 'Agencia Maestra', href: '/dashboard', icon: Building2, adminOnly: true },
+    { name: 'Despacho de Servicios', href: '/field-service', icon: Truck, adminOnly: false },
     { name: 'Tablero Visual (Kanban)', href: '/pipeline', icon: Layers, adminOnly: false },
     { name: 'Bandeja Compartida', href: '/inbox', icon: MessageSquareText, adminOnly: false },
     { name: 'Agenda Global', href: '/calendar', icon: CalendarDays, adminOnly: false },

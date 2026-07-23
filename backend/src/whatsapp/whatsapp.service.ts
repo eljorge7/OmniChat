@@ -239,12 +239,8 @@ export class WhatsappService implements OnModuleInit {
     });
 
     client.on('message', async (message) => {
-      // Ignorar mensajes enviados antes de que el servidor se conectara (sincronización inicial)
-      if (message.timestamp < sessionStartupTime) {
-         this.logger.log(`[OmniChat-${companyId}] Ignorando mensaje histórico (muy antiguo).`);
-         return;
-      }
-
+      // Remover el filtro que destruía el primer mensaje si llegaba mientras el bot reiniciaba
+      // El Anti-Duplicado basado en DB (abajo) se encargará de mantenerlo limpio.
       if (message.type === 'call_log') {
          this.logger.log(`[OmniChat] Detectada llamada perdida de ${message.from}. Enviando auto-respuesta.`);
          await client.sendMessage(message.from, "Hola! Soy Julio 🤖. Ahorita las líneas telefónicas están saturadas y no puedo contestar llamadas de voz, pero escríbeme o mándame un audio por aquí y te atiendo al instante. ¡Soy todo oídos!");
@@ -256,8 +252,8 @@ export class WhatsappService implements OnModuleInit {
 
     client.on('message_create', async (message) => {
       try {
-        // Ignorar los mensajes históricos
-        if (message.timestamp < sessionStartupTime) return;
+        // En `message_create` evitamos duplicar mensajes de hace más de 12 horas en caso de reinicios violentos.
+        if (message.timestamp < (Date.now()/1000) - (12*60*60)) return;
 
         this.logger.log(`[OmniChat-Debug] Mensaje detectado. Tipo: ${message.type}, fromMe: ${message.fromMe}, from: ${message.from}, to: ${message.to}`);
 
@@ -382,12 +378,13 @@ export class WhatsappService implements OnModuleInit {
     }
 
     let cleanPhoneForSearch = phone.slice(-10);
-    let contacts = await this.prisma.$queryRaw<any[]>`
-        SELECT * FROM "Contact" 
-        WHERE "companyId" = ${companyId} AND "phone" LIKE ${'%' + cleanPhoneForSearch}
-        LIMIT 1
-    `;
-    let contact = contacts && contacts.length > 0 ? contacts[0] : null;
+    // [BugFix] Búsqueda segura usando Prisma findFirst con endsWith, evita inyección e inestabilidad del LIKE crudo.
+    let contact = await this.prisma.contact.findFirst({
+        where: {
+            companyId,
+            phone: { endsWith: cleanPhoneForSearch }
+        }
+    });
 
     if (!contact) {
         // En caso de que Jorge le hable a alguien nuevo directo desde su móvil
@@ -501,7 +498,33 @@ export class WhatsappService implements OnModuleInit {
             return;
         }
     }
+    
     let textBody = message.body ? message.body.trim() : '';
+
+    // ================= ANTI-DUPLICADO DE MENSAJES (Sincronización robusta) =================
+    // Ahora que procesamos todos los mensajes sin importar si el bot estaba apagado, debemos evitar que se guarden dobles
+    const messageTime = new Date(message.timestamp * 1000);
+    const timeWindowStart = new Date(message.timestamp * 1000 - 2000);
+    const timeWindowEnd = new Date(message.timestamp * 1000 + 2000);
+    
+    // Si ya existe un mensaje entrante de este mismo contacto, en esta misma ventana de tiempo (±2s)
+    // Asumimos que WhatsApp-web.js lo está volviendo a inyectar al iniciar
+    const duplicateIncoming = await this.prisma.message.findFirst({
+        where: {
+           contact: { phone, companyId },
+           fromMe: false,
+           timestamp: { gte: timeWindowStart, lte: timeWindowEnd }
+        }
+    });
+
+    if (duplicateIncoming) {
+        // En caso de que se envíen 2 mensajes exactamente en el mismo segundo, comparamos si tienen el mismo cuerpo o multimedia
+        if (duplicateIncoming.body === textBody || (message.hasMedia && duplicateIncoming.mediaUrl)) {
+             this.logger.log(`[OmniChat] Filtro Anti-Duplicado detectó mensaje ya existente de ${phone}. Omitiendo.`);
+             return;
+        }
+    }
+    // =========================================================================================
 
     // Interceptar mensajes de ubicación para mostrar enlace a Google Maps en lugar de la miniatura Base64
     if (message.type === 'location' && message.location) {
@@ -646,11 +669,14 @@ export class WhatsappService implements OnModuleInit {
                       textBody = `[El cliente ha enviado un AUDIO que no se pudo transcribir, escúchalo antes de responder]`;
                    }
                 } else if (!textBody || textBody.trim() === '') {
-                   textBody = `[El cliente ha enviado una imagen adjunta]`;
+                   textBody = `[El cliente ha enviado una imagen o archivo adjunto]`;
                 }
+            } else {
+                 if (!textBody || textBody.trim() === '') textBody = `[El cliente envió multimedia pero ocurrió un error al extraerla]`;
             }
         } catch(e) {
             this.logger.error("Error crítico procesando la descarga de media", e);
+            if (!textBody || textBody.trim() === '') textBody = `[Imagen/Archivo adjunto]`; // Fallback para que al menos se guarde el mensaje
         }
     }
 

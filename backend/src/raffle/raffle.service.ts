@@ -656,6 +656,7 @@ export class RaffleService {
            paymentMessage = bankDetails;
         }
 
+        const dateStr = raffle.drawDate ? new Date(raffle.drawDate).toLocaleDateString() : null;
         let drawMsg = dateStr ? `\n\n📅 La fecha del sorteo es el *${dateStr}*, ¡y ya está muy próximo! ⏰` : ``;
 
         const message = `👋 ¡Hola ${kit.contact.name}!\n\nTe escribimos de parte de *${raffle.company.name}* para saludarte y recordarte sobre tu paquete de boletos apartados para la rifa *"${raffle.name}"*.${drawMsg}\n\n🎟️ Tus boletos: *${kit.tickets.join(', ')}*\n✅ Abonado: *$${kit.amountPaid} MXN*\n⏳ Restante por pagar: *$${debt} MXN*\n${paymentMessage}\nQueremos recordarte que somos una empresa 100% seria y fiable en la generación de sorteos. Tu participación es muy importante para nosotros.\n\nSi tienes alguna duda o deseas reportar tu pago, ¡estamos a tus órdenes!`;

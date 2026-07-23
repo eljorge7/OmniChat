@@ -13,9 +13,9 @@ export default function WhatsappSettingsPage() {
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  const checkStatus = async () => {
+  const checkStatus = async (companyId: string) => {
     try {
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/qr`);
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/qr/${companyId}`);
       setStatus(res.data.status);
       setQrCode(res.data.qr);
     } catch (e) {
@@ -53,20 +53,28 @@ export default function WhatsappSettingsPage() {
   };
 
   const handleRestart = async () => {
+    const companyId = (session?.user as any)?.companyId;
+    if (!companyId) return;
+    
     if (!confirm("¿Seguro que deseas forzar el reinicio? Esto borrará la sesión actual de WhatsApp y tendrás que volver a escanear el QR.")) return;
     setStatus("INITIALIZING");
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/qr/reset`);
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/qr/reset/${companyId}`);
     } catch (e) {
       alert("Error reiniciando sesión");
     }
   };
 
   useEffect(() => {
-    checkStatus();
-    const interval = setInterval(checkStatus, 3000);
-    return () => clearInterval(interval);
-  }, []);
+    if (session?.user) {
+      const companyId = (session.user as any).companyId;
+      if (!companyId) return;
+      
+      checkStatus(companyId);
+      const interval = setInterval(() => checkStatus(companyId), 3000);
+      return () => clearInterval(interval);
+    }
+  }, [session]);
 
   useEffect(() => {
     if (session?.user) {
