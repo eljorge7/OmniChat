@@ -43,7 +43,7 @@ export default function CalendarPage() {
         .catch(console.error);
         
       // Fetch Técnicos/Usuarios
-      axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/whatsapp/agents/${cid}`)
+      axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/agents/${cid}`)
         .then(res => setTeamUsers(res.data || []))
         .catch(console.error);
     }

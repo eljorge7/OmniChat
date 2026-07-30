@@ -148,6 +148,7 @@ export default function TeamSettings() {
                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
                  >
                    <option value="AGENT">Asesor Ventas (Básico)</option>
+                   <option value="TECNICO">Técnico (App Móvil)</option>
                    <option value="ADMIN">Coordinador (Acceso Total)</option>
                  </select>
                </div>
@@ -188,6 +189,11 @@ export default function TeamSettings() {
                      {agent.role === 'AGENT' && (
                        <span className="bg-slate-100 text-slate-600 text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full font-black border border-slate-200">
                          Asesor
+                       </span>
+                     )}
+                     {agent.role === 'TECNICO' && (
+                       <span className="bg-indigo-100 text-indigo-700 text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full font-black border border-indigo-200">
+                         Técnico
                        </span>
                      )}
                    </div>
