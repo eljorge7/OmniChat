@@ -105,14 +105,7 @@ export default function TicketSidebar({ ticket, onClose, fetchEvents }: TicketSi
               </div>
             </div>
 
-            <div className="flex items-center gap-3 pt-2">
-              <button className="flex-1 flex items-center justify-center gap-2 bg-white border border-slate-200 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
-                <Phone className="w-4 h-4" /> Llamar
-              </button>
-              <button className="flex-1 flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#128C7E] py-2 rounded-lg text-sm font-medium text-white transition-colors">
-                <MessageCircle className="w-4 h-4" /> WhatsApp
-              </button>
-            </div>
+            {/* Contact Buttons Removed Temporarily */}
           </div>
 
           {/* Asignación */}
@@ -177,7 +170,7 @@ export default function TicketSidebar({ ticket, onClose, fetchEvents }: TicketSi
                  <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
                    {ticket.originalEvent?.photoEvidence ? (
                      ticket.originalEvent.photoEvidence.split(',').filter(Boolean).map((url: string, idx: number) => (
-                       <img key={idx} src={url} alt="Evidencia" className="w-20 h-20 object-cover rounded-lg shrink-0 border border-indigo-200" />
+                       <img key={idx} src={url.replace('3002/uploads/', '3002/api/uploads/')} alt="Evidencia" className="w-20 h-20 object-cover rounded-lg shrink-0 border border-indigo-200" />
                      ))
                    ) : (
                      <span className="text-xs text-indigo-500">Sin evidencias fotográficas</span>

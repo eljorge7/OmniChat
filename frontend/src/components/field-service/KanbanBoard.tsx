@@ -52,7 +52,7 @@ export default function KanbanBoard({ events, fetchEvents }: { events: any[], fe
           const colTickets = tickets.filter(t => t.status === col.id);
           
           return (
-            <div key={col.id} className={`flex-shrink-0 w-80 flex flex-col rounded-xl border ${col.border} ${col.color} bg-opacity-50 dark:bg-opacity-10`}>
+            <div key={col.id} className={`flex-shrink-0 w-[280px] flex flex-col rounded-xl border ${col.border} ${col.color} bg-opacity-50 dark:bg-opacity-10`}>
               {/* Column Header */}
               <div className="p-4 border-b border-inherit bg-white bg-opacity-50 dark:bg-slate-800 rounded-t-xl flex justify-between items-center">
                 <h3 className="font-bold text-sm text-slate-700 dark:text-slate-200 uppercase tracking-wide">{col.label}</h3>
