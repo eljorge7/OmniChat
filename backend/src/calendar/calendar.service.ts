@@ -14,8 +14,12 @@ export class CalendarService {
   /**
    * Obtener todas las citas de un mes/rango para una empresa
    */
-  async getEventsByCompany(companyId: string, startDate?: string, endDate?: string) {
+  async getEventsByCompany(companyId: string, startDate?: string, endDate?: string, assignedToId?: string) {
     const whereClause: any = { companyId };
+    
+    if (assignedToId) {
+      whereClause.assignedToId = assignedToId;
+    }
     
     // Si se envían fechas de inicio y fin (ideal para vistas de Calendario mensuales o semanales)
     if (startDate && endDate) {

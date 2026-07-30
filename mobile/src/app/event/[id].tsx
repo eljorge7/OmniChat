@@ -42,8 +42,12 @@ export default function EventDetailScreen() {
       const foundEvent = events.find((e) => e.id === id);
       if (foundEvent) {
         setEvent(foundEvent);
-        if (foundEvent.photoUris) setPhotoUris(foundEvent.photoUris);
-        if (foundEvent.comments) setComments(foundEvent.comments);
+        if (foundEvent.photoUris) {
+          setPhotoUris(foundEvent.photoUris);
+        } else if (foundEvent.photoEvidence) {
+          setPhotoUris(foundEvent.photoEvidence.split(',').filter(Boolean));
+        }
+        if (foundEvent.comments || foundEvent.description) setComments(foundEvent.comments || foundEvent.description);
       }
       setLoading(false);
     } catch (err) {
@@ -55,40 +59,74 @@ export default function EventDetailScreen() {
   const handleUpdateStatus = async (newStatus: string) => {
     setUpdating(true);
     try {
-      setTimeout(() => {
-        updateEventStatus(id as string, newStatus, photoUris.length > 0 ? photoUris : undefined, comments);
-        
-        // Es importante pasarle el evento actualizado a la alerta
-        const updatedEvent = { ...event, status: newStatus, photoUris: photoUris.length > 0 ? photoUris : undefined, comments };
-        setEvent(updatedEvent);
-        
-        setIsCameraActive(false);
-        setUpdating(false);
-        
-        if (newStatus === 'COMPLETADO') {
-           Alert.alert(
-             '¡Servicio Finalizado!',
-             'El servicio ha sido guardado exitosamente. ¿Qué deseas hacer con el ticket?',
-             [
-               {
-                 text: 'Solo salir',
-                 style: 'cancel',
-                 onPress: () => router.back()
-               },
-               {
-                 text: 'Generar PDF',
-                 style: 'default',
-                 onPress: async () => {
-                   await generateServiceTicket(updatedEvent, user?.name || 'Técnico OmniChat');
-                   router.back();
-                 }
-               }
-             ]
-           );
+      let finalPhotoUris = photoUris;
+      
+      // Si estamos completando y hay fotos nuevas (que son uris locales), subirlas al backend
+      if (newStatus === 'COMPLETADO' && photoUris.length > 0) {
+        const uploadedUrls = [];
+        for (const uri of photoUris) {
+          if (uri.startsWith('http://137.184.155.133')) {
+             // Ya fue subida previamente (ej: si se vuelve a cargar)
+             uploadedUrls.push(uri);
+             continue;
+          }
+          
+          const formData = new FormData();
+          const filename = uri.split('/').pop() || 'photo.jpg';
+          const match = /\.(\w+)$/.exec(filename);
+          const type = match ? `image/${match[1]}` : `image`;
+          
+          formData.append('file', {
+            uri,
+            name: filename,
+            type,
+          } as any);
+
+          const uploadRes = await axios.post(`${API_URL}/calendar/evidence/upload`, formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          });
+          
+          if (uploadRes.data.url) {
+            uploadedUrls.push(uploadRes.data.url);
+          }
         }
-      }, 500);
+        finalPhotoUris = uploadedUrls;
+      }
+
+      const updateData = {
+        status: newStatus,
+        description: comments,
+        photoEvidence: finalPhotoUris.length > 0 ? finalPhotoUris.join(',') : undefined
+      };
+
+      await axios.put(`${API_URL}/calendar/${user?.companyId}/${id}`, updateData);
+
+      updateEventStatus(id as string, newStatus, finalPhotoUris.length > 0 ? finalPhotoUris : undefined, comments);
+      
+      const updatedEvent = { ...event, status: newStatus, photoUris: finalPhotoUris.length > 0 ? finalPhotoUris : undefined, comments };
+      setEvent(updatedEvent);
+      setIsCameraActive(false);
+      setUpdating(false);
+
+      if (newStatus === 'COMPLETADO') {
+         Alert.alert(
+           '¡Servicio Finalizado!',
+           'El servicio ha sido guardado exitosamente. ¿Qué deseas hacer con el ticket?',
+           [
+             { text: 'Solo salir', style: 'cancel', onPress: () => router.back() },
+             { text: 'Generar PDF', style: 'default', onPress: async () => {
+                 await generateServiceTicket(updatedEvent, user?.name || 'Técnico OmniChat');
+                 router.back();
+               }
+             }
+           ]
+         );
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Error updating event:', err);
+      Alert.alert('Error', 'No se pudo actualizar el servicio');
       setUpdating(false);
     }
   };

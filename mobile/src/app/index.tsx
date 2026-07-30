@@ -21,21 +21,29 @@ export default function AgendaScreen() {
     return <Redirect href="/login" />;
   }
 
-  const { events } = useEventsStore();
+  const { events, setEvents } = useEventsStore();
+
+  const fetchAgenda = useCallback(async () => {
+    if (!user || !user.companyId || !user.id) return;
+    try {
+      setLoading(true);
+      const res = await axios.get(`${API_URL}/calendar/${user.companyId}?assignedToId=${user.id}`);
+      setEvents(res.data);
+    } catch (err) {
+      console.error('Error fetching agenda:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
-    // Simulamos una carga inicial mínima
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-    }, 500);
-  }, []);
+    fetchAgenda();
+  }, [fetchAgenda]);
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 800);
+    await fetchAgenda();
+    setRefreshing(false);
   };
 
   const getStatusColor = (status: string) => {

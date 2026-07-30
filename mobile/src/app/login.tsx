@@ -29,11 +29,16 @@ export default function LoginScreen() {
     setError('');
     
     try {
-      setTimeout(() => {
-        login({ id: '123', name: 'Juan Técnico', email: email, companyId: 'comp-1' }, 'fake-jwt-token');
-      }, 1000);
+      const response = await axios.post(`${API_URL}/users/login`, {
+        email,
+        password
+      });
+
+      const userData = response.data;
+      // We don't have JWT yet, so we just use a fake token or ID
+      login(userData, 'temp-token');
     } catch (err: any) {
-      console.error(err);
+      console.error('Login error:', err.response?.data || err.message);
       setError('Error de conexión o credenciales incorrectas');
       setLoading(false);
     }

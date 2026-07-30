@@ -1,9 +1,34 @@
-import { Controller, Put, Body, Headers, UnauthorizedException } from '@nestjs/common';
+import { Controller, Put, Post, Body, Headers, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('api/v1/users')
 export class UsersController {
   constructor(private prisma: PrismaService) {}
+
+  @Post('login')
+  async login(@Body() body: { email: string; password?: string }) {
+    if (!body.email) {
+      throw new UnauthorizedException('Falta email');
+    }
+    const user = await this.prisma.user.findUnique({
+      where: { email: body.email },
+      include: { company: true }
+    });
+
+    // MVP: Validación de contraseña en texto plano
+    if (!user || user.password !== body.password) {
+      throw new UnauthorizedException('Credenciales inválidas');
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      companyId: user.companyId,
+      companyName: user.company?.name
+    };
+  }
 
   @Put('me')
   async updateProfile(
