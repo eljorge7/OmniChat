@@ -1,11 +1,38 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Truck, Search, Plus, MapPin, Clock, Calendar, CheckCircle, Navigation, LayoutDashboard, Settings } from 'lucide-react';
 import KanbanBoard from '@/components/field-service/KanbanBoard';
 
 export default function FieldServiceDashboard() {
   const [activeTab, setActiveTab] = useState<'kanban' | 'list'>('kanban');
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeCompanyId, setActiveCompanyId] = useState("");
+
+  const fetchEvents = (cid: string) => {
+    setLoading(true);
+    axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/calendar/${cid}`)
+      .then(res => setEvents(res.data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    const cid = localStorage.getItem("activeCompanyId") || "";
+    setActiveCompanyId(cid);
+    if (cid) {
+      fetchEvents(cid);
+    }
+  }, []);
+
+  const stats = [
+    { label: 'Sin Asignar', count: events.filter(e => e.status === 'SIN_ASIGNAR' || !e.status).length, icon: LayoutDashboard, color: 'text-slate-600', bg: 'bg-slate-100' },
+    { label: 'Programados', count: events.filter(e => e.status === 'PROGRAMADO').length, icon: Calendar, color: 'text-indigo-600', bg: 'bg-indigo-100' },
+    { label: 'En Progreso', count: events.filter(e => e.status === 'EN_CAMINO' || e.status === 'TRABAJANDO').length, icon: Navigation, color: 'text-blue-600', bg: 'bg-blue-100' },
+    { label: 'Completados Hoy', count: events.filter(e => e.status === 'COMPLETADO').length, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-100' },
+  ];
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900">
@@ -37,12 +64,7 @@ export default function FieldServiceDashboard() {
 
       {/* Stats row */}
       <div className="px-6 py-4 grid grid-cols-4 gap-4 shrink-0">
-        {[
-          { label: 'Sin Asignar', count: 3, icon: LayoutDashboard, color: 'text-slate-600', bg: 'bg-slate-100' },
-          { label: 'Programados', count: 5, icon: Calendar, color: 'text-indigo-600', bg: 'bg-indigo-100' },
-          { label: 'En Progreso', count: 4, icon: Navigation, color: 'text-blue-600', bg: 'bg-blue-100' },
-          { label: 'Completados Hoy', count: 12, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-100' },
-        ].map(stat => (
+        {stats.map(stat => (
           <div key={stat.label} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 flex items-center gap-4 shadow-sm">
             <div className={`p-3 rounded-lg ${stat.bg} ${stat.color} dark:bg-opacity-20`}>
               <stat.icon className="w-6 h-6" />
@@ -57,11 +79,19 @@ export default function FieldServiceDashboard() {
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === 'kanban' && <KanbanBoard />}
-        {activeTab === 'list' && (
+        {loading ? (
           <div className="p-6 flex items-center justify-center h-full text-slate-500">
-            Vista de lista en construcción...
+            Cargando tickets...
           </div>
+        ) : (
+          <>
+            {activeTab === 'kanban' && <KanbanBoard events={events} fetchEvents={() => fetchEvents(activeCompanyId)} />}
+            {activeTab === 'list' && (
+              <div className="p-6 flex items-center justify-center h-full text-slate-500">
+                Vista de lista en construcción...
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

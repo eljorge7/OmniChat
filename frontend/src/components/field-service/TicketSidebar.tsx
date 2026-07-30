@@ -3,12 +3,30 @@
 import React from 'react';
 import { X, MapPin, Clock, User, Phone, MessageCircle, FileText, Camera, ChevronRight, Calendar } from 'lucide-react';
 
+import axios from 'axios';
+
 interface TicketSidebarProps {
   ticket: any;
   onClose: () => void;
+  fetchEvents?: () => void;
 }
 
-export default function TicketSidebar({ ticket, onClose }: TicketSidebarProps) {
+export default function TicketSidebar({ ticket, onClose, fetchEvents }: TicketSidebarProps) {
+  const handleDelete = async () => {
+    if (!ticket || !ticket.originalEvent) return;
+    const cid = localStorage.getItem("activeCompanyId");
+    if (confirm(`¿Estás seguro de eliminar el ticket "${ticket.title}"?`)) {
+      try {
+        await axios.delete(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/calendar/${cid}/${ticket.id}`);
+        onClose();
+        if (fetchEvents) fetchEvents();
+      } catch (err) {
+        console.error("Error deleting ticket", err);
+        alert("No se pudo eliminar el ticket.");
+      }
+    }
+  };
+
   return (
     <div 
       className={`fixed inset-y-0 right-0 w-96 bg-white dark:bg-slate-900 shadow-2xl border-l border-slate-200 dark:border-slate-700 transform transition-transform duration-300 ease-in-out z-50 flex flex-col
@@ -38,15 +56,32 @@ export default function TicketSidebar({ ticket, onClose }: TicketSidebarProps) {
           <div>
             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Estatus Actual</label>
             <div className="flex items-center gap-2">
-              <div className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide
+              <select 
+                value={ticket.status}
+                onChange={async (e) => {
+                  const newStatus = e.target.value;
+                  const cid = localStorage.getItem("activeCompanyId");
+                  try {
+                    await axios.put(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/calendar/${cid}/${ticket.id}`, { status: newStatus });
+                    if (fetchEvents) fetchEvents();
+                  } catch (err) {
+                    console.error("Error updating status", err);
+                    alert("No se pudo actualizar el estatus.");
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide border-0 focus:ring-2 focus:ring-indigo-500 cursor-pointer outline-none
                 ${ticket.status === 'SIN_ASIGNAR' ? 'bg-slate-100 text-slate-600' : 
                   ticket.status === 'PROGRAMADO' ? 'bg-indigo-100 text-indigo-700' :
                   ticket.status === 'EN_CAMINO' ? 'bg-yellow-100 text-yellow-700' :
                   ticket.status === 'TRABAJANDO' ? 'bg-blue-100 text-blue-700' :
                   'bg-green-100 text-green-700'}`}
               >
-                {ticket.status.replace('_', ' ')}
-              </div>
+                <option value="SIN_ASIGNAR">SIN ASIGNAR</option>
+                <option value="PROGRAMADO">PROGRAMADO</option>
+                <option value="EN_CAMINO">EN CAMINO</option>
+                <option value="TRABAJANDO">TRABAJANDO</option>
+                <option value="COMPLETADO">COMPLETADO</option>
+              </select>
             </div>
           </div>
 
@@ -123,32 +158,40 @@ export default function TicketSidebar({ ticket, onClose }: TicketSidebarProps) {
              </div>
           </div>
 
-          {/* Evidencias (Mock) */}
+          {/* Notas y Descripción */}
+          {(ticket.originalEvent?.description || ticket.originalEvent?.comments) && (
+            <div>
+               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Detalles y Notas</label>
+               <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-slate-100 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-300">
+                  {ticket.originalEvent?.description || ticket.originalEvent?.comments}
+               </div>
+            </div>
+          )}
+
+          {/* Evidencias */}
           {ticket.status === 'COMPLETADO' && (
             <div>
-               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Reporte Final</label>
+               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Reporte Final / Evidencias</label>
                <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
-                 <div className="flex items-center justify-between mb-3">
-                   <div className="flex items-center gap-2 text-indigo-700">
-                     <FileText className="w-5 h-5" />
-                     <span className="text-sm font-bold">Ticket de Servicio.pdf</span>
-                   </div>
-                   <button className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-md font-medium hover:bg-indigo-700">
-                     Ver PDF
-                   </button>
-                 </div>
                  
                  <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
-                   <div className="w-20 h-20 bg-indigo-200 rounded-lg shrink-0 flex items-center justify-center text-indigo-400">
-                     <Camera className="w-6 h-6" />
-                   </div>
-                   <div className="w-20 h-20 bg-indigo-200 rounded-lg shrink-0 flex items-center justify-center text-indigo-400">
-                     <Camera className="w-6 h-6" />
-                   </div>
+                   {ticket.originalEvent?.photoEvidence ? (
+                     ticket.originalEvent.photoEvidence.split(',').filter(Boolean).map((url: string, idx: number) => (
+                       <img key={idx} src={url} alt="Evidencia" className="w-20 h-20 object-cover rounded-lg shrink-0 border border-indigo-200" />
+                     ))
+                   ) : (
+                     <span className="text-xs text-indigo-500">Sin evidencias fotográficas</span>
+                   )}
                  </div>
                </div>
             </div>
           )}
+
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex justify-end">
+             <button onClick={handleDelete} className="text-sm font-bold text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg transition-colors">
+               Eliminar Ticket
+             </button>
+          </div>
 
         </div>
       )}

@@ -14,15 +14,8 @@ interface Ticket {
   status: TicketStatus;
   technician?: string;
   startTime?: string;
+  originalEvent?: any; // To pass to the sidebar
 }
-
-const MOCK_TICKETS: Ticket[] = [
-  { id: '1', title: 'Mantenimiento Preventivo', client: 'Empresa Alpha', address: 'Av. Reforma 222', status: 'PROGRAMADO', technician: 'Juan Técnico', startTime: '10:00 AM' },
-  { id: '2', title: 'Instalación de Fibra Óptica', client: 'Corporativo Beta', address: 'Insurgentes Sur 105', status: 'EN_CAMINO', technician: 'Juan Técnico', startTime: '15:00 PM' },
-  { id: '3', title: 'Reparación de Router', client: 'Cafetería El Grano', address: 'Roma Norte 45', status: 'SIN_ASIGNAR' },
-  { id: '4', title: 'Revisión de Nodos', client: 'Torre Mayor', address: 'Reforma 505', status: 'TRABAJANDO', technician: 'Pedro López' },
-  { id: '5', title: 'Cambio de Switch', client: 'Plaza Delta', address: 'Cuauhtémoc 462', status: 'COMPLETADO', technician: 'María Gómez' },
-];
 
 const COLUMNS: { id: TicketStatus; label: string; color: string; border: string }[] = [
   { id: 'SIN_ASIGNAR', label: 'Sin Asignar', color: 'bg-slate-100', border: 'border-slate-300' },
@@ -32,9 +25,25 @@ const COLUMNS: { id: TicketStatus; label: string; color: string; border: string 
   { id: 'COMPLETADO', label: 'Completado', color: 'bg-green-50', border: 'border-green-400' },
 ];
 
-export default function KanbanBoard() {
-  const [tickets, setTickets] = useState<Ticket[]>(MOCK_TICKETS);
+export default function KanbanBoard({ events, fetchEvents }: { events: any[], fetchEvents: () => void }) {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+
+  const formatTime = (isoString: string) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const tickets: Ticket[] = events.map(e => ({
+    id: e.id,
+    title: e.title,
+    client: e.pipeline?.name || 'Cliente',
+    address: e.location || 'Sin dirección',
+    status: (e.status as TicketStatus) || 'PROGRAMADO', // Si no tiene, default Programado
+    technician: e.assignedTo?.name,
+    startTime: formatTime(e.startTime),
+    originalEvent: e
+  }));
 
   return (
     <div className="flex h-full overflow-hidden bg-slate-50 dark:bg-slate-900">
@@ -105,6 +114,7 @@ export default function KanbanBoard() {
       <TicketSidebar 
         ticket={selectedTicket} 
         onClose={() => setSelectedTicket(null)} 
+        fetchEvents={fetchEvents}
       />
     </div>
   );
