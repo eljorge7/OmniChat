@@ -75,7 +75,7 @@ export class CalendarController {
       throw new BadRequestException("Archivo no recibido");
     }
     // Asumimos que el backend corre en el puerto 3002
-    const fileUrl = `http://137.184.155.133:3002/uploads/${file.filename}`;
+    const fileUrl = `http://137.184.155.133:3002/api/uploads/${file.filename}`;
     return { success: true, url: fileUrl };
   }
 }
