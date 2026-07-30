@@ -1,7 +1,7 @@
 "use client";
 
-import React from 'react';
-import { X, MapPin, Clock, User, Phone, MessageCircle, FileText, Camera, ChevronRight, Calendar } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, MapPin, Clock, User, Phone, MessageCircle, FileText, Camera, ChevronRight, Calendar, Maximize2 } from 'lucide-react';
 
 import axios from 'axios';
 
@@ -12,6 +12,16 @@ interface TicketSidebarProps {
 }
 
 export default function TicketSidebar({ ticket, onClose, fetchEvents }: TicketSidebarProps) {
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  const getFixedUrl = (url: string) => {
+    if (!url) return '';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
+    const parts = url.split('/');
+    const filename = parts[parts.length - 1];
+    return `${apiUrl}/api/uploads/${filename}`;
+  };
+
   const handleDelete = async () => {
     if (!ticket || !ticket.originalEvent) return;
     const cid = localStorage.getItem("activeCompanyId");
@@ -169,9 +179,17 @@ export default function TicketSidebar({ ticket, onClose, fetchEvents }: TicketSi
                  
                  <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
                    {ticket.originalEvent?.photoEvidence ? (
-                     ticket.originalEvent.photoEvidence.split(',').filter(Boolean).map((url: string, idx: number) => (
-                       <img key={idx} src={url.replace('3002/uploads/', '3002/api/uploads/')} alt="Evidencia" className="w-20 h-20 object-cover rounded-lg shrink-0 border border-indigo-200" />
-                     ))
+                     ticket.originalEvent.photoEvidence.split(',').filter(Boolean).map((url: string, idx: number) => {
+                       const fixedUrl = getFixedUrl(url);
+                       return (
+                         <div key={idx} className="relative group cursor-pointer" onClick={() => setSelectedImage(fixedUrl)}>
+                           <img src={fixedUrl} alt="Evidencia" className="w-20 h-20 object-cover rounded-lg shrink-0 border border-indigo-200 group-hover:opacity-80 transition-opacity" />
+                           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                             <Maximize2 className="w-6 h-6 text-white drop-shadow-md" />
+                           </div>
+                         </div>
+                       )
+                     })
                    ) : (
                      <span className="text-xs text-indigo-500">Sin evidencias fotográficas</span>
                    )}
@@ -186,6 +204,19 @@ export default function TicketSidebar({ ticket, onClose, fetchEvents }: TicketSi
              </button>
           </div>
 
+        </div>
+      )}
+
+      {/* Image Modal */}
+      {selectedImage && (
+        <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4" onClick={() => setSelectedImage(null)}>
+          <img src={selectedImage} alt="Evidencia Ampliada" className="max-w-full max-h-full rounded-xl object-contain" />
+          <button 
+            className="absolute top-4 right-4 text-white hover:text-slate-300 bg-black/50 p-2 rounded-full transition-colors"
+            onClick={() => setSelectedImage(null)}
+          >
+            <X className="w-8 h-8" />
+          </button>
         </div>
       )}
     </div>
