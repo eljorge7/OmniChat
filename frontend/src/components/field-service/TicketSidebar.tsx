@@ -44,21 +44,21 @@ export default function TicketSidebar({ ticket, onClose, fetchEvents }: TicketSi
         ${ticket ? 'translate-x-0' : 'translate-x-full'}`}
       >
       {/* Header */}
-      <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-950 shrink-0">
-        <div>
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
-            Ticket #{ticket?.id?.padStart(4, '0')}
-          </span>
-          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 truncate w-64" title={ticket?.title}>
-            {ticket?.title}
-          </h2>
-        </div>
+      <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3 bg-slate-50 dark:bg-slate-950 shrink-0">
         <button 
           onClick={onClose}
-          className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors"
+          className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors shrink-0"
         >
           <X className="w-5 h-5" />
         </button>
+        <div className="flex-1 min-w-0">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
+            Ticket #{ticket?.id?.padStart(4, '0')}
+          </span>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 truncate w-full" title={ticket?.title}>
+            {ticket?.title}
+          </h2>
+        </div>
       </div>
 
       {ticket && (
