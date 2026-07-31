@@ -305,7 +305,7 @@ export default function EventDetailScreen() {
 
             {event.status === 'COMPLETADO' ? (
               <TouchableOpacity 
-                onPress={() => generateServiceTicket(event, user?.name || 'Técnico OmniChat')}
+                onPress={() => generateServiceTicket({ ...event, photoUris, comments }, user?.name || 'Técnico OmniChat')}
                 className="p-4 rounded-2xl flex-row items-center justify-center shadow-sm mt-4 bg-indigo-600 shadow-indigo-200"
               >
                 <FileText size={20} color="white" style={{ marginRight: 8 }} />

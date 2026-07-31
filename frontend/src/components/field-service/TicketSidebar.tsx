@@ -206,6 +206,7 @@ export default function TicketSidebar({ ticket, onClose, fetchEvents }: TicketSi
           </div>
 
         </div>
+      )}
       </div>
 
       {/* Image Modal */}

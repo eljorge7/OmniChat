@@ -14,7 +14,8 @@ export const authOptions = {
           const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/inbox/login`, {
             method: 'POST',
             body: JSON.stringify(credentials),
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
+            cache: 'no-store'
           });
           const user = await res.json();
           if (res.ok && user && !user.error) {

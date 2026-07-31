@@ -14,8 +14,17 @@ export const generateServiceTicket = async (event: any, technicianName: string, 
     if (event.photoUris && event.photoUris.length > 0) {
       const base64Photos = await Promise.all(
         event.photoUris.map(async (uri: string) => {
+          let localUri = uri;
+          if (uri.startsWith('http://') || uri.startsWith('https://')) {
+            const fixedUri = uri.replace('3002/uploads/', '3002/api/uploads/');
+            // Download remote image to bypass ATS and allow base64 encoding
+            const filename = `${Math.random().toString(36).substring(7)}_${fixedUri.split('/').pop() || 'temp.jpg'}`;
+            const dest = FileSystem.cacheDirectory + filename;
+            const downloadResult = await FileSystem.downloadAsync(fixedUri, dest);
+            localUri = downloadResult.uri;
+          }
           try {
-            const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+            const base64 = await FileSystem.readAsStringAsync(localUri, { encoding: 'base64' });
             return `data:image/jpeg;base64,${base64}`;
           } catch (e) {
             console.error('Error reading image', e);
