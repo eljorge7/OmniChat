@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Clock, MapPin, Navigation, User, FileText, CheckCircle2 } from 'lucide-react';
+import axios from 'axios';
 import TicketSidebar from './TicketSidebar';
 
 type TicketStatus = 'SIN_ASIGNAR' | 'PROGRAMADO' | 'EN_CAMINO' | 'TRABAJANDO' | 'COMPLETADO';
@@ -27,11 +28,30 @@ const COLUMNS: { id: TicketStatus; label: string; color: string; border: string 
 
 export default function KanbanBoard({ events, fetchEvents }: { events: any[], fetchEvents: () => void }) {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const formatTime = (isoString: string) => {
     if (!isoString) return '';
     const date = new Date(isoString);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const handleDrop = async (e: React.DragEvent, newStatus: TicketStatus) => {
+    e.preventDefault();
+    const ticketId = e.dataTransfer.getData('ticketId');
+    if (!ticketId) return;
+
+    setIsUpdating(true);
+    const cid = localStorage.getItem("activeCompanyId");
+    try {
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/calendar/${cid}/${ticketId}`, { status: newStatus });
+      fetchEvents();
+    } catch (err) {
+      console.error(err);
+      alert("Error al mover el ticket.");
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const tickets: Ticket[] = events.map(e => ({
@@ -52,7 +72,21 @@ export default function KanbanBoard({ events, fetchEvents }: { events: any[], fe
           const colTickets = tickets.filter(t => t.status === col.id);
           
           return (
-            <div key={col.id} className={`flex-shrink-0 w-[280px] flex flex-col rounded-xl border ${col.border} ${col.color} bg-opacity-50 dark:bg-opacity-10`}>
+            <div 
+              key={col.id} 
+              className={`flex-shrink-0 w-[280px] flex flex-col rounded-xl border ${col.border} ${col.color} bg-opacity-50 dark:bg-opacity-10 transition-colors ${isUpdating ? 'opacity-70' : ''}`}
+              onDragOver={(e) => {
+                e.preventDefault(); // Permite que se suelte (drop)
+                e.currentTarget.classList.add('ring-2', 'ring-indigo-400');
+              }}
+              onDragLeave={(e) => {
+                e.currentTarget.classList.remove('ring-2', 'ring-indigo-400');
+              }}
+              onDrop={(e) => {
+                e.currentTarget.classList.remove('ring-2', 'ring-indigo-400');
+                handleDrop(e, col.id);
+              }}
+            >
               {/* Column Header */}
               <div className="p-4 border-b border-inherit bg-white bg-opacity-50 dark:bg-slate-800 rounded-t-xl flex justify-between items-center">
                 <h3 className="font-bold text-sm text-slate-700 dark:text-slate-200 uppercase tracking-wide">{col.label}</h3>
@@ -66,8 +100,16 @@ export default function KanbanBoard({ events, fetchEvents }: { events: any[], fe
                 {colTickets.map(ticket => (
                   <div 
                     key={ticket.id} 
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('ticketId', ticket.id);
+                      e.currentTarget.classList.add('opacity-50');
+                    }}
+                    onDragEnd={(e) => {
+                      e.currentTarget.classList.remove('opacity-50');
+                    }}
                     onClick={() => setSelectedTicket(ticket)}
-                    className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 cursor-pointer hover:shadow-md hover:border-indigo-300 transition-all group"
+                    className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 cursor-grab active:cursor-grabbing hover:shadow-md hover:border-indigo-300 transition-all group"
                   >
                     <div className="flex justify-between items-start mb-2">
                       <span className="text-xs font-bold text-slate-400">#{ticket.id.padStart(4, '0')}</span>
