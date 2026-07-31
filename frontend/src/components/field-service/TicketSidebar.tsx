@@ -38,10 +38,11 @@ export default function TicketSidebar({ ticket, onClose, fetchEvents }: TicketSi
   };
 
   return (
-    <div 
-      className={`fixed inset-y-0 right-0 w-96 bg-white dark:bg-slate-900 shadow-2xl border-l border-slate-200 dark:border-slate-700 transform transition-transform duration-300 ease-in-out z-50 flex flex-col
-      ${ticket ? 'translate-x-0' : 'translate-x-full'}`}
-    >
+    <>
+      <div 
+        className={`fixed inset-y-0 right-0 w-96 bg-white dark:bg-slate-900 shadow-2xl border-l border-slate-200 dark:border-slate-700 transform transition-transform duration-300 ease-in-out z-[60] flex flex-col
+        ${ticket ? 'translate-x-0' : 'translate-x-full'}`}
+      >
       {/* Header */}
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-950 shrink-0">
         <div>
@@ -205,20 +206,20 @@ export default function TicketSidebar({ ticket, onClose, fetchEvents }: TicketSi
           </div>
 
         </div>
-      )}
+      </div>
 
       {/* Image Modal */}
       {selectedImage && (
-        <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4" onClick={() => setSelectedImage(null)}>
-          <img src={selectedImage} alt="Evidencia Ampliada" className="max-w-full max-h-full rounded-xl object-contain" />
+        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setSelectedImage(null)}>
+          <img src={selectedImage} alt="Evidencia Ampliada" className="max-w-[90vw] max-h-[90vh] rounded-xl object-contain" />
           <button 
-            className="absolute top-4 right-4 text-white hover:text-slate-300 bg-black/50 p-2 rounded-full transition-colors"
-            onClick={() => setSelectedImage(null)}
+            className="absolute top-6 right-6 text-white hover:text-slate-300 bg-black/50 p-3 rounded-full transition-colors cursor-pointer"
+            onClick={(e) => { e.stopPropagation(); setSelectedImage(null); }}
           >
             <X className="w-8 h-8" />
           </button>
         </div>
       )}
-    </div>
+    </>
   );
 }
