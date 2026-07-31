@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
-import { X, MapPin, Clock, User, Phone, MessageCircle, FileText, Camera, ChevronRight, Calendar, Maximize2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, MapPin, Clock, User, Phone, MessageCircle, FileText, Camera, ChevronRight, Calendar, Maximize2, Check } from 'lucide-react';
 
 import axios from 'axios';
 
@@ -13,6 +13,37 @@ interface TicketSidebarProps {
 
 export default function TicketSidebar({ ticket, onClose, fetchEvents }: TicketSidebarProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isEditingTechnician, setIsEditingTechnician] = useState(false);
+  const [users, setUsers] = useState<any[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (ticket) {
+      setIsEditingTechnician(false);
+      const cid = localStorage.getItem("activeCompanyId");
+      if (cid) {
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/users/company/${cid}`)
+          .then(res => setUsers(res.data))
+          .catch(err => console.error("Error fetching users", err));
+      }
+    }
+  }, [ticket]);
+
+  const handleAssignTechnician = async (userId: string) => {
+    if (!ticket || !ticket.id) return;
+    setIsSaving(true);
+    const cid = localStorage.getItem("activeCompanyId");
+    try {
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"}/api/v1/calendar/${cid}/${ticket.id}`, { assignedToId: userId });
+      setIsEditingTechnician(false);
+      if (fetchEvents) fetchEvents();
+    } catch (err) {
+      console.error("Error assigning technician", err);
+      alert("No se pudo asignar el técnico.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const getFixedUrl = (url: string) => {
     if (!url) return '';
@@ -121,9 +152,51 @@ export default function TicketSidebar({ ticket, onClose, fetchEvents }: TicketSi
 
           {/* Asignación */}
           <div>
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Técnico Asignado</label>
-            {ticket.technician ? (
-              <div className="flex items-center justify-between bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-900 p-3 rounded-xl shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Técnico Asignado</label>
+              {!isEditingTechnician && ticket.technician && (
+                <button onClick={() => setIsEditingTechnician(true)} className="text-xs font-bold text-indigo-600 hover:text-indigo-700">Cambiar</button>
+              )}
+            </div>
+
+            {isEditingTechnician ? (
+              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm">
+                <div className="p-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300 px-2">Selecciona un técnico</span>
+                  <button onClick={() => setIsEditingTechnician(false)} className="p-1 hover:bg-slate-200 rounded-full text-slate-500">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="max-h-48 overflow-y-auto">
+                  {users.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-500">No hay técnicos disponibles</div>
+                  ) : (
+                    users.map(user => (
+                      <button 
+                        key={user.id}
+                        disabled={isSaving}
+                        onClick={() => handleAssignTechnician(user.id)}
+                        className="w-full flex items-center justify-between p-3 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors text-left"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs shrink-0">
+                            {user.name.substring(0,2).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-slate-800 dark:text-slate-100">{user.name}</div>
+                            <div className="text-[10px] text-slate-500">{user.email}</div>
+                          </div>
+                        </div>
+                        {ticket.originalEvent?.assignedToId === user.id && (
+                          <Check className="w-4 h-4 text-indigo-600" />
+                        )}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            ) : ticket.technician ? (
+              <div className="flex items-center justify-between bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-900 p-3 rounded-xl shadow-sm cursor-pointer hover:border-indigo-300 transition-colors" onClick={() => setIsEditingTechnician(true)}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm">
                     {ticket.technician.substring(0,2).toUpperCase()}
@@ -132,15 +205,16 @@ export default function TicketSidebar({ ticket, onClose, fetchEvents }: TicketSi
                     <div className="text-sm font-bold text-slate-800 dark:text-slate-100">{ticket.technician}</div>
                     <div className="text-xs text-green-600 font-medium flex items-center gap-1">
                       <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                      Activo ahora
+                      Activo
                     </div>
                   </div>
                 </div>
-                <button className="text-xs text-indigo-600 font-medium hover:underline">Cambiar</button>
               </div>
             ) : (
-              <button className="w-full border-2 border-dashed border-slate-300 hover:border-indigo-400 p-4 rounded-xl flex flex-col items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all">
-                <User className="w-6 h-6 mb-2" />
+              <button onClick={() => setIsEditingTechnician(true)} className="w-full border-2 border-dashed border-slate-300 hover:border-indigo-400 p-4 rounded-xl flex flex-col items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all group">
+                <div className="w-10 h-10 rounded-full bg-slate-100 group-hover:bg-indigo-100 flex items-center justify-center mb-2 transition-colors">
+                  <User className="w-5 h-5 text-slate-400 group-hover:text-indigo-600" />
+                </div>
                 <span className="text-sm font-bold">Asignar Técnico</span>
               </button>
             )}

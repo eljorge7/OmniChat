@@ -1,9 +1,25 @@
-import { Controller, Put, Post, Body, Headers, UnauthorizedException } from '@nestjs/common';
+import { Controller, Put, Post, Get, Param, Body, Headers, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('api/v1/users')
 export class UsersController {
   constructor(private prisma: PrismaService) {}
+
+  @Get('company/:companyId')
+  async getUsersByCompany(@Param('companyId') companyId: string) {
+    if (!companyId) throw new UnauthorizedException('Falta companyId');
+    const users = await this.prisma.user.findMany({
+      where: { companyId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        avatarUrl: true
+      }
+    });
+    return users;
+  }
 
   @Post('login')
   async login(@Body() body: { email: string; password?: string }) {
